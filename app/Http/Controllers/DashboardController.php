@@ -16,73 +16,55 @@ class DashboardController extends Controller
         $hour = (int) now()->format('H');
         $greeting =
             $hour < 12 ? 'Good morning' :
-            ($hour < 18 ? 'Good afternoon' : 'Good evening');
+                ($hour < 18 ? 'Good afternoon' : 'Good evening');
 
         // Assets widgets
         $totalAssets = Asset::count();
         $totalAssetsValue = (float) Asset::query()->sum('purchase_price');
 
-        // Current period (the month you are reporting income for)
-        $year = (int) now()->year;
-        $month = (int) now()->month;
+        // Current period (month you are reporting income for)
+        // (Optional override via ?year=2025&month=10 for testing)
+        $year = (int) $request->get('year', now()->year);
+        $month = (int) $request->get('month', now()->month);
+
+        $month = max(1, min(12, $month));
+        $year = max(2000, min(2100, $year));
 
         // Period window (month start/end)
         $periodStart = Carbon::create($year, $month, 1)->startOfDay();
         $periodEnd = (clone $periodStart)->endOfMonth()->endOfDay();
 
         // -----------------------------
-        // Rental income by PERIOD (year+month) - all records for that period
+        // Rental income for PERIOD based on agreement overlap (NOT stored year/month)
         // -----------------------------
         $monthlyIncome = (float) AssetRental::query()
-            ->where('year', $year)
-            ->where('month', $month)
+            ->activeForPeriod($year, $month)
             ->sum('amount');
 
         $monthlyIncomeByCurrency = AssetRental::query()
+            ->activeForPeriod($year, $month)
             ->selectRaw('currency, SUM(amount) as total')
-            ->where('year', $year)
-            ->where('month', $month)
             ->groupBy('currency')
             ->orderBy('currency')
             ->get();
 
-        // -----------------------------
-        // Active agreement logic (recommended)
-        // Active for the PERIOD (not "today"):
-        // uses your model scope which checks:
-        // - agreement overlaps the month
-        // - is_active = true
-        // -----------------------------
-        $activeAgreementsCount = AssetRental::query()
-            ->where('year', $year)
-            ->where('month', $month)
+        $activeAgreementsCount = (int) AssetRental::query()
             ->activeForPeriod($year, $month)
             ->count();
 
-        $monthlyIncomeActiveOnly = (float) AssetRental::query()
-            ->where('year', $year)
-            ->where('month', $month)
-            ->activeForPeriod($year, $month)
-            ->sum('amount');
-
-        $monthlyIncomeActiveByCurrency = AssetRental::query()
-            ->selectRaw('currency, SUM(amount) as total')
-            ->where('year', $year)
-            ->where('month', $month)
-            ->activeForPeriod($year, $month)
-            ->groupBy('currency')
-            ->orderBy('currency')
-            ->get();
-
         // -----------------------------
-        // Occupied/Vacant widgets (based on assets.status)
+        // Occupied/Vacant widgets (more tolerant)
         // -----------------------------
         $occupiedCount = Asset::query()
-            ->whereRaw('LOWER(status) = ?', ['occupied'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status,''))) LIKE 'rented%'")
+            ->orWhereRaw("LOWER(TRIM(COALESCE(status,''))) = 'occupied'")
             ->count();
 
         $vacantCount = Asset::query()
-            ->whereRaw('LOWER(status) = ?', ['vacant'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status,''))) = 'vacant'")
+            ->orWhereRaw("LOWER(TRIM(COALESCE(status,''))) LIKE 'vacant%'")
+            ->orWhereRaw("LOWER(TRIM(COALESCE(status,''))) LIKE 'empty%'")
+            ->orWhereRaw("LOWER(TRIM(COALESCE(status,''))) LIKE 'available%'")
             ->count();
 
         $otherStatusCount = max(0, $totalAssets - $occupiedCount - $vacantCount);
@@ -97,20 +79,13 @@ class DashboardController extends Controller
             'currentYear' => $year,
             'currentMonth' => $month,
 
-            // Period window if you want to display/debug it later
             'periodStart' => $periodStart->toDateString(),
             'periodEnd' => $periodEnd->toDateString(),
 
-            // Period-based totals (all records for that year+month)
             'monthlyIncome' => $monthlyIncome,
             'monthlyIncomeByCurrency' => $monthlyIncomeByCurrency,
-
-            // Active-for-period totals (agreement overlaps month AND is_active = true)
             'activeAgreementsCount' => $activeAgreementsCount,
-            'monthlyIncomeActiveOnly' => $monthlyIncomeActiveOnly,
-            'monthlyIncomeActiveByCurrency' => $monthlyIncomeActiveByCurrency,
 
-            // Asset status widgets
             'occupiedCount' => $occupiedCount,
             'vacantCount' => $vacantCount,
             'otherStatusCount' => $otherStatusCount,
