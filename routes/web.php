@@ -57,7 +57,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('portal.update')
             ->middleware('permission:manage_portal_settings');
 
-        /* Users Page  */
+        /* Users Page */
         Route::get('/users', [UsersController::class, 'index'])
             ->name('users.index')
             ->middleware('permission:manage_users');
@@ -82,18 +82,18 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('users.destroy')
             ->middleware('permission:manage_users');
 
-        /* SMTP Settings (FIXED) */
+        /* SMTP Settings */
         Route::get('/smtp', [SmtpSettingsController::class, 'edit'])
             ->name('smtp.edit')
-            ->middleware('permission:manage_portal_settings');
+            ->middleware('permission:manage_smtp_settings');
 
         Route::put('/smtp', [SmtpSettingsController::class, 'update'])
             ->name('smtp.update')
-            ->middleware('permission:manage_portal_settings');
+            ->middleware('permission:manage_smtp_settings');
 
         Route::post('/smtp/test', [SmtpSettingsController::class, 'test'])
             ->name('smtp.test')
-            ->middleware('permission:manage_portal_settings');
+            ->middleware('permission:manage_smtp_settings');
 
         /* Permission Set Page */
         Route::get('/permission-sets', [PermissionSetsController::class, 'index'])

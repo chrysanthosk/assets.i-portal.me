@@ -13,20 +13,33 @@ class PermissionSetsController extends Controller
     {
         $permissions = Permission::orderBy('name')->get();
 
-        // Display labels from config if available
-        $labels = config('portal_permissions', []);
+        // NEW: registry structure
+        $registry = config('portal_permissions.permissions', []);
+
+        // Build label map: permission => label (fallback to name)
+        $labels = [];
+        foreach ($registry as $name => $meta) {
+            $labels[$name] = $meta['label'] ?? $name;
+        }
+
+        // Optional: group map (if your blade wants it later)
+        $groups = [];
+        foreach ($registry as $name => $meta) {
+            $groups[$name] = $meta['group'] ?? 'Other';
+        }
 
         return view('settings.permission_sets', [
             'roles' => Role::orderBy('name')->get(),
             'permissions' => $permissions,
             'labels' => $labels,
+            'groups' => $groups,
         ]);
     }
 
     public function storeRole(Request $request)
     {
         $data = $request->validate([
-            'role_name' => ['required','string','max:50','unique:roles,name'],
+            'role_name' => ['required', 'string', 'max:50', 'unique:roles,name'],
         ]);
 
         $role = Role::create(['name' => $data['role_name']]);
@@ -47,7 +60,7 @@ class PermissionSetsController extends Controller
 
         $role->syncPermissions($selected);
 
-        return back()->with('success', 'Permissions updated for '.$role->name.'.');
+        return back()->with('success', 'Permissions updated for ' . $role->name . '.');
     }
 
     public function destroyRole(Role $role)

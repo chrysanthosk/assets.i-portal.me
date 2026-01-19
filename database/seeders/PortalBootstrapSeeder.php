@@ -7,27 +7,49 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class PortalBootstrapSeeder extends Seeder
 {
     public function run(): void
     {
+        // Clear Spatie permission cache to avoid stale permissions
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Read registry
+        $registry = config('portal_permissions.permissions', []);
+
         // 1) Ensure permissions exist
-        foreach (config('portal_permissions', []) as $key => $label) {
-            Permission::firstOrCreate(['name' => $key]);
+        foreach ($registry as $permName => $meta) {
+            Permission::firstOrCreate([
+                'name' => $permName,
+                'guard_name' => 'web',
+            ]);
         }
 
-        // 2) Roles (permission sets)
-        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
-        $userRole  = Role::firstOrCreate(['name' => 'User']);
+        // 2) Ensure default roles exist
+        $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $userRole  = Role::firstOrCreate(['name' => 'User',  'guard_name' => 'web']);
 
-        // Admin gets all permissions
+        // 3) Assign default permissions to roles based on registry
+        //    (This avoids "Admin gets everything blindly" and makes future changes predictable.)
+        foreach ($registry as $permName => $meta) {
+            $defaultRoles = $meta['default_roles'] ?? [];
+
+            foreach ($defaultRoles as $roleName) {
+                $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+                $role->givePermissionTo($permName);
+            }
+        }
+
+        // 4) Safety: ensure Admin always has all permissions that exist in DB
+        //    (So new permissions show up immediately for Admin, even if someone forgets registry defaults.)
         $adminRole->syncPermissions(Permission::all());
 
-        // User gets dashboard only
-        $userRole->syncPermissions(['view_dashboard']);
+        // 5) Safety: ensure User always has dashboard at minimum
+        $userRole->givePermissionTo('view_dashboard');
 
-        // 3) Default admin user
+        // 6) Default admin user
         $admin = User::firstOrCreate(
             ['username' => 'admin@example.com'],
             [
@@ -38,6 +60,10 @@ class PortalBootstrapSeeder extends Seeder
             ]
         );
 
+        // Ensure the admin is Admin
         $admin->syncRoles(['Admin']);
+
+        // Clear cache again after changes
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
