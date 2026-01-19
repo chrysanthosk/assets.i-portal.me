@@ -1,59 +1,199 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# i-portal.me
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A modern **Laravel 12 + AdminLTE 4 (Bootstrap 5)** portal featuring authentication, roles & permissions, 2FA, SMTP configuration, and a clean, extensible settings architecture.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Username + password authentication
+- Role & permission management (Spatie)
+- User management (Admin / User permission sets)
+- Profile management (name, email with OTP confirmation)
+- Password strength meter (zxcvbn)
+- Two-Factor Authentication (Google Authenticator)
+- SMTP configuration & test email
+- Dark / Light mode toggle (persistent)
+- Expandable Settings menu (AdminLTE treeview)
+- Inline validation feedback
+- Modal delete confirmations
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- PHP **8.3+**
+- Composer
+- Node.js **18+**
+- npm
+- MySQL **8.0+**
+- Git
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Installation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 1. Clone the repository
+```bash
+git clone git@github.com:chrysanthosk/i-portal.me.git
+cd i-portal.me
+```
 
-### Premium Partners
+### 2. Install PHP dependencies
+```bash
+composer install
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 3. Install Node dependencies
+```bash
+npm install
+```
 
-## Contributing
+### 4. Environment configuration
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 5. MySQL configuration
 
-## Code of Conduct
+Create a MySQL database:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```sql
+CREATE DATABASE i_portal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-## Security Vulnerabilities
+Update your `.env` file:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=i_portal
+DB_USERNAME=your_mysql_user
+DB_PASSWORD=your_mysql_password
+```
+
+---
+
+### 6. Run migrations & seed initial data
+```bash
+php artisan migrate
+php artisan db:seed --class=PortalBootstrapSeeder
+```
+
+#### Default admin credentials
+```
+Username: admin@example.com
+Password: ChangeMe123!
+```
+
+> **Important:** Change this password immediately after first login.
+
+---
+
+### 7. Build frontend assets
+```bash
+npm run build
+```
+
+For development:
+```bash
+npm run dev
+```
+
+---
+
+### 8. Start the application
+```bash
+php artisan serve
+```
+
+Open:
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## SMTP Configuration
+
+Supported encryption modes:
+- **TLS (STARTTLS)** — Port **587**
+- **SSL (SMTPS)** — Port **465**
+
+Invalid combinations (e.g. SSL + 587) are blocked.
+
+### SendGrid example
+```
+Host: smtp.sendgrid.net
+Port: 587
+Encryption: tls
+Username: apikey
+Password: <SENDGRID_API_KEY>
+```
+
+Use the **Test Email** button to verify connectivity.
+
+---
+
+## Two-Factor Authentication (2FA)
+
+- Google Authenticator compatible
+- QR code + manual secret
+- Enforced via middleware
+- Challenge page on login if enabled
+
+---
+
+## Password Strength
+
+- Powered by `zxcvbn`
+- Visual strength meter
+- Used on:
+    - Profile password change
+    - User create
+    - User edit
+
+---
+
+## Useful Commands
+
+```bash
+php artisan optimize:clear
+php artisan route:list
+php artisan migrate:fresh --seed
+npm run build
+```
+
+---
+
+## Security Notes
+
+- Change the default admin password immediately
+- Do not commit `.env`
+- Use HTTPS in production
+- Enable 2FA for admin accounts
+- Use strong SMTP credentials
+
+---
+
+## Roadmap
+
+- Additional modules (Finance, CRM, Reports)
+- Audit logs
+- API authentication
+- Webhooks
+- Multi-tenant support
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Private / Internal Use
+
+---
+
+## Author
+
+**Chrysanthos Kattimeris**
