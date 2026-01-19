@@ -2,79 +2,87 @@
 
 @section('content')
 <div class="row">
+  <div class="col-12">
 
-  <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">Create Permission Set</h5></div>
-      <div class="card-body">
-        <form method="POST" action="{{ route('settings.permissionSets.storeRole') }}" class="row g-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">Permission Sets</h5>
+
+        <form method="POST" action="{{ route('settings.permissionSets.storeRole') }}" class="d-flex gap-2">
           @csrf
-          <div class="col-12">
-            <label class="form-label">Permission Set Name</label>
-            <input class="form-control" name="role_name" placeholder="e.g. Finance" required>
-            <small class="text-muted">Default access will be Dashboard only.</small>
-          </div>
-          <div class="col-12">
-            <button class="btn btn-primary">Create</button>
-          </div>
+          <input type="text" name="role_name" class="form-control form-control-sm" placeholder="New permission set name" required>
+          <button class="btn btn-sm btn-primary">Create</button>
         </form>
       </div>
-    </div>
-  </div>
 
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header"><h5 class="mb-0">Permission Matrix</h5></div>
       <div class="card-body">
 
-        @foreach($roles as $role)
-          <div class="border rounded p-3 mb-3">
-            <div class="d-flex justify-content-between align-items-center">
-              <h6 class="mb-0">{{ $role->name }}</h6>
+        @foreach ($roles as $role)
+          <div class="border rounded p-3 mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div>
+                <h6 class="mb-0">{{ $role->name }}</h6>
+                <small class="text-muted">Tick permissions to allow access</small>
+              </div>
 
-              @if(!in_array($role->name, ['Admin','User'], true))
-                <form method="POST" action="{{ route('settings.permissionSets.destroyRole', $role) }}"
-                      onsubmit="return confirm('Delete this permission set?');">
+              @if (!in_array($role->name, ['Admin','User'], true))
+                <form method="POST" action="{{ route('settings.permissionSets.destroyRole', $role) }}">
                   @csrf
-                  <button class="btn btn-sm btn-danger">Delete</button>
+                  <button class="btn btn-sm btn-outline-danger">Delete</button>
                 </form>
               @endif
             </div>
 
-            <form method="POST" action="{{ route('settings.permissionSets.updateRolePermissions', $role) }}" class="mt-3">
+            <form method="POST" action="{{ route('settings.permissionSets.updateRolePermissions', $role) }}">
               @csrf
 
-              <div class="row">
-                @foreach($permissions as $perm)
-                  @php
-                    $label = $labels[$perm->name] ?? $perm->name;
-                    $has = $role->hasPermissionTo($perm->name);
-                  @endphp
+              @php
+                $rolePerms = $role->permissions->pluck('name')->toArray();
+              @endphp
 
-                  <div class="col-md-6 mb-2">
-                    <div class="form-check">
-                      <input class="form-check-input"
-                             type="checkbox"
-                             name="permissions[]"
-                             value="{{ $perm->name }}"
-                             id="{{ $role->id }}_{{ $perm->id }}"
-                             @checked($has)>
-                      <label class="form-check-label" for="{{ $role->id }}_{{ $perm->id }}">
-                        {{ $label }}
-                        <small class="text-muted">({{ $perm->name }})</small>
-                      </label>
+              <div class="row">
+                @foreach ($groupedPermissions as $groupName => $perms)
+                  <div class="col-12 col-lg-4 mb-3">
+                    <div class="border rounded p-2 h-100">
+                      <div class="fw-semibold mb-2">{{ $groupName }}</div>
+
+                      @foreach ($perms as $permName => $meta)
+                        @php
+                          $label = $meta['label'] ?? $permName;
+                          $checked = in_array($permName, $rolePerms, true);
+                        @endphp
+
+                        <div class="form-check">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="permissions[]"
+                            value="{{ $permName }}"
+                            id="{{ $role->id }}_{{ $permName }}"
+                            {{ $checked ? 'checked' : '' }}
+                          >
+                          <label class="form-check-label" for="{{ $role->id }}_{{ $permName }}">
+                            {{ $label }}
+                            <small class="text-muted">({{ $permName }})</small>
+                          </label>
+                        </div>
+                      @endforeach
                     </div>
                   </div>
                 @endforeach
               </div>
 
-              <button class="btn btn-success mt-2">Save Permissions</button>
+              <div class="mt-2">
+                <button class="btn btn-sm btn-primary">Save Permissions</button>
+              </div>
+
             </form>
           </div>
         @endforeach
 
       </div>
     </div>
+
   </div>
 </div>
 @endsection

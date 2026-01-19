@@ -10,15 +10,21 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        /* Chevron down/up behavior for Settings */
-        .nav-item .nav-arrow { transition: transform .15s ease; }
-        .nav-item.menu-open > a .chev-down { display: none; }
-        .nav-item.menu-open > a .chev-up { display: inline-block; }
-        .nav-item:not(.menu-open) > a .chev-down { display: inline-block; }
-        .nav-item:not(.menu-open) > a .chev-up { display: none; }
-
-        /* Better invalid states spacing */
         .invalid-feedback { display: block; }
+        .form-control.is-invalid,
+        .form-select.is-invalid { border-color: var(--bs-danger); }
+
+        /* Make parent menu items clickable + show pointer */
+        .nav-sidebar .nav-link { cursor: pointer; }
+
+        /* Chevron rotation */
+        .nav-link .chev {
+            transition: transform .15s ease;
+            display: inline-block;
+        }
+        .nav-item.menu-open > .nav-link .chev {
+            transform: rotate(180deg); /* down -> up */
+        }
     </style>
 </head>
 
@@ -26,7 +32,9 @@
 
 @php
     $portalNameValue = \App\Models\PortalSetting::where('key','portal_name')->value('value') ?? 'i-portal';
+
     $settingsOpen = request()->is('settings*');
+    $assetsOpen   = request()->is('assets*');
 @endphp
 
 <div class="app-wrapper">
@@ -44,9 +52,8 @@
             </ul>
 
             <ul class="navbar-nav ms-auto align-items-center">
-
                 <li class="nav-item me-2">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleTheme()">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleTheme()">
                         <span id="themeLabel">Light</span> Mode
                     </button>
                 </li>
@@ -64,8 +71,8 @@
                         </form>
                     </div>
                 </li>
-
             </ul>
+
         </div>
     </nav>
 
@@ -79,7 +86,10 @@
 
         <div class="sidebar-wrapper">
             <nav>
-                <ul class="nav nav-pills nav-sidebar flex-column" data-lte-toggle="treeview" role="menu">
+                <ul class="nav nav-pills nav-sidebar flex-column"
+                    data-lte-toggle="treeview"
+                    role="menu"
+                    data-accordion="false">
 
                     @can('view_dashboard')
                     <li class="nav-item">
@@ -90,16 +100,68 @@
                     </li>
                     @endcan
 
+                    <!-- ASSETS (Expandable) -->
+                    @php
+                        $canAssets = auth()->check() && (
+                            auth()->user()->can('manage_assets') ||
+                            auth()->user()->can('manage_asset_rentals') ||
+                            auth()->user()->can('manage_asset_tags')
+                        );
+                    @endphp
+
+                    @if($canAssets)
+                    <li class="nav-item {{ $assetsOpen ? 'menu-open' : '' }}">
+                        <a class="nav-link {{ $assetsOpen ? 'active' : '' }}" href="#">
+                            <i class="nav-icon bi bi-buildings"></i>
+                            <p>
+                                Assets
+                                <i class="bi bi-chevron-down float-end chev"></i>
+                            </p>
+                        </a>
+
+                        <ul class="nav nav-treeview">
+
+                            @can('manage_assets')
+                            <li class="nav-item">
+                                <a href="{{ route('assets.index') }}"
+                                   class="nav-link {{ request()->routeIs('assets.index') || request()->routeIs('assets.create') || request()->routeIs('assets.edit') || request()->routeIs('assets.show') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-list-ul"></i>
+                                    <p>Assets List</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_asset_rentals')
+                            <li class="nav-item">
+                                <a href="{{ route('assets.rentals.index') }}"
+                                   class="nav-link {{ request()->routeIs('assets.rentals.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-cash-coin"></i>
+                                    <p>Rental Income</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_asset_tags')
+                            <li class="nav-item">
+                                <a href="{{ route('assets.tags.index') }}"
+                                   class="nav-link {{ request()->routeIs('assets.tags.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-tags"></i>
+                                    <p>Tags</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                        </ul>
+                    </li>
+                    @endif
+
                     <!-- SETTINGS (Expandable) -->
                     <li class="nav-item {{ $settingsOpen ? 'menu-open' : '' }}">
-                        <a href="#" class="nav-link {{ $settingsOpen ? 'active' : '' }}">
+                        <a class="nav-link {{ $settingsOpen ? 'active' : '' }}" href="#">
                             <i class="nav-icon bi bi-gear"></i>
                             <p>
                                 Settings
-                                <span class="nav-arrow float-end">
-                                    <i class="bi bi-chevron-down chev-down"></i>
-                                    <i class="bi bi-chevron-up chev-up"></i>
-                                </span>
+                                <i class="bi bi-chevron-down float-end chev"></i>
                             </p>
                         </a>
 
@@ -132,12 +194,12 @@
                             </li>
                             @endcan
 
-                            @can('manage_portal_settings')
+                            @can('manage_smtp_settings')
                             <li class="nav-item">
-                              <a href="{{ route('settings.smtp.edit') }}" class="nav-link {{ request()->routeIs('settings.smtp.*') ? 'active' : '' }}">
-                                <i class="nav-icon bi bi-envelope-at"></i>
-                                <p>SMTP Settings</p>
-                              </a>
+                                <a href="{{ route('settings.smtp.edit') }}" class="nav-link {{ request()->routeIs('settings.smtp.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-envelope-at"></i>
+                                    <p>SMTP Settings</p>
+                                </a>
                             </li>
                             @endcan
 
@@ -161,6 +223,17 @@
                 <div class="alert alert-danger">{{ session('error') }}</div>
             @endif
 
+            @if ($errors->any())
+                <div class="alert alert-danger">
+                    <div class="fw-semibold mb-1">Please fix the errors below</div>
+                    <ul class="mb-0">
+                        @foreach($errors->all() as $e)
+                            <li>{{ $e }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             @yield('content')
         </div>
     </main>
@@ -179,23 +252,22 @@
 (function () {
     // Theme toggle
     const html = document.documentElement;
+
     function applyTheme(theme) {
         html.setAttribute('data-bs-theme', theme);
         localStorage.setItem('theme', theme);
         const label = document.getElementById('themeLabel');
         if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
     }
+
     applyTheme(localStorage.getItem('theme') || 'dark');
+
     window.toggleTheme = function () {
         const current = html.getAttribute('data-bs-theme');
         applyTheme(current === 'dark' ? 'light' : 'dark');
     };
 
-    // Password strength meter (works on any page)
-    // Usage: add data-password-meter="someId" to your password input.
-    // And create:
-    //  - <div id="someId-text"></div>
-    //  - <div class="progress"><div id="someId-bar"></div></div>
+    // Password strength meters (global)
     function strengthToLabel(score) {
         return ['Very weak', 'Weak', 'Fair', 'Good', 'Strong'][score] || 'Very weak';
     }
@@ -209,17 +281,10 @@
             const id = input.getAttribute('data-password-meter');
             const textEl = document.getElementById(id + '-text');
             const barEl = document.getElementById(id + '-bar');
-
             if (!textEl || !barEl) return;
 
             const update = () => {
                 const val = input.value || '';
-                if (!window.zxcvbn) {
-                    textEl.textContent = val.length ? 'Strength meter not loaded' : '';
-                    barEl.style.width = val.length ? '25%' : '0%';
-                    barEl.className = 'progress-bar';
-                    return;
-                }
 
                 if (!val.length) {
                     textEl.textContent = '';
@@ -228,12 +293,17 @@
                     return;
                 }
 
+                if (!window.zxcvbn) {
+                    textEl.textContent = 'Strength meter not loaded';
+                    barEl.style.width = '25%';
+                    barEl.className = 'progress-bar bg-warning';
+                    return;
+                }
+
                 const r = window.zxcvbn(val);
-                const score = r.score; // 0-4
+                const score = r.score;
                 textEl.textContent = strengthToLabel(score);
                 barEl.style.width = strengthToWidth(score) + '%';
-
-                // color classes (no hard-coded colors; using bootstrap contextual classes)
                 barEl.className = 'progress-bar ' + (
                     score <= 1 ? 'bg-danger' :
                     score === 2 ? 'bg-warning' :
@@ -248,6 +318,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         window.initPasswordMeters();
+        // Nothing else needed: AdminLTE handles treeview open/close; chevron rotation handled by CSS .menu-open
     });
 })();
 </script>

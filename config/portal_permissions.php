@@ -1,20 +1,6 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Permission Registry
-    |--------------------------------------------------------------------------
-    | Add new permissions here whenever you add a new module/page.
-    | These are automatically synced into the database by the seeder/command.
-    |
-    | Key = permission name saved in DB
-    | label = display name in UI
-    | group = section in permission-sets UI
-    | default_roles = roles that should get it automatically (e.g. Admin)
-    */
-
     'permissions' => [
 
         // Dashboard
@@ -46,6 +32,25 @@ return [
         'manage_smtp_settings' => [
             'label' => 'Manage SMTP Settings',
             'group' => 'Settings',
+            'default_roles' => ['Admin'],
+        ],
+
+        // Assets
+        'manage_assets' => [
+            'label' => 'Manage Assets',
+            'group' => 'Assets',
+            'default_roles' => ['Admin'],
+        ],
+
+        'manage_asset_tags' => [
+            'label' => 'Manage Asset Tags',
+            'group' => 'Assets',
+            'default_roles' => ['Admin'],
+        ],
+
+        'manage_asset_rentals' => [
+            'label' => 'Manage Rental Income',
+            'group' => 'Assets',
             'default_roles' => ['Admin'],
         ],
     ],

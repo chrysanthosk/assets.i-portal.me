@@ -13,33 +13,35 @@ class PermissionSetsController extends Controller
     {
         $permissions = Permission::orderBy('name')->get();
 
-        // NEW: registry structure
+        // Config registry (meta)
         $registry = config('portal_permissions.permissions', []);
 
-        // Build label map: permission => label (fallback to name)
-        $labels = [];
-        foreach ($registry as $name => $meta) {
-            $labels[$name] = $meta['label'] ?? $name;
+        // Build grouped structure: group => [permName => meta]
+        $grouped = [];
+        foreach ($permissions as $perm) {
+            $name = $perm->name;
+            $meta = $registry[$name] ?? [
+                'label' => $name,
+                'group' => 'Other',
+            ];
+
+            $group = $meta['group'] ?? 'Other';
+            $grouped[$group][$name] = $meta;
         }
 
-        // Optional: group map (if your blade wants it later)
-        $groups = [];
-        foreach ($registry as $name => $meta) {
-            $groups[$name] = $meta['group'] ?? 'Other';
-        }
+        ksort($grouped);
 
         return view('settings.permission_sets', [
             'roles' => Role::orderBy('name')->get(),
             'permissions' => $permissions,
-            'labels' => $labels,
-            'groups' => $groups,
+            'groupedPermissions' => $grouped,
         ]);
     }
 
     public function storeRole(Request $request)
     {
         $data = $request->validate([
-            'role_name' => ['required', 'string', 'max:50', 'unique:roles,name'],
+            'role_name' => ['required','string','max:50','unique:roles,name'],
         ]);
 
         $role = Role::create(['name' => $data['role_name']]);
@@ -55,12 +57,10 @@ class PermissionSetsController extends Controller
         $allPermissionNames = Permission::pluck('name')->all();
         $selected = $request->input('permissions', []);
 
-        // Ensure only valid permissions
         $selected = array_values(array_intersect($selected, $allPermissionNames));
-
         $role->syncPermissions($selected);
 
-        return back()->with('success', 'Permissions updated for ' . $role->name . '.');
+        return back()->with('success', 'Permissions updated for '.$role->name.'.');
     }
 
     public function destroyRole(Role $role)

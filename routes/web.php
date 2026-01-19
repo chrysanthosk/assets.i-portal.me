@@ -10,6 +10,17 @@ use App\Http\Controllers\Settings\PermissionSetsController;
 use App\Http\Controllers\Settings\SmtpSettingsController;
 use App\Http\Controllers\TwoFactorController;
 
+use App\Http\Controllers\AssetsController;
+use App\Http\Controllers\AssetRentalsController;
+use App\Http\Controllers\AssetTagsController;
+
+Route::get('/__whoami', function () {
+    return response()->json([
+        'project' => base_path(),
+        'time' => now()->toDateTimeString(),
+    ]);
+});
+
 Route::get('/', function () {
     return redirect()->route('dashboard');
 })->middleware('auth');
@@ -20,33 +31,101 @@ Route::middleware(['auth', '2fa'])->group(function () {
         ->name('dashboard')
         ->middleware('permission:view_dashboard');
 
+    // --------------------
+    // Assets Management
+    // --------------------
+    Route::prefix('assets')->name('assets.')->group(function () {
+
+        // Assets CRUD
+        Route::get('/', [AssetsController::class, 'index'])
+            ->name('index')
+            ->middleware('permission:manage_assets');
+
+        Route::get('/create', [AssetsController::class, 'create'])
+            ->name('create')
+            ->middleware('permission:manage_assets');
+
+        Route::post('/', [AssetsController::class, 'store'])
+            ->name('store')
+            ->middleware('permission:manage_assets');
+
+        // Rentals (keep as-is)
+        Route::get('/rentals', [AssetRentalsController::class, 'index'])
+            ->name('rentals.index')
+            ->middleware('permission:manage_asset_rentals');
+
+        Route::post('/rentals', [AssetRentalsController::class, 'storeOrUpdate'])
+            ->name('rentals.storeOrUpdate')
+            ->middleware('permission:manage_asset_rentals');
+
+        Route::get('/rentals/{rental}/edit', [AssetRentalsController::class, 'edit'])
+            ->name('rentals.edit')
+            ->middleware('permission:manage_asset_rentals');
+
+        Route::put('/rentals/{rental}', [AssetRentalsController::class, 'update'])
+            ->name('rentals.update')
+            ->middleware('permission:manage_asset_rentals');
+
+        Route::delete('/rentals/{rental}', [AssetRentalsController::class, 'destroy'])
+            ->name('rentals.destroy')
+            ->middleware('permission:manage_asset_rentals');
+
+        // Tags (keep as-is)
+        Route::get('/tags', [AssetTagsController::class, 'index'])
+            ->name('tags.index')
+            ->middleware('permission:manage_asset_tags');
+
+        Route::post('/tags', [AssetTagsController::class, 'store'])
+            ->name('tags.store')
+            ->middleware('permission:manage_asset_tags');
+
+        Route::put('/tags/{tag}', [AssetTagsController::class, 'update'])
+            ->name('tags.update')
+            ->middleware('permission:manage_asset_tags');
+
+        Route::delete('/tags/{tag}', [AssetTagsController::class, 'destroy'])
+            ->name('tags.destroy')
+            ->middleware('permission:manage_asset_tags');
+
+        // ✅ Constrain {asset} so it won’t eat "rentals" or "tags"
+        Route::get('/{asset}', [AssetsController::class, 'show'])
+            ->name('show')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset');
+
+        Route::get('/{asset}/edit', [AssetsController::class, 'edit'])
+            ->name('edit')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset');
+
+        Route::put('/{asset}', [AssetsController::class, 'update'])
+            ->name('update')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset');
+
+        Route::delete('/{asset}', [AssetsController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset');
+    });
+
+    // --------------------
     // Profile
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
-
-    Route::post('/profile/name', [ProfileController::class, 'updateName'])
-        ->name('profile.updateName');
-
-    Route::post('/profile/email/request', [ProfileController::class, 'requestEmailChange'])
-        ->name('profile.requestEmailChange');
-
-    Route::post('/profile/email/confirm', [ProfileController::class, 'confirmEmailChange'])
-        ->name('profile.confirmEmailChange');
-
-    Route::post('/profile/password', [ProfileController::class, 'updatePassword'])
-        ->name('profile.updatePassword');
+    // --------------------
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile/name', [ProfileController::class, 'updateName'])->name('profile.updateName');
+    Route::post('/profile/email/request', [ProfileController::class, 'requestEmailChange'])->name('profile.requestEmailChange');
+    Route::post('/profile/email/confirm', [ProfileController::class, 'confirmEmailChange'])->name('profile.confirmEmailChange');
+    Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
 
     // 2FA
-    Route::post('/profile/2fa/enable', [TwoFactorController::class, 'enable'])
-        ->name('profile.2fa.enable');
+    Route::post('/profile/2fa/enable', [TwoFactorController::class, 'enable'])->name('profile.2fa.enable');
+    Route::post('/profile/2fa/confirm', [TwoFactorController::class, 'confirm'])->name('profile.2fa.confirm');
+    Route::post('/profile/2fa/disable', [TwoFactorController::class, 'disable'])->name('profile.2fa.disable');
 
-    Route::post('/profile/2fa/confirm', [TwoFactorController::class, 'confirm'])
-        ->name('profile.2fa.confirm');
-
-    Route::post('/profile/2fa/disable', [TwoFactorController::class, 'disable'])
-        ->name('profile.2fa.disable');
-
-    // Settings group
+    // --------------------
+    // Settings
+    // --------------------
     Route::prefix('settings')->name('settings.')->group(function () {
 
         Route::get('/portal', [PortalSettingsController::class, 'edit'])
@@ -57,7 +136,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('portal.update')
             ->middleware('permission:manage_portal_settings');
 
-        /* Users Page */
+        // Users
         Route::get('/users', [UsersController::class, 'index'])
             ->name('users.index')
             ->middleware('permission:manage_users');
@@ -82,7 +161,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('users.destroy')
             ->middleware('permission:manage_users');
 
-        /* SMTP Settings */
+        // SMTP
         Route::get('/smtp', [SmtpSettingsController::class, 'edit'])
             ->name('smtp.edit')
             ->middleware('permission:manage_smtp_settings');
@@ -95,7 +174,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('smtp.test')
             ->middleware('permission:manage_smtp_settings');
 
-        /* Permission Set Page */
+        // Permission sets
         Route::get('/permission-sets', [PermissionSetsController::class, 'index'])
             ->name('permissionSets.index')
             ->middleware('permission:manage_permission_sets');
@@ -114,13 +193,10 @@ Route::middleware(['auth', '2fa'])->group(function () {
     });
 });
 
-// 2FA challenge routes (must be auth but NOT 2fa middleware)
+// 2FA challenge routes (auth but NOT 2fa middleware)
 Route::middleware('auth')->group(function () {
-    Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])
-        ->name('2fa.challenge');
-
-    Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])
-        ->name('2fa.verify');
+    Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])->name('2fa.challenge');
+    Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])->name('2fa.verify');
 });
 
 require __DIR__ . '/auth.php';
