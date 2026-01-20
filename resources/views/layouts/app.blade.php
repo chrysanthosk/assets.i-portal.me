@@ -203,6 +203,25 @@
                             </li>
                             @endcan
 
+                            @can('manage_asset_types')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.assetTypes.index') }}" class="nav-link {{ request()->routeIs('settings.assetTypes.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-ui-checks"></i>
+                                    <p>Asset Types</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_owner_entities')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.ownerEntities.index') }}" class="nav-link {{ request()->routeIs('settings.ownerEntities.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-building"></i>
+                                    <p>Owner Entities</p>
+                                </a>
+                            </li>
+                            @endcan
+
+
                         </ul>
                     </li>
 

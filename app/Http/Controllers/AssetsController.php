@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetTag;
+use App\Models\AssetType;
+use App\Models\OwnerEntity;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AssetsController extends Controller
 {
@@ -33,14 +36,21 @@ class AssetsController extends Controller
     public function create()
     {
         $tags = AssetTag::orderBy('name')->get();
-        return view('assets.create', compact('tags'));
+
+        $assetTypes = AssetType::orderBy('name')->pluck('name')->values()->all();
+        $ownerEntities = OwnerEntity::orderBy('name')->pluck('name')->values()->all();
+
+        return view('assets.create', compact('tags', 'assetTypes', 'ownerEntities'));
     }
 
     public function store(Request $request)
     {
+        $assetTypes = AssetType::pluck('name')->all();
+        $ownerEntities = OwnerEntity::pluck('name')->all();
+
         $data = $request->validate([
             'name' => ['required','string','max:255'],
-            'type' => ['required','string','max:50'],
+            'type' => ['required','string','max:50', Rule::in($assetTypes)],
             'address' => ['nullable','string'],
             'notes' => ['nullable','string'],
 
@@ -48,7 +58,7 @@ class AssetsController extends Controller
             'purchase_price' => ['nullable','numeric','min:0'],
             'currency' => ['required','string','max:10'],
 
-            'owner_entity' => ['nullable','string','max:255'],
+            'owner_entity' => ['nullable','string','max:255', Rule::in($ownerEntities)],
             'ownership_percentage' => ['nullable','numeric','min:0','max:100'],
 
             'title_deed' => ['nullable','in:0,1'],
@@ -102,14 +112,21 @@ class AssetsController extends Controller
     {
         $tags = AssetTag::orderBy('name')->get();
         $asset->load('tags');
-        return view('assets.edit', compact('asset','tags'));
+
+        $assetTypes = AssetType::orderBy('name')->pluck('name')->values()->all();
+        $ownerEntities = OwnerEntity::orderBy('name')->pluck('name')->values()->all();
+
+        return view('assets.edit', compact('asset','tags','assetTypes','ownerEntities'));
     }
 
     public function update(Request $request, Asset $asset)
     {
+        $assetTypes = AssetType::pluck('name')->all();
+        $ownerEntities = OwnerEntity::pluck('name')->all();
+
         $data = $request->validate([
             'name' => ['required','string','max:255'],
-            'type' => ['required','string','max:50'],
+            'type' => ['required','string','max:50', Rule::in($assetTypes)],
             'address' => ['nullable','string'],
             'notes' => ['nullable','string'],
 
@@ -117,7 +134,7 @@ class AssetsController extends Controller
             'purchase_price' => ['nullable','numeric','min:0'],
             'currency' => ['required','string','max:10'],
 
-            'owner_entity' => ['nullable','string','max:255'],
+            'owner_entity' => ['nullable','string','max:255', Rule::in($ownerEntities)],
             'ownership_percentage' => ['nullable','numeric','min:0','max:100'],
 
             'title_deed' => ['nullable','in:0,1'],

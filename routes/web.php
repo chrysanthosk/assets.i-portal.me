@@ -8,6 +8,8 @@ use App\Http\Controllers\Settings\PortalSettingsController;
 use App\Http\Controllers\Settings\UsersController;
 use App\Http\Controllers\Settings\PermissionSetsController;
 use App\Http\Controllers\Settings\SmtpSettingsController;
+use App\Http\Controllers\Settings\AssetTypesController;
+use App\Http\Controllers\Settings\OwnerEntitiesController;
 use App\Http\Controllers\TwoFactorController;
 
 use App\Http\Controllers\AssetsController;
@@ -49,7 +51,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('store')
             ->middleware('permission:manage_assets');
 
-        // Rentals (keep as-is)
+        // Rentals
         Route::get('/rentals', [AssetRentalsController::class, 'index'])
             ->name('rentals.index')
             ->middleware('permission:manage_asset_rentals');
@@ -70,7 +72,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('rentals.destroy')
             ->middleware('permission:manage_asset_rentals');
 
-        // Tags (keep as-is)
+        // Tags
         Route::get('/tags', [AssetTagsController::class, 'index'])
             ->name('tags.index')
             ->middleware('permission:manage_asset_tags');
@@ -87,7 +89,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('tags.destroy')
             ->middleware('permission:manage_asset_tags');
 
-        // ✅ Constrain {asset} so it won’t eat "rentals" or "tags"
+        // Constrain {asset} so it won’t eat "rentals" or "tags"
         Route::get('/{asset}', [AssetsController::class, 'show'])
             ->name('show')
             ->middleware('permission:manage_assets')
@@ -190,6 +192,44 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::post('/permission-sets/{role}/delete', [PermissionSetsController::class, 'destroyRole'])
             ->name('permissionSets.destroyRole')
             ->middleware('permission:manage_permission_sets');
+
+        // --------------------
+        // Asset Types
+        // --------------------
+        Route::get('/asset-types', [AssetTypesController::class, 'index'])
+            ->name('assetTypes.index')
+            ->middleware('permission:manage_asset_types');
+
+        Route::post('/asset-types', [AssetTypesController::class, 'store'])
+            ->name('assetTypes.store')
+            ->middleware('permission:manage_asset_types');
+
+        Route::put('/asset-types/{assetType}', [AssetTypesController::class, 'update'])
+            ->name('assetTypes.update')
+            ->middleware('permission:manage_asset_types');
+
+        Route::delete('/asset-types/{assetType}', [AssetTypesController::class, 'destroy'])
+            ->name('assetTypes.destroy')
+            ->middleware('permission:manage_asset_types');
+
+        // --------------------
+        // Owner Entities
+        // --------------------
+        Route::get('/owner-entities', [OwnerEntitiesController::class, 'index'])
+            ->name('ownerEntities.index')
+            ->middleware('permission:manage_owner_entities');
+
+        Route::post('/owner-entities', [OwnerEntitiesController::class, 'store'])
+            ->name('ownerEntities.store')
+            ->middleware('permission:manage_owner_entities');
+
+        Route::put('/owner-entities/{ownerEntity}', [OwnerEntitiesController::class, 'update'])
+            ->name('ownerEntities.update')
+            ->middleware('permission:manage_owner_entities');
+
+        Route::delete('/owner-entities/{ownerEntity}', [OwnerEntitiesController::class, 'destroy'])
+            ->name('ownerEntities.destroy')
+            ->middleware('permission:manage_owner_entities');
     });
 });
 

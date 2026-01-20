@@ -53,5 +53,18 @@ return [
             'group' => 'Assets',
             'default_roles' => ['Admin'],
         ],
+
+        // New: Asset Config
+        'manage_asset_types' => [
+            'label' => 'Manage Asset Types',
+            'group' => 'Settings',
+            'default_roles' => ['Admin'],
+        ],
+
+        'manage_owner_entities' => [
+            'label' => 'Manage Owner Entities',
+            'group' => 'Settings',
+            'default_roles' => ['Admin'],
+        ],
     ],
 ];
