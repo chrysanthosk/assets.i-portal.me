@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\AssetTag;
 use App\Models\AssetType;
 use App\Models\OwnerEntity;
+use App\Support\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -20,12 +21,17 @@ class AssetsController extends Controller
                 $query->where(function ($qq) use ($q) {
                     $qq->where('name', 'like', "%{$q}%")
                         ->orWhere('address', 'like', "%{$q}%")
-                        ->orWhere('type', 'like', "%{$q}%")
                         ->orWhere('status', 'like', "%{$q}%")
-                        ->orWhere('city', 'like', "%{$q}%");
+                        ->orWhere('city', 'like', "%{$q}%")
+                        ->orWhereHas('assetType', function ($tq) use ($q) {
+                            $tq->where('name', 'like', "%{$q}%");
+                        })
+                        ->orWhereHas('ownerEntity', function ($oq) use ($q) {
+                            $oq->where('name', 'like', "%{$q}%");
+                        });
                 });
             })
-            ->with('tags')
+            ->with(['tags', 'assetType', 'ownerEntity'])
             ->orderBy('id', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -37,20 +43,19 @@ class AssetsController extends Controller
     {
         $tags = AssetTag::orderBy('name')->get();
 
-        $assetTypes = AssetType::orderBy('name')->pluck('name')->values()->all();
-        $ownerEntities = OwnerEntity::orderBy('name')->pluck('name')->values()->all();
+        $assetTypes = AssetType::orderBy('sort_order')->orderBy('name')->get(['id','name','is_active']);
+        $ownerEntities = OwnerEntity::orderBy('sort_order')->orderBy('name')->get(['id','name','is_active']);
 
         return view('assets.create', compact('tags', 'assetTypes', 'ownerEntities'));
     }
 
     public function store(Request $request)
     {
-        $assetTypes = AssetType::pluck('name')->all();
-        $ownerEntities = OwnerEntity::pluck('name')->all();
-
         $data = $request->validate([
             'name' => ['required','string','max:255'],
-            'type' => ['required','string','max:50', Rule::in($assetTypes)],
+
+            'asset_type_id' => ['required','integer','exists:asset_types,id'],
+
             'address' => ['nullable','string'],
             'notes' => ['nullable','string'],
 
@@ -58,7 +63,7 @@ class AssetsController extends Controller
             'purchase_price' => ['nullable','numeric','min:0'],
             'currency' => ['required','string','max:10'],
 
-            'owner_entity' => ['nullable','string','max:255', Rule::in($ownerEntities)],
+            'owner_entity_id' => ['nullable','integer','exists:owner_entities,id'],
             'ownership_percentage' => ['nullable','numeric','min:0','max:100'],
 
             'title_deed' => ['nullable','in:0,1'],
@@ -76,8 +81,8 @@ class AssetsController extends Controller
 
             'size_sqm' => ['nullable','numeric','min:0'],
             'land_sqm' => ['nullable','numeric','min:0'],
-            'bedrooms' => ['nullable','integer','min:0','max:50'],
-            'bathrooms' => ['nullable','integer','min:0','max:50'],
+            'bedrooms' => ['nullable','integer','min:0','max:99'],
+            'bathrooms' => ['nullable','integer','min:0','max:99'],
             'parking' => ['nullable','in:0,1'],
             'year_built' => ['nullable','integer','min:1800','max:2100'],
 
@@ -93,17 +98,32 @@ class AssetsController extends Controller
         $data['parking'] = (int)($data['parking'] ?? 0) === 1;
         $data['ownership_percentage'] = $data['ownership_percentage'] ?? 100;
 
+        // keep legacy string fields in sync (safe if columns exist)
+        $type = AssetType::find($data['asset_type_id']);
+        $owner = !empty($data['owner_entity_id']) ? OwnerEntity::find($data['owner_entity_id']) : null;
+
+        $data['type'] = $type?->name;
+        $data['owner_entity'] = $owner?->name;
+
         $asset = Asset::create($data);
         $asset->tags()->sync($data['tags'] ?? []);
+
+        Audit::log('asset.created', $asset, null, $asset->toArray());
 
         return redirect()->route('assets.index')->with('success', 'Asset created.');
     }
 
     public function show(Asset $asset)
     {
-        $asset->load(['tags', 'rentals' => function ($q) {
-            $q->orderBy('year', 'desc')->orderBy('month', 'desc')->limit(24);
-        }]);
+        $asset->load([
+            'tags',
+            'assetType',
+            'ownerEntity',
+            'documents' => function ($q) { $q->orderBy('id', 'desc'); },
+            'rentals' => function ($q) {
+                $q->orderBy('year', 'desc')->orderBy('month', 'desc')->limit(24);
+            }
+        ]);
 
         return view('assets.show', compact('asset'));
     }
@@ -111,22 +131,23 @@ class AssetsController extends Controller
     public function edit(Asset $asset)
     {
         $tags = AssetTag::orderBy('name')->get();
-        $asset->load('tags');
+        $asset->load(['tags', 'assetType', 'ownerEntity']);
 
-        $assetTypes = AssetType::orderBy('name')->pluck('name')->values()->all();
-        $ownerEntities = OwnerEntity::orderBy('name')->pluck('name')->values()->all();
+        $assetTypes = AssetType::orderBy('sort_order')->orderBy('name')->get(['id','name','is_active']);
+        $ownerEntities = OwnerEntity::orderBy('sort_order')->orderBy('name')->get(['id','name','is_active']);
 
         return view('assets.edit', compact('asset','tags','assetTypes','ownerEntities'));
     }
 
     public function update(Request $request, Asset $asset)
     {
-        $assetTypes = AssetType::pluck('name')->all();
-        $ownerEntities = OwnerEntity::pluck('name')->all();
+        $old = $asset->toArray();
 
         $data = $request->validate([
             'name' => ['required','string','max:255'],
-            'type' => ['required','string','max:50', Rule::in($assetTypes)],
+
+            'asset_type_id' => ['required','integer','exists:asset_types,id'],
+
             'address' => ['nullable','string'],
             'notes' => ['nullable','string'],
 
@@ -134,7 +155,7 @@ class AssetsController extends Controller
             'purchase_price' => ['nullable','numeric','min:0'],
             'currency' => ['required','string','max:10'],
 
-            'owner_entity' => ['nullable','string','max:255', Rule::in($ownerEntities)],
+            'owner_entity_id' => ['nullable','integer','exists:owner_entities,id'],
             'ownership_percentage' => ['nullable','numeric','min:0','max:100'],
 
             'title_deed' => ['nullable','in:0,1'],
@@ -152,8 +173,8 @@ class AssetsController extends Controller
 
             'size_sqm' => ['nullable','numeric','min:0'],
             'land_sqm' => ['nullable','numeric','min:0'],
-            'bedrooms' => ['nullable','integer','min:0','max:50'],
-            'bathrooms' => ['nullable','integer','min:0','max:50'],
+            'bedrooms' => ['nullable','integer','min:0','max:99'],
+            'bathrooms' => ['nullable','integer','min:0','max:99'],
             'parking' => ['nullable','in:0,1'],
             'year_built' => ['nullable','integer','min:1800','max:2100'],
 
@@ -169,15 +190,32 @@ class AssetsController extends Controller
         $data['parking'] = (int)($data['parking'] ?? 0) === 1;
         $data['ownership_percentage'] = $data['ownership_percentage'] ?? $asset->ownership_percentage ?? 100;
 
+        // keep legacy string fields in sync
+        $type = AssetType::find($data['asset_type_id']);
+        $owner = !empty($data['owner_entity_id']) ? OwnerEntity::find($data['owner_entity_id']) : null;
+
+        $data['type'] = $type?->name;
+        $data['owner_entity'] = $owner?->name;
+
         $asset->update($data);
         $asset->tags()->sync($data['tags'] ?? []);
+
+        Audit::log('asset.updated', $asset, $old, $asset->fresh()->toArray());
 
         return redirect()->route('assets.index')->with('success', 'Asset updated.');
     }
 
     public function destroy(Asset $asset)
     {
+        $old = $asset->toArray();
+
+        $asset->tags()->detach();
+
+        // documents deletion will cascade via FK if asset_documents.asset_id has cascadeOnDelete
         $asset->delete();
+
+        Audit::log('asset.deleted', $asset, $old, null);
+
         return redirect()->route('assets.index')->with('success', 'Asset deleted.');
     }
 }

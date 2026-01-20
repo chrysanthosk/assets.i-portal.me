@@ -3,14 +3,18 @@
 return [
     'permissions' => [
 
+        // --------------------
         // Dashboard
+        // --------------------
         'view_dashboard' => [
             'label' => 'View Dashboard',
             'group' => 'Dashboard',
             'default_roles' => ['Admin', 'User'],
         ],
 
+        // --------------------
         // Settings
+        // --------------------
         'manage_portal_settings' => [
             'label' => 'Manage Portal Settings',
             'group' => 'Settings',
@@ -35,7 +39,16 @@ return [
             'default_roles' => ['Admin'],
         ],
 
+        // ✅ NEW: Audit Logs
+        'manage_audit_logs' => [
+            'label' => 'View Audit Logs',
+            'group' => 'Settings',
+            'default_roles' => ['Admin'],
+        ],
+
+        // --------------------
         // Assets
+        // --------------------
         'manage_assets' => [
             'label' => 'Manage Assets',
             'group' => 'Assets',
@@ -54,7 +67,9 @@ return [
             'default_roles' => ['Admin'],
         ],
 
-        // New: Asset Config
+        // --------------------
+        // Asset Configuration
+        // --------------------
         'manage_asset_types' => [
             'label' => 'Manage Asset Types',
             'group' => 'Settings',

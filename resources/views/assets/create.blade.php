@@ -33,17 +33,16 @@
 
                     <div class="col-md-3">
                         <label class="form-label">Type</label>
-                        <select class="form-select @error('type') is-invalid @enderror" name="type" required>
+                        <select class="form-select @error('asset_type_id') is-invalid @enderror" name="asset_type_id" required>
+                            <option value="">— Select —</option>
                             @forelse($assetTypes ?? [] as $t)
-                            <option value="{{ $t }}" @selected(old('type') === $t)>{{ $t }}</option>
+                            <option value="{{ $t->id }}" @selected((string)old('asset_type_id') === (string)$t->id)>{{ $t->name }}</option>
                             @empty
                             <option value="">No types configured</option>
                             @endforelse
                         </select>
-                        <div class="form-text">
-                            Configure types in Settings → Asset Types.
-                        </div>
-                        @error('type') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="form-text">Configure types in Settings → Asset Types.</div>
+                        @error('asset_type_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-md-3">
@@ -100,18 +99,16 @@
 
                     <div class="col-md-4">
                         <label class="form-label">Owner Entity</label>
-                        <select class="form-select @error('owner_entity') is-invalid @enderror" name="owner_entity">
+                        <select class="form-select @error('owner_entity_id') is-invalid @enderror" name="owner_entity_id">
                             <option value="">—</option>
                             @forelse($ownerEntities ?? [] as $oe)
-                            <option value="{{ $oe }}" @selected(old('owner_entity') === $oe)>{{ $oe }}</option>
+                            <option value="{{ $oe->id }}" @selected((string)old('owner_entity_id') === (string)$oe->id)>{{ $oe->name }}</option>
                             @empty
                             <option value="">No owner entities configured</option>
                             @endforelse
                         </select>
-                        <div class="form-text">
-                            Configure owners in Settings → Owner Entities.
-                        </div>
-                        @error('owner_entity') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="form-text">Configure owners in Settings → Owner Entities.</div>
+                        @error('owner_entity_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-md-3">

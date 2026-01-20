@@ -220,7 +220,15 @@
                                 </a>
                             </li>
                             @endcan
-
+                            @can('manage_audit_logs')
+                            <li class="nav-item">
+                                <a href="{{ route('audit.index') }}"
+                                   class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-clipboard-data"></i>
+                                    <p>Audit Logs</p>
+                                </a>
+                            </li>
+                            @endcan
 
                         </ul>
                     </li>
