@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asset;
 use App\Models\AssetType;
+use App\Support\Audit;
 use Illuminate\Http\Request;
 
 class AssetTypesController extends Controller
@@ -22,17 +24,21 @@ class AssetTypesController extends Controller
             'sort_order' => ['nullable','integer','min:0','max:100000'],
         ]);
 
-        AssetType::create([
+        $type = AssetType::create([
             'name' => $data['name'],
             'is_active' => (int)($data['is_active'] ?? 1) === 1,
             'sort_order' => (int)($data['sort_order'] ?? 0),
         ]);
+
+        Audit::log('asset_type.created', $type, null, $type->toArray());
 
         return back()->with('success', 'Asset type created.');
     }
 
     public function update(Request $request, AssetType $assetType)
     {
+        $old = $assetType->toArray();
+
         $data = $request->validate([
             'name' => ['required','string','max:80','unique:asset_types,name,'.$assetType->id],
             'is_active' => ['nullable','in:0,1'],
@@ -45,12 +51,26 @@ class AssetTypesController extends Controller
             'sort_order' => (int)($data['sort_order'] ?? 0),
         ]);
 
+        Audit::log('asset_type.updated', $assetType, $old, $assetType->fresh()->toArray());
+
         return back()->with('success', 'Asset type updated.');
     }
 
     public function destroy(AssetType $assetType)
     {
+        // Option 1: block if referenced
+        $isUsed = Asset::where('asset_type_id', $assetType->id)->exists()
+            || Asset::where('type', $assetType->name)->exists(); // legacy fallback
+
+        if ($isUsed) {
+            return back()->with('error', 'Cannot delete this Asset Type because it is used by one or more assets.');
+        }
+
+        $old = $assetType->toArray();
         $assetType->delete();
+
+        Audit::log('asset_type.deleted', $assetType, $old, null);
+
         return back()->with('success', 'Asset type deleted.');
     }
 }

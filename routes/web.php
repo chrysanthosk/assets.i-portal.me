@@ -15,6 +15,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetRentalsController;
 use App\Http\Controllers\AssetTagsController;
+use App\Http\Controllers\AssetDocumentsController;
 
 Route::get('/__whoami', function () {
     return response()->json([
@@ -32,6 +33,13 @@ Route::middleware(['auth', '2fa'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard')
         ->middleware('permission:view_dashboard');
+
+    // --------------------
+    // Audit logs
+    // --------------------
+    Route::get('/audit-logs', [\App\Http\Controllers\AuditLogsController::class, 'index'])
+        ->name('audit.index')
+        ->middleware('permission:manage_audit_logs');
 
     // --------------------
     // Assets Management
@@ -88,6 +96,27 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::delete('/tags/{tag}', [AssetTagsController::class, 'destroy'])
             ->name('tags.destroy')
             ->middleware('permission:manage_asset_tags');
+
+        // --------------------
+        // Asset documents (nested under /assets)
+        // Route names become: assets.documents.store/download/destroy
+        // --------------------
+        Route::post('/{asset}/documents', [AssetDocumentsController::class, 'store'])
+            ->name('documents.store')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset');
+
+        Route::get('/{asset}/documents/{document}/download', [AssetDocumentsController::class, 'download'])
+            ->name('documents.download')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset')
+            ->whereNumber('document');
+
+        Route::delete('/{asset}/documents/{document}', [AssetDocumentsController::class, 'destroy'])
+            ->name('documents.destroy')
+            ->middleware('permission:manage_assets')
+            ->whereNumber('asset')
+            ->whereNumber('document');
 
         // Constrain {asset} so it won’t eat "rentals" or "tags"
         Route::get('/{asset}', [AssetsController::class, 'show'])
@@ -193,9 +222,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('permissionSets.destroyRole')
             ->middleware('permission:manage_permission_sets');
 
-        // --------------------
         // Asset Types
-        // --------------------
         Route::get('/asset-types', [AssetTypesController::class, 'index'])
             ->name('assetTypes.index')
             ->middleware('permission:manage_asset_types');
@@ -212,9 +239,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('assetTypes.destroy')
             ->middleware('permission:manage_asset_types');
 
-        // --------------------
         // Owner Entities
-        // --------------------
         Route::get('/owner-entities', [OwnerEntitiesController::class, 'index'])
             ->name('ownerEntities.index')
             ->middleware('permission:manage_owner_entities');
