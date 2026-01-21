@@ -6,7 +6,7 @@ set -euo pipefail
 # - Updates existing /opt/<project> deployment safely
 # - Supports: git pull OR rsync copy
 # - Runs composer, migrations, cache, npm build (optional)
-# - Does NOT touch MySQL users/DB grants unless you ask it to
+# - Preserves runtime permissions (.env, storage, bootstrap/cache)
 #############################################
 
 #############################################
@@ -40,7 +40,7 @@ yesno(){ # msg default(y/n)
 command_exists(){ command -v "$1" >/dev/null 2>&1; }
 
 #############################################
-# Safe token helper (same idea as install.sh)
+# Safe token helper
 #############################################
 to_safe_token(){
   local s="$1"
@@ -73,6 +73,7 @@ PROJECT_SLUG_RAW=""
 PROJECT_SAFE=""
 APP_DIR=""
 APP_USER=""
+WEB_GROUP="www-data"
 
 DEPLOY_MODE="auto"         # auto|git|copy
 SOURCE_PATH=""             # for copy mode
@@ -85,27 +86,26 @@ NPM_BIN="npm"
 # behaviors
 RUN_NPM="auto"             # auto|yes|no
 RUN_MIGRATE="yes"
-RUN_SEED="no"              # optional
+RUN_SEED="no"
 SEED_CLASS="Database\\Seeders\\PortalPermissionsSeeder"
-RESET_PERMISSIONS_CACHE="yes"   # IMPORTANT for Spatie
+RESET_PERMISSIONS_CACHE="yes"
 OPTIMIZE="yes"
 RESTART_PHPFPM="yes"
 RELOAD_NGINX="yes"
 
-# lock file
 LOCK_FILE=""
 
 #############################################
-# Detect PHP-FPM service + socket (best effort)
+# Detect PHP-FPM service
 #############################################
 PHP_FPM_SERVICE="php-fpm"
 NGINX_SERVICE="nginx"
 
 detect_php_fpm_service(){
-  # Debian/Ubuntu commonly: php8.x-fpm
   if [[ "$OS_FAMILY" == "debian" ]]; then
     local svc
-    svc="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | sort -V | tail -n1 || true)"
+    svc="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' \
+      | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | sort -V | tail -n1 || true)"
     if [[ -n "$svc" ]]; then
       PHP_FPM_SERVICE="${svc%.service}"
     else
@@ -117,7 +117,7 @@ detect_php_fpm_service(){
 }
 
 #############################################
-# Lock (avoid concurrent deploys)
+# Lock
 #############################################
 acquire_lock(){
   LOCK_FILE="/tmp/deploy_${PROJECT_SAFE}.lock"
@@ -183,9 +183,28 @@ preflight(){
     fi
   fi
 
-  if ! command_exists "$PHP_BIN"; then
-    die "PHP not found."
-  fi
+  command_exists "$PHP_BIN" || die "PHP not found."
+}
+
+#############################################
+# Permissions fixup (critical)
+#############################################
+fix_permissions(){
+  log "Fixing permissions (code owner: ${APP_USER}, runtime group: ${WEB_GROUP})..."
+
+  # Ensure dirs exist
+  mkdir -p "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+
+  # Code: owned by app user
+  chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+
+  # Runtime writable directories shared with web server group
+  chown -R "$APP_USER":"$WEB_GROUP" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+  chmod -R ug+rwX "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+
+  # .env must be readable by php-fpm (www-data)
+  chown "$APP_USER":"$WEB_GROUP" "$APP_DIR/.env"
+  chmod 640 "$APP_DIR/.env"
 }
 
 #############################################
@@ -205,14 +224,13 @@ update_code_copy(){
   [[ -f "${SOURCE_PATH}/artisan" ]] || die "Source path is not a Laravel project (artisan missing): ${SOURCE_PATH}"
 
   log "Updating code via rsync from ${SOURCE_PATH} -> ${APP_DIR} ..."
-  # keep .env + storage on server, never overwrite them
   rsync -a --delete \
     --exclude ".git" \
     --exclude ".env" \
     --exclude "storage/***" \
+    --exclude "bootstrap/cache/***" \
+    --exclude "vendor/***" \
     "${SOURCE_PATH}/" "${APP_DIR}/"
-
-  chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 }
 
 #############################################
@@ -225,6 +243,9 @@ laravel_steps(){
 
   log "Composer install (no-dev, optimized)..."
   run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader --no-interaction"
+
+  log "Ensuring storage symlink..."
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan storage:link >/dev/null 2>&1 || true"
 
   if [[ "$RUN_NPM" == "auto" ]]; then
     if [[ -f "$APP_DIR/package.json" ]]; then
@@ -243,10 +264,7 @@ laravel_steps(){
   fi
 
   log "Clearing caches..."
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan config:clear || true"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan cache:clear || true"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan route:clear || true"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan view:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize:clear || true"
 
   if [[ "$RUN_MIGRATE" == "yes" ]]; then
     log "Running migrations..."
@@ -260,10 +278,9 @@ laravel_steps(){
     run_as_app "cd '$APP_DIR' && $PHP_BIN artisan db:seed --class='${SEED_CLASS}' --force"
   fi
 
-  # IMPORTANT: Spatie permissions cache
   if [[ "$RESET_PERMISSIONS_CACHE" == "yes" ]]; then
     log "Resetting Spatie permissions cache..."
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan permission:cache-reset || true"
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan permission:cache-reset >/dev/null 2>&1 || true"
   fi
 
   if [[ "$OPTIMIZE" == "yes" ]]; then
@@ -284,7 +301,7 @@ restart_services(){
 
   if [[ "$RESTART_PHPFPM" == "yes" ]]; then
     log "Restarting PHP-FPM (${PHP_FPM_SERVICE})..."
-    systemctl restart "$PHP_FPM_SERVICE" >/dev/null 2>&1 || warn "Could not restart ${PHP_FPM_SERVICE} (check service name)."
+    systemctl restart "$PHP_FPM_SERVICE" >/dev/null 2>&1 || warn "Could not restart ${PHP_FPM_SERVICE}."
   fi
 
   if [[ "$RELOAD_NGINX" == "yes" ]]; then
@@ -311,7 +328,7 @@ main(){
   acquire_lock
 
   if ! id -u "$APP_USER" >/dev/null 2>&1; then
-    warn "Linux user not found: ${APP_USER}. Using root to run steps (not recommended)."
+    warn "Linux user not found: ${APP_USER}. Using root to run app steps (not recommended)."
     APP_USER="root"
   fi
 
@@ -347,7 +364,9 @@ main(){
     update_code_copy
   fi
 
+  fix_permissions
   laravel_steps
+  fix_permissions
   restart_services
 
   log "DEPLOY DONE."
