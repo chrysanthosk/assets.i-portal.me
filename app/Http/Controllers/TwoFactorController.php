@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
-use PragmaRX\Google2FALaravel\Support\Google2FA;
+use PragmaRX\Google2FA\Google2FA;
 
 class TwoFactorController extends Controller
 {
@@ -34,7 +35,7 @@ class TwoFactorController extends Controller
         ]);
 
         $pendingUserId = $request->session()->get('2fa:user:id');
-        $remember = (bool)$request->session()->get('2fa:remember', false);
+        $remember = (bool) $request->session()->get('2fa:remember', false);
 
         if (!$pendingUserId) {
             return redirect()->route('login');
@@ -42,18 +43,36 @@ class TwoFactorController extends Controller
 
         $user = User::find($pendingUserId);
 
-        if (!$user || empty($user->two_factor_secret) || !($user->two_factor_enabled ?? false)) {
+        if (
+            !$user ||
+            empty($user->two_factor_secret) ||
+            !((bool)($user->two_factor_enabled ?? false))
+        ) {
             $request->session()->forget(['2fa:user:id', '2fa:remember']);
-            return redirect()->route('login')->withErrors(['code' => 'Invalid 2FA session. Please login again.']);
+            return redirect()->route('login')->withErrors([
+                'code' => 'Invalid 2FA session. Please login again.'
+            ]);
         }
 
-        $code = trim($request->input('code'));
+        $code = trim((string) $request->input('code'));
 
-        // 1) Try OTP
+        // Decrypt secret (supports legacy plain secrets too)
+        $secret = $this->getDecryptedSecret($user->two_factor_secret);
+
+        if (empty($secret)) {
+            $request->session()->forget(['2fa:user:id', '2fa:remember']);
+            return redirect()->route('login')->withErrors([
+                'code' => '2FA secret is invalid. Please re-enable 2FA from profile.'
+            ]);
+        }
+
+        /** @var Google2FA $google2fa */
         $google2fa = app(Google2FA::class);
-        $otpOk = $google2fa->verifyKey($user->two_factor_secret, $code);
 
-        // 2) If not OTP, try recovery code
+        // OTP check (allow small window)
+        $otpOk = $google2fa->verifyKey($secret, $code, 2);
+
+        // If not OTP, try recovery code
         $recoveryOk = false;
         if (!$otpOk) {
             $recoveryOk = $this->consumeRecoveryCode($user, $code);
@@ -77,12 +96,15 @@ class TwoFactorController extends Controller
 
     /**
      * POST /profile/2fa/enable
+     * Shows QR + secret, stores temp setup session only
      */
     public function enable(Request $request)
     {
         $user = $request->user();
 
+        /** @var Google2FA $google2fa */
         $google2fa = app(Google2FA::class);
+
         $secret = $google2fa->generateSecretKey();
         $recovery = $this->generateRecoveryCodes();
 
@@ -102,6 +124,7 @@ class TwoFactorController extends Controller
 
     /**
      * POST /profile/2fa/confirm
+     * Confirms OTP and persists encrypted secret
      */
     public function confirm(Request $request)
     {
@@ -119,14 +142,17 @@ class TwoFactorController extends Controller
                 ->withErrors(['two_factor' => '2FA setup session expired. Please enable again.']);
         }
 
+        /** @var Google2FA $google2fa */
         $google2fa = app(Google2FA::class);
-        $ok = $google2fa->verifyKey($secret, trim($request->input('code')));
+
+        $ok = $google2fa->verifyKey($secret, trim((string)$request->input('code')), 2);
 
         if (!$ok) {
             return back()->withErrors(['code' => 'Invalid verification code.']);
         }
 
-        $user->two_factor_secret = $secret;
+        // IMPORTANT: store encrypted secret
+        $user->two_factor_secret = Crypt::encryptString($secret);
         $user->two_factor_enabled = true;
         $user->two_factor_recovery_codes = json_encode($recovery);
         $user->save();
@@ -187,5 +213,21 @@ class TwoFactorController extends Controller
         $user->save();
 
         return true;
+    }
+
+    /**
+     * Decrypt secret if encrypted, otherwise return as-is.
+     */
+    private function getDecryptedSecret(?string $value): ?string
+    {
+        if (!$value) return null;
+
+        // Try decrypting (for values like "eyJpdiI6...")
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Throwable $e) {
+            // Not encrypted (legacy plain secret)
+            return $value;
+        }
     }
 }
