@@ -24,9 +24,19 @@ Route::get('/__whoami', function () {
     ]);
 });
 
+/**
+ * 2FA challenge routes
+ * IMPORTANT: do NOT put these behind 'auth'. The controller guards using session '2fa:user:id'.
+ */
+Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])->name('2fa.challenge');
+Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])->name('2fa.verify');
+
+/**
+ * Root: only accessible after auth + 2fa
+ */
 Route::get('/', function () {
     return redirect()->route('dashboard');
-})->middleware('auth');
+})->middleware(['auth', '2fa']);
 
 Route::middleware(['auth', '2fa'])->group(function () {
 
@@ -97,10 +107,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('tags.destroy')
             ->middleware('permission:manage_asset_tags');
 
-        // --------------------
-        // Asset documents (nested under /assets)
-        // Route names become: assets.documents.store/download/destroy
-        // --------------------
+        // Asset documents
         Route::post('/{asset}/documents', [AssetDocumentsController::class, 'store'])
             ->name('documents.store')
             ->middleware('permission:manage_assets')
@@ -118,7 +125,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->whereNumber('asset')
             ->whereNumber('document');
 
-        // Constrain {asset} so it won’t eat "rentals" or "tags"
+        // Constrain {asset}
         Route::get('/{asset}', [AssetsController::class, 'show'])
             ->name('show')
             ->middleware('permission:manage_assets')
@@ -149,7 +156,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
     Route::post('/profile/email/confirm', [ProfileController::class, 'confirmEmailChange'])->name('profile.confirmEmailChange');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
 
-    // 2FA
+    // 2FA (setup/disable while logged in)
     Route::post('/profile/2fa/enable', [TwoFactorController::class, 'enable'])->name('profile.2fa.enable');
     Route::post('/profile/2fa/confirm', [TwoFactorController::class, 'confirm'])->name('profile.2fa.confirm');
     Route::post('/profile/2fa/disable', [TwoFactorController::class, 'disable'])->name('profile.2fa.disable');
@@ -256,12 +263,6 @@ Route::middleware(['auth', '2fa'])->group(function () {
             ->name('ownerEntities.destroy')
             ->middleware('permission:manage_owner_entities');
     });
-});
-
-// 2FA challenge routes (auth but NOT 2fa middleware)
-Route::middleware('auth')->group(function () {
-    Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])->name('2fa.challenge');
-    Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])->name('2fa.verify');
 });
 
 require __DIR__ . '/auth.php';
