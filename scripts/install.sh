@@ -29,15 +29,6 @@ yesno(){ # msg default(y/n)
   [[ "$ans" =~ ^[Yy]$ ]]
 }
 
-env_escape() {
-  local s="$1"
-  s="${s//\\/\\\\}"
-  s="${s//\"/\\\"}"
-  s="${s//$/\\$}"
-  s="${s//$'\n'/\\n}"
-  printf "%s" "$s"
-}
-
 command_exists(){ command -v "$1" >/dev/null 2>&1; }
 
 #############################################
@@ -82,18 +73,24 @@ GIT_REPO=""
 GIT_BRANCH="main"
 
 # DB
-DB_HOST="127.0.0.1"
+DB_HOST="localhost"
 DB_PORT="3306"
 DB_NAME=""
 DB_USER=""
 DB_PASS=""
 
+# MySQL admin connectivity
+MYSQL_ADMIN_MODE="socket"    # socket|tcp
 MYSQL_ROOT_USER="root"
-MYSQL_ROOT_PASS=""   # optional
+MYSQL_ROOT_PASS=""           # only used for tcp with password
+
+# Runtime drivers (IMPORTANT: default to FILE during install to avoid missing tables)
+FINAL_CACHE_STORE="database"   # database|file (prompt at end)
+FINAL_SESSION_DRIVER="database" # database|file (prompt at end)
 
 # SSL
 ENABLE_HTTPS="yes"
-SSL_MODE="existing"  # existing|letsencrypt
+SSL_MODE="existing"          # existing|letsencrypt
 CERT_FULLCHAIN=""
 CERT_PRIVKEY=""
 LE_EMAIL="admin@example.com"
@@ -103,13 +100,12 @@ PHP_VER=""
 PHP_FPM_SERVICE=""
 PHP_FPM_SOCK=""
 NGINX_SERVICE="nginx"
-DB_SERVICE="mysql"     # mysql|mariadb
+DB_SERVICE="mysql"           # mysql|mariadb
 
-WEB_GROUP="www-data"   # debian: www-data, rhel: nginx
+WEB_GROUP="www-data"         # debian: www-data, rhel: nginx
 
 COMPOSER_BIN="/usr/local/bin/composer"
 PHP_BIN="php"
-NODE_BIN="node"
 NPM_BIN="npm"
 
 #############################################
@@ -149,7 +145,6 @@ check_nginx_collision(){
     fi
   fi
 
-  # Domain already referenced anywhere in Nginx config?
   if [[ "$DOMAIN" != "_" ]]; then
     if nginx -T 2>/dev/null | grep -qE "server_name\s+.*\b${DOMAIN}\b"; then
       warn "Domain '${DOMAIN}' appears in existing Nginx config (could be another site)."
@@ -163,10 +158,10 @@ check_nginx_collision(){
 check_ports(){
   if command_exists ss; then
     if ss -lnt 2>/dev/null | awk '{print $4}' | grep -qE '(:|.)80$'; then
-      log "Port 80 is in use (this is normal if Nginx is running)."
+      log "Port 80 is in use (normal if Nginx is running)."
     fi
     if [[ "$ENABLE_HTTPS" == "yes" ]] && ss -lnt 2>/dev/null | awk '{print $4}' | grep -qE '(:|.)443$'; then
-      log "Port 443 is in use (this is normal if Nginx is running)."
+      log "Port 443 is in use (normal if Nginx is running)."
     fi
   fi
 }
@@ -175,19 +170,7 @@ check_ports(){
 # Install Composer (official)
 #############################################
 install_official_composer(){
-  local need="no"
-  if [[ ! -x "$COMPOSER_BIN" ]]; then need="yes"; fi
-  if command -v composer >/dev/null 2>&1; then
-    local p
-    p="$(command -v composer)"
-    if [[ "$p" == "/usr/bin/composer" ]] || [[ "$p" == "/usr/share/php/composer" ]] || [[ "$p" == "/usr/share/php/Composer" ]]; then
-      need="yes"
-    fi
-  else
-    need="yes"
-  fi
-
-  if [[ "$need" == "yes" ]]; then
+  if [[ ! -x "$COMPOSER_BIN" ]]; then
     log "Installing official Composer -> ${COMPOSER_BIN}"
     curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php
     php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
@@ -198,7 +181,7 @@ install_official_composer(){
 }
 
 detect_php_version(){
-  if command -v php >/dev/null 2>&1; then
+  if command_exists php; then
     PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
   else
     PHP_VER=""
@@ -214,10 +197,8 @@ install_packages_debian(){
   apt-get update -y
   apt-get install -y ca-certificates curl git unzip zip rsync gnupg lsb-release software-properties-common
 
-  # Nginx + MySQL
   apt-get install -y nginx mysql-server
 
-  # PHP
   if [[ "$OS_ID" == "ubuntu" ]]; then
     add-apt-repository -y ppa:ondrej/php
     apt-get update -y
@@ -239,14 +220,12 @@ install_packages_debian(){
   WEB_GROUP="www-data"
   DB_SERVICE="mysql"
 
-  # Node (LTS)
-  if ! command -v node >/dev/null 2>&1; then
+  if ! command_exists node; then
     log "Installing Node.js LTS..."
     curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
     apt-get install -y nodejs
   fi
 
-  # Certbot
   apt-get install -y certbot python3-certbot-nginx
 
   install_official_composer
@@ -259,21 +238,16 @@ install_packages_rhel(){
   dnf -y install epel-release || true
   dnf -y install nginx
 
-  # MariaDB
   dnf -y install mariadb-server mariadb
   DB_SERVICE="mariadb"
 
-  # PHP
   dnf -y install php php-cli php-fpm php-mbstring php-xml php-curl php-zip php-mysqlnd php-bcmath php-intl php-gd
 
   PHP_FPM_SERVICE="php-fpm"
   PHP_FPM_SOCK="/run/php-fpm/www.sock"
   WEB_GROUP="nginx"
 
-  # Node
   dnf -y install nodejs npm || true
-
-  # Certbot
   dnf -y install certbot python3-certbot-nginx || true
 
   install_official_composer
@@ -314,6 +288,10 @@ create_app_user_and_dir(){
 #############################################
 # Source code install (safe)
 #############################################
+run_as_app(){
+  sudo -u "$APP_USER" bash -lc "$*"
+}
+
 copy_or_clone_code(){
   if [[ "$USE_GIT" == "yes" ]]; then
     log "Cloning repo into ${APP_DIR}..."
@@ -326,26 +304,27 @@ copy_or_clone_code(){
   else
     local SRC_DIR
     SRC_DIR="$(pwd)"
-    [[ -f "${SRC_DIR}/artisan" ]] || die "Current directory does not look like Laravel project (artisan missing). Run install.sh from your project folder."
+    [[ -f "${SRC_DIR}/artisan" ]] || die "Run install.sh from your Laravel project folder (artisan missing)."
+
     log "Copying project from ${SRC_DIR} -> ${APP_DIR}"
-
-    if [[ -d "$APP_DIR" ]] && [[ -f "$APP_DIR/artisan" ]]; then
-      warn "${APP_DIR} already has a Laravel project."
-      if ! yesno "Overwrite ${APP_DIR} with current folder (rsync --delete)?" "n"; then
-        die "Aborted."
-      fi
-    fi
-
     rsync -a --delete --exclude ".git" "${SRC_DIR}/" "${APP_DIR}/"
     chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
   fi
 }
 
 #############################################
-# MySQL provisioning (safe)
+# MySQL provisioning (socket-safe on Ubuntu)
 #############################################
-mysql_exec() {
+mysql_admin_exec() {
   local sql="$1"
+
+  if [[ "$MYSQL_ADMIN_MODE" == "socket" ]]; then
+    # Ubuntu mysql-server default: root uses auth_socket (works via local socket)
+    mysql -u"$MYSQL_ROOT_USER" -e "$sql"
+    return
+  fi
+
+  # TCP mode
   if [[ -n "$MYSQL_ROOT_PASS" ]]; then
     mysql -u"$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASS" -h"$DB_HOST" -P"$DB_PORT" -e "$sql"
   else
@@ -353,9 +332,19 @@ mysql_exec() {
   fi
 }
 
+detect_mysql_admin_mode(){
+  # If provisioning remote DB host, must use tcp
+  if [[ "$DB_HOST" != "localhost" ]] && [[ "$DB_HOST" != "127.0.0.1" ]]; then
+    MYSQL_ADMIN_MODE="tcp"
+    return
+  fi
+  # Prefer socket on Ubuntu
+  MYSQL_ADMIN_MODE="socket"
+}
+
 check_db_collision(){
-  local exists
-  exists="$(mysql_exec "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${DB_NAME}';" 2>/dev/null | tail -n +2 || true)"
+  local exists=""
+  exists="$(mysql_admin_exec "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${DB_NAME}';" 2>/dev/null | tail -n +2 || true)"
   if [[ -n "$exists" ]]; then
     warn "Database '${DB_NAME}' already exists."
     if ! yesno "Continue and reuse existing DB?" "n"; then
@@ -366,66 +355,157 @@ check_db_collision(){
 
 setup_database(){
   log "Configuring database ${DB_NAME} and user ${DB_USER}..."
-
   systemctl restart "$DB_SERVICE" || true
 
-  # collision prompt
+  detect_mysql_admin_mode
+
+  # sanity check admin access
+  if ! mysql_admin_exec "SELECT 1;" >/dev/null 2>&1; then
+    warn "Cannot access MySQL as root with current method (${MYSQL_ADMIN_MODE})."
+    if yesno "Try TCP with a root password?" "y"; then
+      MYSQL_ADMIN_MODE="tcp"
+      prompt MYSQL_ROOT_PASS "MySQL root password"
+      mysql_admin_exec "SELECT 1;" >/dev/null 2>&1 || die "MySQL root access failed (tcp)."
+    else
+      die "MySQL root access failed. Install cannot continue."
+    fi
+  fi
+
   check_db_collision
 
-  mysql_exec "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-  mysql_exec "CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS}';"
-  mysql_exec "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';"
-  mysql_exec "FLUSH PRIVILEGES;"
+  mysql_admin_exec "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  mysql_admin_exec "CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS}';"
+  mysql_admin_exec "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';"
+  mysql_admin_exec "FLUSH PRIVILEGES;"
+}
+
+db_app_test(){
+  log "Testing app DB credentials..."
+  mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASS" -e "USE \`$DB_NAME\`; SELECT 1;" >/dev/null \
+    || die "DB test failed for ${DB_USER}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 }
 
 #############################################
-# .env creation (safe)
+# .env creation (safe + uncomments)
 #############################################
+write_env_kv () {
+  local file="$1" key="$2" value="$3"
+
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+
+  if grep -Eq "^[#[:space:]]*${key}=" "$file"; then
+    sed -i -E "s|^[#[:space:]]*${key}=.*|${key}=\"${value}\"|g" "$file"
+  else
+    printf "\n%s=\"%s\"\n" "$key" "$value" >> "$file"
+  fi
+}
+
 write_env(){
   log "Writing .env..."
   local envfile="${APP_DIR}/.env"
 
-  [[ -f "${APP_DIR}/.env.example" ]] || die ".env.example not found in ${APP_DIR}"
-
-  if [[ -f "$envfile" ]]; then
-    warn ".env already exists at ${envfile}"
-    if yesno "Backup existing .env to .env.bak?" "y"; then
-      cp -f "$envfile" "${envfile}.bak.$(date +%Y%m%d%H%M%S)"
-    fi
-    if ! yesno "Overwrite .env now?" "n"; then
-      die "Aborted."
-    fi
-  fi
-
-  sudo -u "$APP_USER" bash -lc "cp -f '${APP_DIR}/.env.example' '${envfile}'"
-
-  sudo -u "$APP_USER" bash -lc "perl -0777 -i -pe 's/^APP_NAME=.*/APP_NAME=\"$(env_escape "$APP_NAME")\"/m; s/^APP_ENV=.*/APP_ENV=${APP_ENV}/m; s/^APP_DEBUG=.*/APP_DEBUG=${APP_DEBUG}/m; s|^APP_URL=.*|APP_URL=${APP_URL}|m;' '${envfile}'"
-
-  sudo -u "$APP_USER" bash -lc "perl -0777 -i -pe 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/m; s/^DB_HOST=.*/DB_HOST=${DB_HOST}/m; s/^DB_PORT=.*/DB_PORT=${DB_PORT}/m; s/^DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/m; s/^DB_USERNAME=.*/DB_USERNAME=${DB_USER}/m; s/^DB_PASSWORD=.*/DB_PASSWORD=\"$(env_escape "$DB_PASS")\"/m;' '${envfile}'"
-
-  if grep -q '^FILESYSTEM_DISK=' "$envfile"; then
-    sudo -u "$APP_USER" bash -lc "perl -0777 -i -pe 's/^FILESYSTEM_DISK=.*/FILESYSTEM_DISK=local/m;' '${envfile}'"
-  else
-    echo "FILESYSTEM_DISK=local" >> "$envfile"
-  fi
-
+  [[ -f "${APP_DIR}/.env.example" ]] || die ".env.example not found"
+  cp -f "${APP_DIR}/.env.example" "$envfile"
   chown "$APP_USER":"$APP_USER" "$envfile"
   chmod 640 "$envfile"
+
+  write_env_kv "$envfile" "APP_NAME" "$APP_NAME"
+  write_env_kv "$envfile" "APP_ENV" "$APP_ENV"
+  write_env_kv "$envfile" "APP_DEBUG" "$APP_DEBUG"
+  write_env_kv "$envfile" "APP_URL" "$APP_URL"
+
+  write_env_kv "$envfile" "DB_CONNECTION" "mysql"
+  write_env_kv "$envfile" "DB_HOST" "$DB_HOST"
+  write_env_kv "$envfile" "DB_PORT" "$DB_PORT"
+  write_env_kv "$envfile" "DB_DATABASE" "$DB_NAME"
+  write_env_kv "$envfile" "DB_USERNAME" "$DB_USER"
+  write_env_kv "$envfile" "DB_PASSWORD" "$DB_PASS"
+
+  write_env_kv "$envfile" "FILESYSTEM_DISK" "local"
+
+  # IMPORTANT: during install, avoid DB-backed cache/session before tables exist
+  write_env_kv "$envfile" "CACHE_STORE" "file"
+  write_env_kv "$envfile" "SESSION_DRIVER" "file"
+  # avoid DB queue for first boot
+  write_env_kv "$envfile" "QUEUE_CONNECTION" "sync"
+
+  # hard check: ensure DB lines are present and not commented
+  grep -Eq '^DB_HOST=' "$envfile" || die ".env DB_HOST not written"
+  grep -Eq '^DB_DATABASE=' "$envfile" || die ".env DB_DATABASE not written"
+  grep -Eq '^DB_USERNAME=' "$envfile" || die ".env DB_USERNAME not written"
+  grep -Eq '^DB_PASSWORD=' "$envfile" || die ".env DB_PASSWORD not written"
 }
 
 #############################################
-# Laravel install steps
+# Laravel install steps (FIXED ORDER + SAFE CACHE/SESSION)
 #############################################
-run_as_app(){
-  sudo -u "$APP_USER" bash -lc "$*"
+ensure_cache_session_migrations(){
+  # create migrations only if missing
+  local mdir="$APP_DIR/database/migrations"
+
+  if [[ ! -d "$mdir" ]]; then
+    warn "Migrations directory not found at $mdir (skipping cache/session migration creation)."
+    return
+  fi
+
+  if ! ls "$mdir"/*cache_table*.php >/dev/null 2>&1; then
+    log "Creating cache table migration..."
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan cache:table"
+  else
+    log "Cache table migration already exists."
+  fi
+
+  if ! ls "$mdir"/*sessions_table*.php >/dev/null 2>&1; then
+    log "Creating sessions table migration..."
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan session:table"
+  else
+    log "Sessions table migration already exists."
+  fi
+}
+
+finalize_env_after_migrate(){
+  local envfile="${APP_DIR}/.env"
+
+  if yesno "After install, use DATABASE for cache & sessions? (recommended for multi-server: No)" "y"; then
+    FINAL_CACHE_STORE="database"
+    FINAL_SESSION_DRIVER="database"
+  else
+    FINAL_CACHE_STORE="file"
+    FINAL_SESSION_DRIVER="file"
+  fi
+
+  write_env_kv "$envfile" "CACHE_STORE" "$FINAL_CACHE_STORE"
+  write_env_kv "$envfile" "SESSION_DRIVER" "$FINAL_SESSION_DRIVER"
+
+  # If database chosen, ensure tables exist and migrate again (safe)
+  if [[ "$FINAL_CACHE_STORE" == "database" ]] || [[ "$FINAL_SESSION_DRIVER" == "database" ]]; then
+    log "Ensuring cache/session table migrations exist (for DATABASE mode)..."
+    ensure_cache_session_migrations
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan migrate --force"
+  fi
+
+  log "Re-optimizing after final .env adjustments..."
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan config:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan cache:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
 }
 
 laravel_install(){
-  log "Installing PHP dependencies (composer)..."
-  run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader"
+  log "Preparing Laravel cache dirs..."
+  run_as_app "cd '$APP_DIR' && mkdir -p storage bootstrap/cache"
+
+  log "Removing any stale bootstrap cache files..."
+  run_as_app "cd '$APP_DIR' && rm -f bootstrap/cache/config.php bootstrap/cache/services.php bootstrap/cache/packages.php"
+
+  log "Installing PHP dependencies (composer) WITHOUT scripts (prevents DB cache errors during install)..."
+  run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts"
 
   log "Generating app key..."
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan key:generate --force"
+
+  log "Running package discovery (safe: cache/session are file right now)..."
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan package:discover --ansi"
 
   log "Running migrations..."
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan migrate --force"
@@ -445,8 +525,11 @@ laravel_install(){
     warn "package.json not found; skipping npm build."
   fi
 
-  log "Caching config/routes/views..."
+  log "Optimizing (config/routes/views)..."
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
+
+  # Switch cache/session to DB (optional) after migrations
+  finalize_env_after_migrate
 }
 
 #############################################
@@ -477,12 +560,6 @@ server {
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
         fastcgi_index index.php;
         fastcgi_pass unix:${PHP_FPM_SOCK};
-    }
-
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff2?)\$ {
-        expires 7d;
-        add_header Cache-Control "public";
-        try_files \$uri =404;
     }
 }
 EOF
@@ -519,10 +596,6 @@ server {
 
     ssl_certificate     ${CERT_FULLCHAIN};
     ssl_certificate_key ${CERT_PRIVKEY};
-
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
 
     root ${APP_DIR}/public;
     index index.php index.html;
@@ -611,15 +684,18 @@ main(){
     log "Will copy code from CURRENT directory: $(pwd)"
   fi
 
-  # DB inputs
-  prompt DB_HOST "MySQL host" "127.0.0.1"
+  prompt DB_HOST "MySQL host" "localhost"
   prompt DB_PORT "MySQL port" "3306"
   prompt DB_NAME "Database name" "${PROJECT_SLUG}"
   prompt DB_USER "Database user" "${PROJECT_SLUG}"
   prompt DB_PASS "Database password (will be stored in .env)"
 
-  if yesno "Does MySQL root require a password?" "n"; then
+  # Only ask for root password if we end up needing TCP
+  if yesno "Will you provision MySQL over TCP (remote host / require root password)?" "n"; then
+    MYSQL_ADMIN_MODE="tcp"
     prompt MYSQL_ROOT_PASS "MySQL root password"
+  else
+    MYSQL_ADMIN_MODE="socket"
   fi
 
   if [[ "$ENABLE_HTTPS" == "yes" ]]; then
@@ -633,7 +709,6 @@ main(){
     fi
   fi
 
-  # Install packages
   if [[ "$OS_FAMILY" == "debian" ]]; then
     install_packages_debian
   else
@@ -641,31 +716,21 @@ main(){
   fi
 
   enable_services
-
   check_ports
 
-  # Create user + /opt dir
   create_app_user_and_dir
-
-  # Copy/clone code
   copy_or_clone_code
 
-  # Nginx safety checks (after slug/domain known, after nginx installed)
   check_nginx_collision
 
-  # DB
   setup_database
+  db_app_test
 
-  # .env
   write_env
-
-  # Permissions
   fix_permissions
 
-  # Nginx HTTP vhost first (needed for LE)
   write_nginx_vhost_http
 
-  # SSL
   if [[ "$ENABLE_HTTPS" == "yes" ]]; then
     if [[ "$SSL_MODE" == "existing" ]]; then
       enable_ssl_existing_certs
@@ -674,7 +739,6 @@ main(){
     fi
   fi
 
-  # Laravel install steps
   laravel_install
 
   systemctl restart "$PHP_FPM_SERVICE" || true
@@ -683,8 +747,8 @@ main(){
   log "DONE."
   echo "-------------------------------------------"
   echo "Project:      ${PROJECT_SLUG}"
-  echo "Path:         ${APP_DIR}"
-  echo "Linux user:   ${APP_USER}"
+  echo "Path:         /opt/${PROJECT_SLUG}"
+  echo "Linux user:   ${PROJECT_SLUG}"
   echo "URL:          ${APP_URL}"
   echo "DB:           ${DB_NAME}  (user: ${DB_USER})"
   echo "PHP-FPM:      ${PHP_FPM_SERVICE}  (sock: ${PHP_FPM_SOCK})"
