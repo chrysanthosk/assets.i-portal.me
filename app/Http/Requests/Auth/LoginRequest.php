@@ -28,25 +28,23 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $credentials = [
-            'username' => $this->input('username'),
-            'password' => $this->input('password'),
-        ];
+        $credentials = $this->only('username', 'password');
+        $remember = $this->boolean('remember');
 
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
-            $this->hitRateLimiter();
+        if (!Auth::attempt($credentials, $remember)) {
+            RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'username' => trans('auth.failed'),
             ]);
         }
 
-        $this->clearRateLimiter();
+        RateLimiter::clear($this->throttleKey());
     }
 
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
@@ -62,18 +60,10 @@ class LoginRequest extends FormRequest
         ]);
     }
 
-    protected function hitRateLimiter(): void
+    public function throttleKey(): string
     {
-        RateLimiter::hit($this->throttleKey());
-    }
-
-    protected function clearRateLimiter(): void
-    {
-        RateLimiter::clear($this->throttleKey());
-    }
-
-    protected function throttleKey(): string
-    {
-        return Str::transliterate(Str::lower($this->input('username')) . '|' . $this->ip());
+        return Str::transliterate(
+            Str::lower($this->input('username')) . '|' . $this->ip()
+        );
     }
 }

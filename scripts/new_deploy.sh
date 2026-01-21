@@ -6,12 +6,9 @@ set -euo pipefail
 # - Updates existing /opt/<project> deployment safely
 # - Supports: git pull OR rsync copy
 # - Runs composer, migrations, cache, npm build (optional)
-# - Preserves runtime permissions (.env, storage, bootstrap/cache)
+# - Fixes permissions for php-fpm (www-data group)
 #############################################
 
-#############################################
-# Helpers
-#############################################
 log()  { echo -e "\n\033[1;32m[INFO]\033[0m $*"; }
 warn() { echo -e "\n\033[1;33m[WARN]\033[0m $*"; }
 err()  { echo -e "\n\033[1;31m[ERR ]\033[0m $*" >&2; }
@@ -39,9 +36,6 @@ yesno(){ # msg default(y/n)
 
 command_exists(){ command -v "$1" >/dev/null 2>&1; }
 
-#############################################
-# Safe token helper
-#############################################
 to_safe_token(){
   local s="$1"
   s="$(echo "$s" | tr '[:upper:]' '[:lower:]')"
@@ -50,9 +44,6 @@ to_safe_token(){
   echo "$s"
 }
 
-#############################################
-# OS detection (for nginx/php-fpm service names)
-#############################################
 OS_FAMILY="debian"
 detect_os_family(){
   if [[ -r /etc/os-release ]]; then
@@ -66,24 +57,19 @@ detect_os_family(){
   fi
 }
 
-#############################################
-# Defaults / Variables
-#############################################
 PROJECT_SLUG_RAW=""
 PROJECT_SAFE=""
 APP_DIR=""
 APP_USER=""
-WEB_GROUP="www-data"
 
 DEPLOY_MODE="auto"         # auto|git|copy
 SOURCE_PATH=""             # for copy mode
-GIT_BRANCH="main"          # for git mode (optional checkout)
+GIT_BRANCH="main"          # for git mode
 
 COMPOSER_BIN="/usr/local/bin/composer"
 PHP_BIN="php"
 NPM_BIN="npm"
 
-# behaviors
 RUN_NPM="auto"             # auto|yes|no
 RUN_MIGRATE="yes"
 RUN_SEED="no"
@@ -95,17 +81,14 @@ RELOAD_NGINX="yes"
 
 LOCK_FILE=""
 
-#############################################
-# Detect PHP-FPM service
-#############################################
 PHP_FPM_SERVICE="php-fpm"
 NGINX_SERVICE="nginx"
+RUNTIME_GROUP="www-data"
 
 detect_php_fpm_service(){
   if [[ "$OS_FAMILY" == "debian" ]]; then
     local svc
-    svc="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' \
-      | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | sort -V | tail -n1 || true)"
+    svc="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | sort -V | tail -n1 || true)"
     if [[ -n "$svc" ]]; then
       PHP_FPM_SERVICE="${svc%.service}"
     else
@@ -116,9 +99,6 @@ detect_php_fpm_service(){
   fi
 }
 
-#############################################
-# Lock
-#############################################
 acquire_lock(){
   LOCK_FILE="/tmp/deploy_${PROJECT_SAFE}.lock"
   exec 9>"$LOCK_FILE"
@@ -127,16 +107,10 @@ acquire_lock(){
   fi
 }
 
-#############################################
-# Run as app user
-#############################################
 run_as_app(){
   sudo -u "$APP_USER" bash -lc "$*"
 }
 
-#############################################
-# Ensure we always bring the app back up
-#############################################
 APP_WENT_DOWN="no"
 cleanup(){
   if [[ "${APP_WENT_DOWN}" == "yes" ]]; then
@@ -146,9 +120,6 @@ cleanup(){
 }
 trap cleanup EXIT
 
-#############################################
-# Determine deploy mode
-#############################################
 resolve_default_source_path(){
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -159,7 +130,6 @@ detect_deploy_mode(){
   if [[ "$DEPLOY_MODE" != "auto" ]]; then
     return
   fi
-
   if [[ -d "${APP_DIR}/.git" ]]; then
     DEPLOY_MODE="git"
   else
@@ -167,49 +137,51 @@ detect_deploy_mode(){
   fi
 }
 
-#############################################
-# Pre-flight checks
-#############################################
 preflight(){
   [[ -d "$APP_DIR" ]] || die "App directory not found: $APP_DIR"
   [[ -f "${APP_DIR}/artisan" ]] || die "Not a Laravel app (artisan missing): $APP_DIR"
-  [[ -f "${APP_DIR}/.env" ]] || die ".env not found in ${APP_DIR} (install first)."
+  [[ -f "${APP_DIR}/.env" ]] || die ".env not found in ${APP_DIR}."
 
   if [[ ! -x "$COMPOSER_BIN" ]]; then
     if command_exists composer; then
       COMPOSER_BIN="$(command -v composer)"
     else
-      die "Composer not found. Install composer first."
+      die "Composer not found."
     fi
   fi
 
   command_exists "$PHP_BIN" || die "PHP not found."
 }
 
-#############################################
-# Permissions fixup (critical)
-#############################################
 fix_permissions(){
-  log "Fixing permissions (code owner: ${APP_USER}, runtime group: ${WEB_GROUP})..."
+  log "Fixing permissions (code owner: ${APP_USER}, runtime group: ${RUNTIME_GROUP})..."
 
-  # Ensure dirs exist
-  mkdir -p "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+  # .env must be readable by php-fpm group
+  chown "${APP_USER}:${RUNTIME_GROUP}" "${APP_DIR}/.env"
+  chmod 640 "${APP_DIR}/.env"
 
-  # Code: owned by app user
-  chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+  # Ensure runtime dirs exist
+  mkdir -p "${APP_DIR}/storage/logs" \
+           "${APP_DIR}/storage/framework/cache" \
+           "${APP_DIR}/storage/framework/sessions" \
+           "${APP_DIR}/storage/framework/views" \
+           "${APP_DIR}/bootstrap/cache"
 
-  # Runtime writable directories shared with web server group
-  chown -R "$APP_USER":"$WEB_GROUP" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
-  chmod -R ug+rwX "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+  # storage + cache writable by php-fpm group
+  chown -R "${APP_USER}:${RUNTIME_GROUP}" "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
+  chmod -R ug+rwX "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
 
-  # .env must be readable by php-fpm (www-data)
-  chown "$APP_USER":"$WEB_GROUP" "$APP_DIR/.env"
-  chmod 640 "$APP_DIR/.env"
+  # ensure laravel.log writable
+  touch "${APP_DIR}/storage/logs/laravel.log"
+  chown "${APP_USER}:${RUNTIME_GROUP}" "${APP_DIR}/storage/logs/laravel.log"
+  chmod 664 "${APP_DIR}/storage/logs/laravel.log"
 }
 
-#############################################
-# Code update
-#############################################
+ensure_storage_link(){
+  # optional; safe if already exists
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan storage:link >/dev/null 2>&1 || true"
+}
+
 update_code_git(){
   log "Updating code via git..."
   run_as_app "cd '$APP_DIR' && git fetch --all"
@@ -220,39 +192,38 @@ update_code_git(){
 update_code_copy(){
   [[ -n "$SOURCE_PATH" ]] || SOURCE_PATH="$(resolve_default_source_path)"
   SOURCE_PATH="$(cd "$SOURCE_PATH" && pwd)"
-
-  [[ -f "${SOURCE_PATH}/artisan" ]] || die "Source path is not a Laravel project (artisan missing): ${SOURCE_PATH}"
+  [[ -f "${SOURCE_PATH}/artisan" ]] || die "Source path is not a Laravel project: ${SOURCE_PATH}"
 
   log "Updating code via rsync from ${SOURCE_PATH} -> ${APP_DIR} ..."
+
+  # Exclusions prevent noisy delete errors + keep server runtime data intact
   rsync -a --delete \
     --exclude ".git" \
     --exclude ".env" \
     --exclude "storage/***" \
-    --exclude "bootstrap/cache/***" \
+    --exclude "node_modules/***" \
     --exclude "vendor/***" \
     "${SOURCE_PATH}/" "${APP_DIR}/"
+
+  # code owned by app user (group handled by fix_permissions)
+  chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}" || true
 }
 
-#############################################
-# Laravel steps
-#############################################
 laravel_steps(){
   log "Putting app into maintenance mode..."
   APP_WENT_DOWN="yes"
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan down >/dev/null 2>&1 || true"
 
+  fix_permissions
+
   log "Composer install (no-dev, optimized)..."
   run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader --no-interaction"
 
   log "Ensuring storage symlink..."
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan storage:link >/dev/null 2>&1 || true"
+  ensure_storage_link
 
   if [[ "$RUN_NPM" == "auto" ]]; then
-    if [[ -f "$APP_DIR/package.json" ]]; then
-      RUN_NPM="yes"
-    else
-      RUN_NPM="no"
-    fi
+    [[ -f "$APP_DIR/package.json" ]] && RUN_NPM="yes" || RUN_NPM="no"
   fi
 
   if [[ "$RUN_NPM" == "yes" ]]; then
@@ -260,11 +231,14 @@ laravel_steps(){
     run_as_app "cd '$APP_DIR' && $NPM_BIN ci || $NPM_BIN install"
     run_as_app "cd '$APP_DIR' && $NPM_BIN run build"
   else
-    log "Skipping frontend build (no package.json or disabled)."
+    log "Skipping frontend build."
   fi
 
   log "Clearing caches..."
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan config:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan cache:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan route:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan view:clear || true"
 
   if [[ "$RUN_MIGRATE" == "yes" ]]; then
     log "Running migrations..."
@@ -280,7 +254,7 @@ laravel_steps(){
 
   if [[ "$RESET_PERMISSIONS_CACHE" == "yes" ]]; then
     log "Resetting Spatie permissions cache..."
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan permission:cache-reset >/dev/null 2>&1 || true"
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan permission:cache-reset || true"
   fi
 
   if [[ "$OPTIMIZE" == "yes" ]]; then
@@ -288,14 +262,13 @@ laravel_steps(){
     run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
   fi
 
+  fix_permissions
+
   log "Bringing app back up..."
   APP_WENT_DOWN="no"
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan up || true"
 }
 
-#############################################
-# Restart services
-#############################################
 restart_services(){
   detect_php_fpm_service
 
@@ -306,14 +279,11 @@ restart_services(){
 
   if [[ "$RELOAD_NGINX" == "yes" ]]; then
     log "Reloading Nginx..."
-    nginx -t >/dev/null 2>&1 || warn "nginx -t failed (check configs)."
+    nginx -t >/dev/null 2>&1 || warn "nginx -t failed."
     systemctl reload "$NGINX_SERVICE" >/dev/null 2>&1 || warn "Could not reload nginx."
   fi
 }
 
-#############################################
-# Main
-#############################################
 main(){
   require_root
   detect_os_family
@@ -328,7 +298,7 @@ main(){
   acquire_lock
 
   if ! id -u "$APP_USER" >/dev/null 2>&1; then
-    warn "Linux user not found: ${APP_USER}. Using root to run app steps (not recommended)."
+    warn "Linux user not found: ${APP_USER}. Using root to run steps (not recommended)."
     APP_USER="root"
   fi
 
@@ -347,7 +317,6 @@ main(){
     die "Invalid deploy mode: $DEPLOY_MODE"
   fi
 
-  # Optional toggles
   if ! yesno "Run migrations?" "y"; then RUN_MIGRATE="no"; fi
   if yesno "Run PortalPermissionsSeeder?" "n"; then RUN_SEED="yes"; fi
   if ! yesno "Reset permissions cache (Spatie)?" "y"; then RESET_PERMISSIONS_CACHE="no"; fi
@@ -364,9 +333,7 @@ main(){
     update_code_copy
   fi
 
-  fix_permissions
   laravel_steps
-  fix_permissions
   restart_services
 
   log "DEPLOY DONE."
