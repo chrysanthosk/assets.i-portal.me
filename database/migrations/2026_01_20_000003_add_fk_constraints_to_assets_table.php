@@ -3,49 +3,69 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    private function fkExists(string $table, string $constraintName): bool
+    {
+        $db = DB::getDatabaseName();
+
+        $rows = DB::select(
+            "SELECT CONSTRAINT_NAME
+             FROM information_schema.TABLE_CONSTRAINTS
+             WHERE CONSTRAINT_SCHEMA = ?
+               AND TABLE_NAME = ?
+               AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+               AND CONSTRAINT_NAME = ?
+             LIMIT 1",
+            [$db, $table, $constraintName]
+        );
+
+        return !empty($rows);
+    }
+
     public function up(): void
     {
-        Schema::table('assets', function (Blueprint $table) {
+        $table = 'assets';
 
-            // Add FKs only if they aren't already there
-            // Some DBs require constraint names; we’ll use Laravel default naming.
+        // IMPORTANT: use explicit names so we can detect duplicates safely
+        $fkAssetType   = 'assets_asset_type_id_foreign';
+        $fkOwnerEntity = 'assets_owner_entity_id_foreign';
 
-            if (Schema::hasColumn('assets', 'asset_type_id')) {
-                // Avoid duplicate constraint errors if rerun
-                try {
-                    $table->foreign('asset_type_id')
-                        ->references('id')
-                        ->on('asset_types')
-                        ->restrictOnDelete()
-                        ->cascadeOnUpdate();
-                } catch (\Throwable $e) {
-                    // ignore if already exists
-                }
-            }
+        // asset_type_id FK
+        if (Schema::hasColumn($table, 'asset_type_id') && !$this->fkExists($table, $fkAssetType)) {
+            Schema::table($table, function (Blueprint $t) use ($fkAssetType) {
+                $t->foreign('asset_type_id', $fkAssetType)
+                    ->references('id')->on('asset_types')
+                    ->restrictOnDelete()
+                    ->cascadeOnUpdate();
+            });
+        }
 
-            if (Schema::hasColumn('assets', 'owner_entity_id')) {
-                try {
-                    $table->foreign('owner_entity_id')
-                        ->references('id')
-                        ->on('owner_entities')
-                        ->restrictOnDelete()
-                        ->cascadeOnUpdate();
-                } catch (\Throwable $e) {
-                    // ignore if already exists
-                }
-            }
-        });
+        // owner_entity_id FK
+        if (Schema::hasColumn($table, 'owner_entity_id') && !$this->fkExists($table, $fkOwnerEntity)) {
+            Schema::table($table, function (Blueprint $t) use ($fkOwnerEntity) {
+                $t->foreign('owner_entity_id', $fkOwnerEntity)
+                    ->references('id')->on('owner_entities')
+                    ->restrictOnDelete()
+                    ->cascadeOnUpdate();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('assets', function (Blueprint $table) {
-            // Drop constraints if they exist
-            try { $table->dropForeign(['asset_type_id']); } catch (\Throwable $e) {}
-            try { $table->dropForeign(['owner_entity_id']); } catch (\Throwable $e) {}
+        $table = 'assets';
+
+        // Drop by constraint name (most reliable)
+        $fkAssetType   = 'assets_asset_type_id_foreign';
+        $fkOwnerEntity = 'assets_owner_entity_id_foreign';
+
+        Schema::table($table, function (Blueprint $t) use ($fkAssetType, $fkOwnerEntity) {
+            // dropForeign accepts the constraint name string too
+            try { $t->dropForeign($fkAssetType); } catch (\Throwable $e) {}
+            try { $t->dropForeign($fkOwnerEntity); } catch (\Throwable $e) {}
         });
     }
 };

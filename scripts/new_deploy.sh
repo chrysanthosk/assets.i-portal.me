@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+#############################################
+# new_deploy.sh
+# - Updates existing /opt/<project> deployment safely
+# - Supports: git pull OR rsync copy
+# - Runs composer, migrations, cache, npm build (optional)
+# - Does NOT touch MySQL users/DB grants unless you ask it to
+#############################################
+
+#############################################
+# Helpers
+#############################################
 log()  { echo -e "\n\033[1;32m[INFO]\033[0m $*"; }
 warn() { echo -e "\n\033[1;33m[WARN]\033[0m $*"; }
 err()  { echo -e "\n\033[1;31m[ERR ]\033[0m $*" >&2; }
@@ -26,124 +37,308 @@ yesno(){ # msg default(y/n)
   [[ "$ans" =~ ^[Yy]$ ]]
 }
 
-detect_os(){
-  local id like
+command_exists(){ command -v "$1" >/dev/null 2>&1; }
+
+#############################################
+# Safe token helper (same idea as install.sh)
+#############################################
+to_safe_token(){
+  local s="$1"
+  s="$(echo "$s" | tr '[:upper:]' '[:lower:]')"
+  s="$(echo "$s" | sed -E 's/[^a-z0-9_]+/_/g; s/^_+//; s/_+$//; s/__+/_/g')"
+  [[ -n "$s" ]] || s="app"
+  echo "$s"
+}
+
+#############################################
+# OS detection (for nginx/php-fpm service names)
+#############################################
+OS_FAMILY="debian"
+detect_os_family(){
   if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
     . /etc/os-release
-    id="${ID:-}"
-    like="${ID_LIKE:-}"
-  fi
-
-  if [[ "${id:-}" =~ (ubuntu|debian) ]] || [[ "${like:-}" =~ (debian|ubuntu) ]]; then
-    echo "debian"
-  elif [[ "${id:-}" =~ (rhel|centos|rocky|almalinux|fedora) ]] || [[ "${like:-}" =~ (rhel|fedora|centos) ]]; then
-    echo "rhel"
-  else
-    echo "unknown"
+    if [[ "${ID:-}" =~ (ubuntu|debian) ]] || [[ "${ID_LIKE:-}" =~ (debian|ubuntu) ]]; then
+      OS_FAMILY="debian"
+    else
+      OS_FAMILY="rhel"
+    fi
   fi
 }
 
-run_as_app(){
-  local user="$1" dir="$2" cmd="$3"
-  sudo -u "$user" bash -lc "cd '$dir' && $cmd"
-}
+#############################################
+# Defaults / Variables
+#############################################
+PROJECT_SLUG_RAW=""
+PROJECT_SAFE=""
+APP_DIR=""
+APP_USER=""
 
-main(){
-  require_root
+DEPLOY_MODE="auto"         # auto|git|copy
+SOURCE_PATH=""             # for copy mode
+GIT_BRANCH="main"          # for git mode (optional checkout)
 
-  local OS_FAMILY
-  OS_FAMILY="$(detect_os)"
+COMPOSER_BIN="/usr/local/bin/composer"
+PHP_BIN="php"
+NPM_BIN="npm"
 
-  local PROJECT_SLUG APP_DIR APP_USER BRANCH
-  local PHP_FPM_SERVICE NGINX_SERVICE
-  local COMPOSER_BIN="/usr/local/bin/composer"
-  local PHP_BIN="php"
-  local NPM_BIN="npm"
-  local WEB_GROUP="www-data"
+# behaviors
+RUN_NPM="auto"             # auto|yes|no
+RUN_MIGRATE="yes"
+RUN_SEED="no"              # optional
+SEED_CLASS="Database\\Seeders\\PortalPermissionsSeeder"
+OPTIMIZE="yes"
+RESTART_PHPFPM="yes"
+RELOAD_NGINX="yes"
 
-  prompt PROJECT_SLUG "Project slug (folder in /opt)" "i-portal"
-  APP_DIR="/opt/${PROJECT_SLUG}"
-  APP_USER="${PROJECT_SLUG}"
+# lock file
+LOCK_FILE=""
 
-  [[ -d "$APP_DIR" ]] || die "Not found: ${APP_DIR}"
-  [[ -f "${APP_DIR}/artisan" ]] || die "Not a Laravel app: ${APP_DIR} (artisan missing)"
+#############################################
+# Detect PHP-FPM service + socket (best effort)
+#############################################
+PHP_FPM_SERVICE="php-fpm"
+NGINX_SERVICE="nginx"
 
-  if ! id -u "$APP_USER" >/dev/null 2>&1; then
-    # fallback to folder owner
-    APP_USER="$(stat -c '%U' "$APP_DIR" 2>/dev/null || true)"
-    [[ -n "$APP_USER" ]] || die "Could not determine APP_USER"
-    warn "Linux user '${PROJECT_SLUG}' not found. Using folder owner '${APP_USER}'."
-  fi
-
-  prompt BRANCH "Git branch to deploy" "main"
-
+detect_php_fpm_service(){
+  # Debian/Ubuntu commonly: php8.x-fpm
   if [[ "$OS_FAMILY" == "debian" ]]; then
-    # try to auto-detect php-fpm
-    PHP_FPM_SERVICE="$(systemctl list-units --type=service --no-legend | awk '{print $1}' | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | head -n1 || true)"
-    PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.2-fpm.service}"
-    PHP_FPM_SERVICE="${PHP_FPM_SERVICE%.service}"
-    WEB_GROUP="www-data"
+    local svc
+    svc="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | sort -V | tail -n1 || true)"
+    if [[ -n "$svc" ]]; then
+      PHP_FPM_SERVICE="${svc%.service}"
+    else
+      PHP_FPM_SERVICE="php-fpm"
+    fi
   else
     PHP_FPM_SERVICE="php-fpm"
-    WEB_GROUP="nginx"
   fi
-  NGINX_SERVICE="nginx"
+}
 
-  log "Deploying ${PROJECT_SLUG} as user ${APP_USER} from ${APP_DIR}"
+#############################################
+# Lock (avoid concurrent deploys)
+#############################################
+acquire_lock(){
+  LOCK_FILE="/tmp/deploy_${PROJECT_SAFE}.lock"
+  exec 9>"$LOCK_FILE"
+  if ! flock -n 9; then
+    die "Another deploy appears to be running (lock: $LOCK_FILE)."
+  fi
+}
 
-  # Git update
+#############################################
+# Run as app user
+#############################################
+run_as_app(){
+  sudo -u "$APP_USER" bash -lc "$*"
+}
+
+#############################################
+# Determine deploy mode
+#############################################
+resolve_default_source_path(){
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  echo "$script_dir"
+}
+
+detect_deploy_mode(){
+  if [[ "$DEPLOY_MODE" != "auto" ]]; then
+    return
+  fi
+
   if [[ -d "${APP_DIR}/.git" ]]; then
-    log "Git fetch + checkout + pull (${BRANCH})..."
-    run_as_app "$APP_USER" "$APP_DIR" "git fetch --all --prune"
-    run_as_app "$APP_USER" "$APP_DIR" "git checkout '$BRANCH'"
-    run_as_app "$APP_USER" "$APP_DIR" "git pull --ff-only origin '$BRANCH'"
+    DEPLOY_MODE="git"
   else
-    warn "No .git found. Skipping git pull. (You may be deploying by rsync/copy)"
+    DEPLOY_MODE="copy"
+  fi
+}
+
+#############################################
+# Pre-flight checks
+#############################################
+preflight(){
+  [[ -d "$APP_DIR" ]] || die "App directory not found: $APP_DIR"
+  [[ -f "${APP_DIR}/artisan" ]] || die "Not a Laravel app (artisan missing): $APP_DIR"
+  [[ -f "${APP_DIR}/.env" ]] || die ".env not found in ${APP_DIR} (install first)."
+
+  if [[ ! -x "$COMPOSER_BIN" ]]; then
+    if command_exists composer; then
+      COMPOSER_BIN="$(command -v composer)"
+    else
+      die "Composer not found. Install composer first."
+    fi
   fi
 
-  # Backend deps
-  log "Composer install..."
-  run_as_app "$APP_USER" "$APP_DIR" "'$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader"
-
-  # Frontend deps/build (if needed)
-  if [[ -f "$APP_DIR/package.json" ]]; then
-    log "NPM build..."
-    run_as_app "$APP_USER" "$APP_DIR" "$NPM_BIN ci || $NPM_BIN install"
-    run_as_app "$APP_USER" "$APP_DIR" "$NPM_BIN run build"
-  else
-    warn "package.json not found; skipping npm."
+  if ! command_exists "$PHP_BIN"; then
+    die "PHP not found."
   fi
+}
 
-  # Migrate
-  log "Migrations..."
-  run_as_app "$APP_USER" "$APP_DIR" "$PHP_BIN artisan migrate --force"
+#############################################
+# Code update
+#############################################
+update_code_git(){
+  log "Updating code via git..."
+  run_as_app "cd '$APP_DIR' && git fetch --all"
+  # keep it simple: checkout branch then pull ff-only
+  run_as_app "cd '$APP_DIR' && git checkout '$GIT_BRANCH' >/dev/null 2>&1 || true"
+  run_as_app "cd '$APP_DIR' && git pull --ff-only"
+}
 
-  # Seed permissions automatically (no tinker)
-  if run_as_app "$APP_USER" "$APP_DIR" "$PHP_BIN -r 'require \"vendor/autoload.php\"; echo class_exists(\"Database\\\\Seeders\\\\PortalPermissionsSeeder\")?\"1\":\"0\";'" | grep -q '^1$'; then
-    log "Seeding PortalPermissionsSeeder..."
-    run_as_app "$APP_USER" "$APP_DIR" "$PHP_BIN artisan db:seed --class='Database\\Seeders\\PortalPermissionsSeeder' --force"
-  else
-    warn "PortalPermissionsSeeder not found; skipping."
-  fi
+update_code_copy(){
+  [[ -n "$SOURCE_PATH" ]] || SOURCE_PATH="$(resolve_default_source_path)"
+  SOURCE_PATH="$(cd "$SOURCE_PATH" && pwd)"
 
-  # Caches
-  log "Clearing + optimizing caches..."
-  run_as_app "$APP_USER" "$APP_DIR" "$PHP_BIN artisan optimize:clear"
-  run_as_app "$APP_USER" "$APP_DIR" "$PHP_BIN artisan optimize"
+  [[ -f "${SOURCE_PATH}/artisan" ]] || die "Source path is not a Laravel project (artisan missing): ${SOURCE_PATH}"
 
-  # Permissions
-  log "Fixing storage permissions..."
-  mkdir -p "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
+  log "Updating code via rsync from ${SOURCE_PATH} -> ${APP_DIR} ..."
+  # keep .env on server, never overwrite it
+  rsync -a --delete \
+    --exclude ".git" \
+    --exclude ".env" \
+    --exclude "storage/***" \
+    "${SOURCE_PATH}/" "${APP_DIR}/"
+
   chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
-  chmod -R ug+rwX "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
-  chgrp -R "$WEB_GROUP" "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" || true
+}
 
-  log "Restarting services..."
-  systemctl restart "$PHP_FPM_SERVICE" || true
-  systemctl reload "$NGINX_SERVICE" || true
+#############################################
+# Laravel steps
+#############################################
+laravel_steps(){
+  log "Putting app into maintenance mode..."
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan down --render='errors::503' >/dev/null 2>&1 || $PHP_BIN artisan down || true"
 
-  log "DONE."
+  log "Composer install (no-dev, optimized)..."
+  # Use scripts during deploy; DB and tables should exist already
+  run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader --no-interaction"
+
+  if [[ "$RUN_NPM" == "auto" ]]; then
+    if [[ -f "$APP_DIR/package.json" ]]; then
+      RUN_NPM="yes"
+    else
+      RUN_NPM="no"
+    fi
+  fi
+
+  if [[ "$RUN_NPM" == "yes" ]]; then
+    log "Building frontend assets..."
+    run_as_app "cd '$APP_DIR' && $NPM_BIN ci || $NPM_BIN install"
+    run_as_app "cd '$APP_DIR' && $NPM_BIN run build"
+  else
+    log "Skipping frontend build (no package.json or disabled)."
+  fi
+
+  log "Clearing caches..."
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan config:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan cache:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan route:clear || true"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan view:clear || true"
+
+  if [[ "$RUN_MIGRATE" == "yes" ]]; then
+    log "Running migrations..."
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan migrate --force"
+  else
+    log "Skipping migrations."
+  fi
+
+  if [[ "$RUN_SEED" == "yes" ]]; then
+    log "Running seeder: ${SEED_CLASS}"
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan db:seed --class='${SEED_CLASS}' --force"
+  fi
+
+  if [[ "$OPTIMIZE" == "yes" ]]; then
+    log "Optimizing..."
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
+  fi
+
+  log "Bringing app back up..."
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan up || true"
+}
+
+#############################################
+# Restart services
+#############################################
+restart_services(){
+  detect_php_fpm_service
+
+  if [[ "$RESTART_PHPFPM" == "yes" ]]; then
+    log "Restarting PHP-FPM (${PHP_FPM_SERVICE})..."
+    systemctl restart "$PHP_FPM_SERVICE" >/dev/null 2>&1 || warn "Could not restart ${PHP_FPM_SERVICE} (check service name)."
+  fi
+
+  if [[ "$RELOAD_NGINX" == "yes" ]]; then
+    log "Reloading Nginx..."
+    nginx -t >/dev/null 2>&1 || warn "nginx -t failed (check configs)."
+    systemctl reload "$NGINX_SERVICE" >/dev/null 2>&1 || warn "Could not reload nginx."
+  fi
+}
+
+#############################################
+# Main
+#############################################
+main(){
+  require_root
+  detect_os_family
+
+  log "=== Laravel Deploy (new_deploy.sh) ==="
+
+  prompt PROJECT_SLUG_RAW "Project slug (folder under /opt)" "assets.i-portal.me"
+  PROJECT_SAFE="$(to_safe_token "$PROJECT_SLUG_RAW")"
+  APP_DIR="/opt/${PROJECT_SLUG_RAW}"
+  APP_USER="${PROJECT_SAFE}"
+
+  acquire_lock
+
+  if ! id -u "$APP_USER" >/dev/null 2>&1; then
+    warn "Linux user not found: ${APP_USER}. Using root to run steps (not recommended)."
+    APP_USER="root"
+  fi
+
+  preflight
+
+  prompt DEPLOY_MODE "Deploy mode (auto|git|copy)" "auto"
+  detect_deploy_mode
+
+  if [[ "$DEPLOY_MODE" == "git" ]]; then
+    prompt GIT_BRANCH "Git branch to deploy" "$GIT_BRANCH"
+  elif [[ "$DEPLOY_MODE" == "copy" ]]; then
+    local default_src
+    default_src="$(resolve_default_source_path)"
+    prompt SOURCE_PATH "Local source path (Laravel project folder)" "$default_src"
+  else
+    die "Invalid deploy mode: $DEPLOY_MODE"
+  fi
+
+  # Optional toggles
+  if ! yesno "Run migrations?" "y"; then RUN_MIGRATE="no"; fi
+  if yesno "Run PortalPermissionsSeeder?" "n"; then RUN_SEED="yes"; fi
+  if ! yesno "Run optimize (cache config/routes/views)?" "y"; then OPTIMIZE="no"; fi
+  if ! yesno "Restart PHP-FPM?" "y"; then RESTART_PHPFPM="no"; fi
+  if ! yesno "Reload Nginx?" "y"; then RELOAD_NGINX="no"; fi
+
+  log "Deploy target: ${APP_DIR} (user: ${APP_USER})"
+  log "Mode: ${DEPLOY_MODE}"
+
+  if [[ "$DEPLOY_MODE" == "git" ]]; then
+    update_code_git
+  else
+    update_code_copy
+  fi
+
+  laravel_steps
+  restart_services
+
+  log "DEPLOY DONE."
+  echo "-------------------------------------------"
+  echo "Project:     ${PROJECT_SLUG_RAW}"
+  echo "Path:        ${APP_DIR}"
+  echo "Mode:        ${DEPLOY_MODE}"
+  echo "Migrations:  ${RUN_MIGRATE}"
+  echo "Seeder:      ${RUN_SEED}"
+  echo "Optimize:    ${OPTIMIZE}"
+  echo "-------------------------------------------"
 }
 
 main "$@"
