@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use PragmaRX\Google2FA\Google2FA;
 
-class TwoFactorController extends Controller
+class TODELETETwoFactorController extends Controller
 {
     public function challengeForm(Request $request)
     {

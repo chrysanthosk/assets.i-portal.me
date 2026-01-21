@@ -87,6 +87,7 @@ RUN_NPM="auto"             # auto|yes|no
 RUN_MIGRATE="yes"
 RUN_SEED="no"              # optional
 SEED_CLASS="Database\\Seeders\\PortalPermissionsSeeder"
+RESET_PERMISSIONS_CACHE="yes"   # IMPORTANT for Spatie
 OPTIMIZE="yes"
 RESTART_PHPFPM="yes"
 RELOAD_NGINX="yes"
@@ -132,6 +133,18 @@ acquire_lock(){
 run_as_app(){
   sudo -u "$APP_USER" bash -lc "$*"
 }
+
+#############################################
+# Ensure we always bring the app back up
+#############################################
+APP_WENT_DOWN="no"
+cleanup(){
+  if [[ "${APP_WENT_DOWN}" == "yes" ]]; then
+    warn "Cleanup: ensuring app is UP..."
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan up >/dev/null 2>&1 || true"
+  fi
+}
+trap cleanup EXIT
 
 #############################################
 # Determine deploy mode
@@ -181,7 +194,6 @@ preflight(){
 update_code_git(){
   log "Updating code via git..."
   run_as_app "cd '$APP_DIR' && git fetch --all"
-  # keep it simple: checkout branch then pull ff-only
   run_as_app "cd '$APP_DIR' && git checkout '$GIT_BRANCH' >/dev/null 2>&1 || true"
   run_as_app "cd '$APP_DIR' && git pull --ff-only"
 }
@@ -193,7 +205,7 @@ update_code_copy(){
   [[ -f "${SOURCE_PATH}/artisan" ]] || die "Source path is not a Laravel project (artisan missing): ${SOURCE_PATH}"
 
   log "Updating code via rsync from ${SOURCE_PATH} -> ${APP_DIR} ..."
-  # keep .env on server, never overwrite it
+  # keep .env + storage on server, never overwrite them
   rsync -a --delete \
     --exclude ".git" \
     --exclude ".env" \
@@ -208,10 +220,10 @@ update_code_copy(){
 #############################################
 laravel_steps(){
   log "Putting app into maintenance mode..."
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan down --render='errors::503' >/dev/null 2>&1 || $PHP_BIN artisan down || true"
+  APP_WENT_DOWN="yes"
+  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan down >/dev/null 2>&1 || true"
 
   log "Composer install (no-dev, optimized)..."
-  # Use scripts during deploy; DB and tables should exist already
   run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader --no-interaction"
 
   if [[ "$RUN_NPM" == "auto" ]]; then
@@ -248,12 +260,19 @@ laravel_steps(){
     run_as_app "cd '$APP_DIR' && $PHP_BIN artisan db:seed --class='${SEED_CLASS}' --force"
   fi
 
+  # IMPORTANT: Spatie permissions cache
+  if [[ "$RESET_PERMISSIONS_CACHE" == "yes" ]]; then
+    log "Resetting Spatie permissions cache..."
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan permission:cache-reset || true"
+  fi
+
   if [[ "$OPTIMIZE" == "yes" ]]; then
     log "Optimizing..."
     run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
   fi
 
   log "Bringing app back up..."
+  APP_WENT_DOWN="no"
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan up || true"
 }
 
@@ -314,6 +333,7 @@ main(){
   # Optional toggles
   if ! yesno "Run migrations?" "y"; then RUN_MIGRATE="no"; fi
   if yesno "Run PortalPermissionsSeeder?" "n"; then RUN_SEED="yes"; fi
+  if ! yesno "Reset permissions cache (Spatie)?" "y"; then RESET_PERMISSIONS_CACHE="no"; fi
   if ! yesno "Run optimize (cache config/routes/views)?" "y"; then OPTIMIZE="no"; fi
   if ! yesno "Restart PHP-FPM?" "y"; then RESTART_PHPFPM="no"; fi
   if ! yesno "Reload Nginx?" "y"; then RELOAD_NGINX="no"; fi
@@ -337,6 +357,7 @@ main(){
   echo "Mode:        ${DEPLOY_MODE}"
   echo "Migrations:  ${RUN_MIGRATE}"
   echo "Seeder:      ${RUN_SEED}"
+  echo "Perm cache:  ${RESET_PERMISSIONS_CACHE}"
   echo "Optimize:    ${OPTIMIZE}"
   echo "-------------------------------------------"
 }
