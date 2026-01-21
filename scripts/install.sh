@@ -22,6 +22,13 @@ prompt() { # var, msg, default(optional)
   printf -v "$var" "%s" "$val"
 }
 
+prompt_secret() { # var, msg
+  local var="$1" msg="$2" val=""
+  read -r -s -p "$msg: " val
+  echo
+  printf -v "$var" "%s" "$val"
+}
+
 yesno(){ # msg default(y/n)
   local msg="$1" def="${2:-y}" ans=""
   read -r -p "$msg [${def}]: " ans
@@ -30,6 +37,13 @@ yesno(){ # msg default(y/n)
 }
 
 command_exists(){ command -v "$1" >/dev/null 2>&1; }
+
+ensure_min_len() { # value, min, msg
+  local v="$1" min="$2" msg="$3"
+  if [[ "${#v}" -lt "$min" ]]; then
+    die "$msg"
+  fi
+}
 
 # Convert to safe token for DB/user/nginx filenames:
 # - allow: a-z0-9_
@@ -102,6 +116,12 @@ SSL_MODE="existing"         # existing|letsencrypt
 CERT_FULLCHAIN=""
 CERT_PRIVKEY=""
 LE_EMAIL="admin@example.com"
+
+# Admin user (Laravel make:admin)
+ADMIN_NAME=""
+ADMIN_EMAIL=""
+ADMIN_USERNAME=""
+ADMIN_PASS=""
 
 # Services / paths
 PHP_VER=""
@@ -412,7 +432,7 @@ write_env(){
   write_env_kv "$envfile" "DB_USERNAME" "$DB_USER_SAFE"
   write_env_kv "$envfile" "DB_PASSWORD" "$DB_PASS"
 
-  # Avoid install-time failures before cache table exists
+  # Avoid install-time failures before cache/sessions tables exist
   # (we’ll switch back after migrations)
   write_env_kv "$envfile" "CACHE_STORE" "file"
   write_env_kv "$envfile" "SESSION_DRIVER" "file"
@@ -454,7 +474,6 @@ laravel_install(){
   fi
 
   log "Switching CACHE_STORE/SESSION_DRIVER to database (post-migrate)..."
-  # Update .env now that cache/sessions tables exist
   local envfile="${APP_DIR}/.env"
   write_env_kv "$envfile" "CACHE_STORE" "database"
   write_env_kv "$envfile" "SESSION_DRIVER" "database"
@@ -473,6 +492,28 @@ laravel_install(){
 
   log "Optimize..."
   run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
+}
+
+#############################################
+# Create initial Admin user (make:admin)
+#############################################
+create_admin_user(){
+  log "Creating initial Admin user (php artisan make:admin)..."
+
+  prompt ADMIN_NAME "Admin full name" "Admin"
+  prompt ADMIN_EMAIL "Admin email"
+
+  prompt ADMIN_USERNAME "Admin username (optional; leave blank to auto-generate)" ""
+
+  prompt_secret ADMIN_PASS "Admin password (min 10 chars)"
+  ensure_min_len "$ADMIN_PASS" 10 "Admin password must be at least 10 characters."
+
+  # Run as app user (non-interactive)
+  if [[ -n "$ADMIN_USERNAME" ]]; then
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan make:admin --name=\"${ADMIN_NAME}\" --email=\"${ADMIN_EMAIL}\" --username=\"${ADMIN_USERNAME}\" --password=\"${ADMIN_PASS}\" --force"
+  else
+    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan make:admin --name=\"${ADMIN_NAME}\" --email=\"${ADMIN_EMAIL}\" --password=\"${ADMIN_PASS}\" --force"
+  fi
 }
 
 #############################################
@@ -672,6 +713,7 @@ main(){
   fi
 
   laravel_install
+  create_admin_user
 
   systemctl restart "$PHP_FPM_SERVICE" || true
   systemctl reload "$NGINX_SERVICE" || true
