@@ -18,29 +18,52 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request): RedirectResponse
     {
-        // Perform authentication (this logs the user in if valid)
-        $request->authenticate();
+        $remember = $request->boolean('remember');
 
+        /**
+         * Capture where the user wanted to go BEFORE we authenticate.
+         * This avoids the "I logged in and THEN it asked for 2FA" confusion.
+         *
+         * If there is already an intended URL (e.g., user was redirected to login
+         * from a protected route), keep it. Otherwise default to dashboard.
+         */
+        if (!$request->session()->has('url.intended')) {
+            // If they came directly to /login, previous() may be /login — so use dashboard.
+            $prev = url()->previous();
+            if (is_string($prev) && !str_ends_with($prev, '/login') && !str_ends_with($prev, '/two-factor')) {
+                $request->session()->put('url.intended', $prev);
+            } else {
+                $request->session()->put('url.intended', route('dashboard', absolute: false));
+            }
+        }
+
+        // Attempt login (logs user in if credentials are valid)
+        $request->authenticate();
         $request->session()->regenerate();
 
         $user = Auth::user();
 
-        // If user has 2FA enabled, force challenge BEFORE allowing normal access
-        $twoFaEnabled = (bool)($user->two_factor_enabled ?? false) && !empty($user->two_factor_secret);
+        // If 2FA enabled -> force challenge BEFORE allowing access
+        $twoFaEnabled = $user
+            && (bool)($user->two_factor_enabled ?? false)
+            && !empty($user->two_factor_secret);
 
         if ($twoFaEnabled) {
-            // store pending login info
+            // Store pending login info in session
             $request->session()->put('2fa:user:id', $user->id);
-            $request->session()->put('2fa:remember', $request->boolean('remember'));
+            $request->session()->put('2fa:remember', $remember);
 
-            // IMPORTANT: logout so user is not considered authenticated yet
+            // Ensure they are NOT authenticated until OTP is verified
             Auth::logout();
 
-            // Keep session but rotate token
+            // Rotate CSRF token but keep session data (2fa:user:id, url.intended)
             $request->session()->regenerateToken();
 
             return redirect()->route('2fa.challenge');
         }
+
+        // No 2FA -> mark as passed for this session (middleware will allow)
+        $request->session()->put('2fa_passed', true);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
