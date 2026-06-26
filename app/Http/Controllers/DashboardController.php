@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\AssetDocument;
 use App\Models\AssetRental;
 use App\Models\RentalPayment;
 use Carbon\Carbon;
@@ -86,6 +87,18 @@ class DashboardController extends Controller
             ->whereDate('due_date', '<', now()->toDateString())
             ->count();
 
+        // Document expiry reminders
+        $expiredDocsCount = AssetDocument::query()
+            ->whereNotNull('expires_at')
+            ->whereDate('expires_at', '<', now()->toDateString())
+            ->count();
+
+        $expiringDocsCount = AssetDocument::query()
+            ->whereNotNull('expires_at')
+            ->whereDate('expires_at', '>=', now()->toDateString())
+            ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
+            ->count();
+
         return view('dashboard', [
             'user' => $user,
             'greeting' => $greeting,
@@ -110,6 +123,9 @@ class DashboardController extends Controller
 
             'outstandingByCurrency' => $outstandingByCurrency,
             'overduePaymentsCount' => $overduePaymentsCount,
+
+            'expiredDocsCount' => $expiredDocsCount,
+            'expiringDocsCount' => $expiringDocsCount,
         ]);
     }
 }

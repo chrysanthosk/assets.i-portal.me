@@ -137,6 +137,24 @@
     </div>
   </div>
 
+  <!-- Document expiry reminders -->
+  <div class="col-12 col-lg-3 mb-3">
+    <div class="card {{ ($expiredDocsCount ?? 0) ? 'border-danger' : (($expiringDocsCount ?? 0) ? 'border-warning' : '') }}">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted text-uppercase small">Documents</div>
+            <div class="fs-3 fw-semibold {{ ($expiredDocsCount ?? 0) ? 'text-danger' : '' }}">{{ $expiredDocsCount ?? 0 }}</div>
+            <div class="small {{ ($expiringDocsCount ?? 0) ? 'text-warning-emphasis' : 'text-muted' }}">
+              {{ $expiredDocsCount ?? 0 }} expired · {{ $expiringDocsCount ?? 0 }} expiring ≤30d
+            </div>
+          </div>
+          <i class="bi bi-file-earmark-text fs-1 text-muted"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Monthly Income (Active agreements only) -->
   <div class="col-12 col-lg-6 mb-3">
     <div class="card">
