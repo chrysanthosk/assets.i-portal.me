@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Report exceptions to Sentry when a DSN is configured (inert otherwise).
+        \Sentry\Laravel\Integration::handles($exceptions);
     })
     ->create();
