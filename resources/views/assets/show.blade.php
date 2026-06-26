@@ -286,11 +286,29 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                       class="row g-2 mb-3">
                     @csrf
 
-                    <div class="col-12">
+                    <div class="col-md-6">
                         <label class="form-label mb-1">File</label>
                         <input type="file" name="file" class="form-control @error('file') is-invalid @enderror" required>
                         @error('file') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        <div class="form-text">Allowed: pdf, jpg, png, doc, docx, xls, xlsx. Max size depends on server.</div>
+                        <div class="form-text">Allowed: pdf, jpg, png, doc, docx, xls, xlsx. Max 20MB.</div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">Type</label>
+                        <select name="doc_type" class="form-select @error('doc_type') is-invalid @enderror">
+                            <option value="">—</option>
+                            @foreach(\App\Models\AssetDocument::TYPES as $dt)
+                                <option value="{{ $dt }}" @selected(old('doc_type') === $dt)>{{ $dt }}</option>
+                            @endforeach
+                        </select>
+                        @error('doc_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">Expires</label>
+                        <input type="date" name="expires_at" value="{{ old('expires_at') }}"
+                               class="form-control @error('expires_at') is-invalid @enderror">
+                        @error('expires_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-12">
@@ -312,14 +330,16 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                     <table class="table table-sm align-middle mb-0">
                         <thead>
                         <tr>
-                            <th>File</th>
-                            <th class="text-end">Size</th>
-                            <th class="text-end">Actions</th>
+                            <th scope="col">File</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Expiry</th>
+                            <th scope="col" class="text-end">Size</th>
+                            <th scope="col" class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         @foreach($documents as $doc)
-                        <tr>
+                        <tr class="{{ $doc->isExpired() ? 'table-danger' : ($doc->isExpiringSoon() ? 'table-warning' : '') }}">
                             <td>
                                 <div class="fw-semibold">{{ $doc->original_name }}</div>
                                 <div class="text-muted small">
@@ -327,6 +347,19 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                                     • {{ $doc->created_at?->format('Y-m-d H:i') }}
                                     @if($doc->notes) • {{ $doc->notes }} @endif
                                 </div>
+                            </td>
+                            <td>{{ $doc->doc_type ?: '—' }}</td>
+                            <td>
+                                @if($doc->expires_at)
+                                    {{ $doc->expires_at->format('Y-m-d') }}
+                                    @if($doc->isExpired())
+                                        <span class="badge text-bg-danger">Expired</span>
+                                    @elseif($doc->isExpiringSoon())
+                                        <span class="badge text-bg-warning">Soon</span>
+                                    @endif
+                                @else
+                                    —
+                                @endif
                             </td>
                             <td class="text-end text-muted">
                                 @php $bytes = $doc->size_bytes ?: $doc->size; @endphp

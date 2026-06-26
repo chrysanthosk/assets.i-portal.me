@@ -14,6 +14,8 @@ class AssetDocumentsController extends Controller
     {
         $data = $request->validate([
             'notes' => ['nullable', 'string', 'max:500'],
+            'doc_type' => ['nullable', 'string', 'in:'.implode(',', AssetDocument::TYPES)],
+            'expires_at' => ['nullable', 'date'],
             // Whitelist by real content type (Laravel inspects the file itself,
             // not the client-supplied extension/MIME) and cap at 20MB.
             'file' => [
@@ -43,6 +45,8 @@ class AssetDocumentsController extends Controller
             'uploaded_by' => auth()->id(),
 
             'title' => null,
+            'doc_type' => $data['doc_type'] ?? null,
+            'expires_at' => $data['expires_at'] ?? null,
             'notes' => $data['notes'] ?? null,
 
             'original_name' => $originalName,
