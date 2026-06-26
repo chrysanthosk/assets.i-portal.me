@@ -6,6 +6,7 @@ use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetTagsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RentalPaymentsController;
 use App\Http\Controllers\Settings\AssetTypesController;
 use App\Http\Controllers\Settings\OwnerEntitiesController;
 use App\Http\Controllers\Settings\PermissionSetsController;
@@ -54,6 +55,16 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::post('/tenants', [TenantsController::class, 'store'])->name('tenants.store');
         Route::put('/tenants/{tenant}', [TenantsController::class, 'update'])->name('tenants.update');
         Route::delete('/tenants/{tenant}', [TenantsController::class, 'destroy'])->name('tenants.destroy');
+    });
+
+    // --------------------
+    // Rental payments
+    // --------------------
+    Route::middleware('permission:manage_rental_payments')->group(function () {
+        Route::get('/payments', [RentalPaymentsController::class, 'index'])->name('payments.index');
+        Route::post('/payments', [RentalPaymentsController::class, 'store'])->name('payments.store');
+        Route::post('/payments/{payment}/paid', [RentalPaymentsController::class, 'markPaid'])->name('payments.markPaid');
+        Route::delete('/payments/{payment}', [RentalPaymentsController::class, 'destroy'])->name('payments.destroy');
     });
 
     // --------------------

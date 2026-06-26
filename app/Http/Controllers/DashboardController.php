@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetRental;
+use App\Models\RentalPayment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -72,6 +73,19 @@ class DashboardController extends Controller
         $vacantCount = (int) ($statusCounts->vacant ?? 0);
         $otherStatusCount = max(0, $totalAssets - $occupiedCount - $vacantCount);
 
+        // Outstanding rental payments (arrears)
+        $outstandingByCurrency = RentalPayment::query()
+            ->where('status', 'pending')
+            ->selectRaw('currency, SUM(amount) as total')
+            ->groupBy('currency')
+            ->orderBy('currency')
+            ->get();
+
+        $overduePaymentsCount = RentalPayment::query()
+            ->where('status', 'pending')
+            ->whereDate('due_date', '<', now()->toDateString())
+            ->count();
+
         return view('dashboard', [
             'user' => $user,
             'greeting' => $greeting,
@@ -93,6 +107,9 @@ class DashboardController extends Controller
             'occupiedCount' => $occupiedCount,
             'vacantCount' => $vacantCount,
             'otherStatusCount' => $otherStatusCount,
+
+            'outstandingByCurrency' => $outstandingByCurrency,
+            'overduePaymentsCount' => $overduePaymentsCount,
         ]);
     }
 }
