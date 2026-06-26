@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetRental;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -64,7 +64,7 @@ class DashboardController extends Controller
         $statusCounts = Asset::query()
             ->selectRaw(
                 "SUM(CASE WHEN LOWER(status) LIKE '%rented%' OR LOWER(status) LIKE '%occupied%' THEN 1 ELSE 0 END) AS occupied,"
-                . " SUM(CASE WHEN LOWER(status) LIKE '%vacant%' OR LOWER(status) LIKE '%available%' THEN 1 ELSE 0 END) AS vacant"
+                ." SUM(CASE WHEN LOWER(status) LIKE '%vacant%' OR LOWER(status) LIKE '%available%' THEN 1 ELSE 0 END) AS vacant"
             )
             ->first();
 

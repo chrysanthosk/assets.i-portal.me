@@ -12,13 +12,14 @@ class AssetTagsController extends Controller
     public function index()
     {
         $tags = AssetTag::orderBy('name')->paginate(20);
+
         return view('assets.tags', compact('tags'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:50', Rule::unique('asset_tags','name')],
+            'name' => ['required', 'string', 'max:50', Rule::unique('asset_tags', 'name')],
         ]);
 
         $tag = AssetTag::create([
@@ -33,7 +34,7 @@ class AssetTagsController extends Controller
     public function update(Request $request, AssetTag $tag)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:50', Rule::unique('asset_tags','name')->ignore($tag->id)],
+            'name' => ['required', 'string', 'max:50', Rule::unique('asset_tags', 'name')->ignore($tag->id)],
         ]);
 
         $old = $tag->toArray();

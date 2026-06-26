@@ -4,8 +4,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::table('users', function (Blueprint $table) {
             // Laravel already has "name"
             $table->string('username')->unique()->after('id');
@@ -22,12 +24,13 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void {
+    public function down(): void
+    {
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
-                'username','name','surname',
-                'pending_email','email_otp_hash','email_otp_expires_at',
-                'two_factor_enabled','two_factor_secret'
+                'username', 'name', 'surname',
+                'pending_email', 'email_otp_hash', 'email_otp_expires_at',
+                'two_factor_enabled', 'two_factor_secret',
             ]);
         });
     }

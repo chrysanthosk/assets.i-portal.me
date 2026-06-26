@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\SmtpSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Email;
 
 class SmtpSettingsController extends Controller
@@ -16,7 +16,7 @@ class SmtpSettingsController extends Controller
     {
         $smtp = SmtpSetting::first();
 
-        if (!$smtp) {
+        if (! $smtp) {
             $smtp = SmtpSetting::create([
                 'enabled' => false,
                 'host' => null,
@@ -46,10 +46,10 @@ class SmtpSettingsController extends Controller
             'from_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $enabled = (int)($data['enabled'] ?? 0) === 1;
+        $enabled = (int) ($data['enabled'] ?? 0) === 1;
         $host = $data['host'] ?? null;
-        $port = (int)($data['port'] ?? 587);
-        $enc  = ($data['encryption'] ?? null) ?: null; // null, 'tls', 'ssl'
+        $port = (int) ($data['port'] ?? 587);
+        $enc = ($data['encryption'] ?? null) ?: null; // null, 'tls', 'ssl'
 
         // Guard against invalid combinations (SendGrid + most providers)
         if ($enc === 'ssl' && $port === 587) {
@@ -66,7 +66,7 @@ class SmtpSettingsController extends Controller
         $smtp->from_address = $data['from_address'] ?? null;
         $smtp->from_name = $data['from_name'] ?? null;
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $smtp->setPasswordPlain($data['password']);
         }
 
@@ -79,7 +79,7 @@ class SmtpSettingsController extends Controller
     {
         $smtp = SmtpSetting::first();
 
-        if (!$smtp || !$smtp->enabled) {
+        if (! $smtp || ! $smtp->enabled) {
             return redirect()->route('settings.smtp.edit')->with('error', 'SMTP is disabled.');
         }
 
@@ -88,8 +88,8 @@ class SmtpSettingsController extends Controller
         ]);
 
         $host = $smtp->host;
-        $port = (int)($smtp->port ?: 587);
-        $enc  = $smtp->encryption ?: ''; // '', 'tls', 'ssl'
+        $port = (int) ($smtp->port ?: 587);
+        $enc = $smtp->encryption ?: ''; // '', 'tls', 'ssl'
 
         if (empty($host) || empty($port)) {
             return redirect()->route('settings.smtp.edit')->with('error', 'SMTP host/port are required.');
@@ -108,11 +108,11 @@ class SmtpSettingsController extends Controller
 
             $scheme = ($enc === 'ssl') ? 'smtps' : 'smtp';
 
-            $dsn = $scheme . '://';
+            $dsn = $scheme.'://';
             if ($user !== '' || $pass !== '') {
-                $dsn .= rawurlencode($user) . ':' . rawurlencode($pass) . '@';
+                $dsn .= rawurlencode($user).':'.rawurlencode($pass).'@';
             }
-            $dsn .= $host . ':' . $port;
+            $dsn .= $host.':'.$port;
 
             if ($enc === 'tls') {
                 // STARTTLS
@@ -123,13 +123,13 @@ class SmtpSettingsController extends Controller
             $mailer = new Mailer($transport);
 
             $fromAddress = $smtp->from_address ?: config('mail.from.address') ?: 'no-reply@example.com';
-            $fromName    = $smtp->from_name ?: config('mail.from.name') ?: 'Portal';
+            $fromName = $smtp->from_name ?: config('mail.from.name') ?: 'Portal';
 
-            $email = (new Email())
+            $email = (new Email)
                 ->from(sprintf('%s <%s>', $fromName, $fromAddress))
                 ->to($data['test_email'])
                 ->subject('SMTP Test Email')
-                ->text("This is a test email from your portal.\n\nTime: " . now()->format('Y-m-d H:i:s'));
+                ->text("This is a test email from your portal.\n\nTime: ".now()->format('Y-m-d H:i:s'));
 
             $mailer->send($email);
 
@@ -138,7 +138,7 @@ class SmtpSettingsController extends Controller
 
             return redirect()->route('settings.smtp.edit')->with('success', 'Test email sent successfully.');
         } catch (\Throwable $e) {
-            return redirect()->route('settings.smtp.edit')->with('error', 'SMTP test failed: ' . $e->getMessage());
+            return redirect()->route('settings.smtp.edit')->with('error', 'SMTP test failed: '.$e->getMessage());
         }
     }
 }

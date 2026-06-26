@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -34,7 +34,7 @@ return new class extends Migration
             [$db, $table, $constraintName]
         );
 
-        return !empty($rows);
+        return ! empty($rows);
     }
 
     private function columnExists(string $table, string $column): bool
@@ -48,22 +48,22 @@ return new class extends Migration
 
         // Ensure columns exist first (if your project expects these)
         Schema::table($table, function (Blueprint $t) {
-            if (!Schema::hasColumn('assets', 'asset_type_id')) {
+            if (! Schema::hasColumn('assets', 'asset_type_id')) {
                 $t->unsignedBigInteger('asset_type_id')->nullable()->after('id');
             }
-            if (!Schema::hasColumn('assets', 'owner_entity_id')) {
+            if (! Schema::hasColumn('assets', 'owner_entity_id')) {
                 $t->unsignedBigInteger('owner_entity_id')->nullable()->after('asset_type_id');
             }
         });
 
         // FK (re)attachment below is MySQL/MariaDB-only.
-        if (!$this->isMysql()) {
+        if (! $this->isMysql()) {
             return;
         }
 
         // Add FK for asset_type_id if missing
         $fk1 = 'assets_asset_type_id_foreign';
-        if ($this->columnExists($table, 'asset_type_id') && !$this->fkExists($table, $fk1)) {
+        if ($this->columnExists($table, 'asset_type_id') && ! $this->fkExists($table, $fk1)) {
             Schema::table($table, function (Blueprint $t) {
                 $t->foreign('asset_type_id', 'assets_asset_type_id_foreign')
                     ->references('id')->on('asset_types')
@@ -73,7 +73,7 @@ return new class extends Migration
 
         // Add FK for owner_entity_id if missing
         $fk2 = 'assets_owner_entity_id_foreign';
-        if ($this->columnExists($table, 'owner_entity_id') && !$this->fkExists($table, $fk2)) {
+        if ($this->columnExists($table, 'owner_entity_id') && ! $this->fkExists($table, $fk2)) {
             Schema::table($table, function (Blueprint $t) {
                 $t->foreign('owner_entity_id', 'assets_owner_entity_id_foreign')
                     ->references('id')->on('owner_entities')
@@ -86,15 +86,15 @@ return new class extends Migration
     {
         $table = 'assets';
 
-        if (!$this->isMysql()) {
+        if (! $this->isMysql()) {
             return;
         }
 
         // Drop FK only if exists (safe)
         foreach ([
-                     'assets_asset_type_id_foreign',
-                     'assets_owner_entity_id_foreign',
-                 ] as $fk) {
+            'assets_asset_type_id_foreign',
+            'assets_owner_entity_id_foreign',
+        ] as $fk) {
             if ($this->fkExists($table, $fk)) {
                 Schema::table($table, function (Blueprint $t) use ($fk) {
                     $t->dropForeign($fk);

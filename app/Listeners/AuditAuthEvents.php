@@ -3,9 +3,9 @@
 namespace App\Listeners;
 
 use App\Support\Audit;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
-use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 
@@ -18,6 +18,7 @@ class AuditAuthEvents
                 Audit::log('auth.login', $event->user, null, [
                     'guard' => $event->guard ?? 'web',
                 ]);
+
                 return;
             }
 
@@ -25,6 +26,7 @@ class AuditAuthEvents
                 Audit::log('auth.logout', $event->user, null, [
                     'guard' => $event->guard ?? 'web',
                 ]);
+
                 return;
             }
 
@@ -34,16 +36,19 @@ class AuditAuthEvents
                     'guard' => $event->guard ?? 'web',
                     'email' => $event->credentials['email'] ?? null,
                 ]);
+
                 return;
             }
 
             if ($event instanceof Registered) {
                 Audit::log('auth.registered', $event->user, null, []);
+
                 return;
             }
 
             if ($event instanceof PasswordReset) {
                 Audit::log('auth.password_reset', $event->user, null, []);
+
                 return;
             }
         } catch (\Throwable $e) {

@@ -22,13 +22,13 @@ class PortalPermissionsSeeder extends Seeder
             ]);
 
             // Ensure default roles exist + have permission
-            $defaultRoles = (array)($meta['default_roles'] ?? []);
+            $defaultRoles = (array) ($meta['default_roles'] ?? []);
             foreach ($defaultRoles as $roleName) {
                 $role = Role::firstOrCreate([
                     'name' => $roleName,
                     'guard_name' => $guard,
                 ]);
-                if (!$role->hasPermissionTo($permission)) {
+                if (! $role->hasPermissionTo($permission)) {
                     $role->givePermissionTo($permission);
                 }
             }

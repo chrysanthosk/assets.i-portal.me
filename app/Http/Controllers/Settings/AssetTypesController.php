@@ -13,21 +13,22 @@ class AssetTypesController extends Controller
     public function index()
     {
         $types = AssetType::orderBy('sort_order')->orderBy('name')->get();
+
         return view('settings.asset_types', compact('types'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:80','unique:asset_types,name'],
-            'is_active' => ['nullable','in:0,1'],
-            'sort_order' => ['nullable','integer','min:0','max:100000'],
+            'name' => ['required', 'string', 'max:80', 'unique:asset_types,name'],
+            'is_active' => ['nullable', 'in:0,1'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
 
         $type = AssetType::create([
             'name' => $data['name'],
-            'is_active' => (int)($data['is_active'] ?? 1) === 1,
-            'sort_order' => (int)($data['sort_order'] ?? 0),
+            'is_active' => (int) ($data['is_active'] ?? 1) === 1,
+            'sort_order' => (int) ($data['sort_order'] ?? 0),
         ]);
 
         Audit::log('asset_type.created', $type, null, $type->toArray());
@@ -40,15 +41,15 @@ class AssetTypesController extends Controller
         $old = $assetType->toArray();
 
         $data = $request->validate([
-            'name' => ['required','string','max:80','unique:asset_types,name,'.$assetType->id],
-            'is_active' => ['nullable','in:0,1'],
-            'sort_order' => ['nullable','integer','min:0','max:100000'],
+            'name' => ['required', 'string', 'max:80', 'unique:asset_types,name,'.$assetType->id],
+            'is_active' => ['nullable', 'in:0,1'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
 
         $assetType->update([
             'name' => $data['name'],
-            'is_active' => (int)($data['is_active'] ?? 1) === 1,
-            'sort_order' => (int)($data['sort_order'] ?? 0),
+            'is_active' => (int) ($data['is_active'] ?? 1) === 1,
+            'sort_order' => (int) ($data['sort_order'] ?? 0),
         ]);
 
         Audit::log('asset_type.updated', $assetType, $old, $assetType->fresh()->toArray());

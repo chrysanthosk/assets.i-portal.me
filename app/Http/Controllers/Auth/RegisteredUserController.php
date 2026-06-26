@@ -69,7 +69,7 @@ class RegisteredUserController extends Controller
         $candidate = $base;
         $i = 1;
         while (User::where('username', $candidate)->exists()) {
-            $candidate = $base . $i;
+            $candidate = $base.$i;
             $i++;
         }
 

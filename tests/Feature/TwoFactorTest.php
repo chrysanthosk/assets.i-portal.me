@@ -21,7 +21,7 @@ class TwoFactorTest extends TestCase
         $secret = session('2fa:setup:secret');
         $this->assertNotEmpty($secret);
 
-        $otp = (new Google2FA())->getCurrentOtp($secret);
+        $otp = (new Google2FA)->getCurrentOtp($secret);
 
         $this->actingAs($user)
             ->post(route('profile.2fa.confirm'), ['code' => $otp])
@@ -35,12 +35,12 @@ class TwoFactorTest extends TestCase
 
     public function test_challenge_with_valid_otp_logs_in_and_sets_gate(): void
     {
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
         $secret = $google2fa->generateSecretKey();
 
         $user = User::factory()->create([
             'two_factor_enabled' => true,
-            'two_factor_secret'  => Crypt::encryptString($secret),
+            'two_factor_secret' => Crypt::encryptString($secret),
         ]);
 
         // The 2FA gate stashes the pending user id before challenging.
@@ -55,12 +55,12 @@ class TwoFactorTest extends TestCase
 
     public function test_recovery_code_logs_in_and_is_single_use(): void
     {
-        $secret = (new Google2FA())->generateSecretKey();
-        $codes  = ['AAAA-BBBB-CCCC', 'DDDD-EEEE-FFFF'];
+        $secret = (new Google2FA)->generateSecretKey();
+        $codes = ['AAAA-BBBB-CCCC', 'DDDD-EEEE-FFFF'];
 
         $user = User::factory()->create([
-            'two_factor_enabled'        => true,
-            'two_factor_secret'         => Crypt::encryptString($secret),
+            'two_factor_enabled' => true,
+            'two_factor_secret' => Crypt::encryptString($secret),
             'two_factor_recovery_codes' => Crypt::encryptString(json_encode($codes)),
         ]);
 
@@ -81,11 +81,11 @@ class TwoFactorTest extends TestCase
 
     public function test_challenge_with_invalid_code_does_not_authenticate(): void
     {
-        $secret = (new Google2FA())->generateSecretKey();
+        $secret = (new Google2FA)->generateSecretKey();
 
         $user = User::factory()->create([
             'two_factor_enabled' => true,
-            'two_factor_secret'  => Crypt::encryptString($secret),
+            'two_factor_secret' => Crypt::encryptString($secret),
         ]);
 
         session(['2fa:user:id' => $user->id]);

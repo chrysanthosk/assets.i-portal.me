@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, bcmath, intl, gd, zip, pdo_sqlite, exif, pcntl
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Check code style (Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Run tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test

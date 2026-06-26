@@ -25,7 +25,7 @@ class TwoFactorController extends Controller
     public function challengeForm(Request $request)
     {
         // If no pending 2FA user in session, go back to login.
-        if (!$request->session()->has('2fa:user:id')) {
+        if (! $request->session()->has('2fa:user:id')) {
             return redirect()->route('login');
         }
 
@@ -42,10 +42,10 @@ class TwoFactorController extends Controller
             'code' => ['required', 'string', 'max:19'],
         ]);
 
-        $userId  = $request->session()->get('2fa:user:id');
+        $userId = $request->session()->get('2fa:user:id');
         $remember = (bool) $request->session()->get('2fa:remember', false);
 
-        if (!$userId) {
+        if (! $userId) {
             return redirect()->route('login');
         }
 
@@ -53,7 +53,7 @@ class TwoFactorController extends Controller
         $user = User::query()->findOrFail($userId);
 
         // If the user disabled 2FA while the challenge was pending, just log in.
-        if (!((bool) ($user->two_factor_enabled ?? false)) || empty($user->two_factor_secret)) {
+        if (! ((bool) ($user->two_factor_enabled ?? false)) || empty($user->two_factor_secret)) {
             Auth::login($user, $remember);
             $request->session()->put(self::VERIFIED_KEY, true);
             $request->session()->forget(['2fa:user:id', '2fa:remember']);
@@ -61,7 +61,7 @@ class TwoFactorController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
-        $code   = trim((string) $request->input('code'));
+        $code = trim((string) $request->input('code'));
         $secret = $this->getDecryptedSecret($user->two_factor_secret);
 
         if (empty($secret)) {
@@ -77,11 +77,11 @@ class TwoFactorController extends Controller
 
         // Try the rolling OTP first (allow a small clock-drift window), then
         // fall back to a one-time recovery code.
-        $otpCode  = preg_replace('/\s+/', '', $code);
-        $otpOk    = strlen($otpCode) <= 6 && $google2fa->verifyKey($secret, $otpCode, 2);
+        $otpCode = preg_replace('/\s+/', '', $code);
+        $otpOk = strlen($otpCode) <= 6 && $google2fa->verifyKey($secret, $otpCode, 2);
         $recovery = $otpOk ? false : $this->consumeRecoveryCode($user, $code);
 
-        if (!$otpOk && !$recovery) {
+        if (! $otpOk && ! $recovery) {
             Audit::log('2fa.challenge_failed', $user);
 
             return back()->withErrors(['code' => 'Invalid authentication code.']);
@@ -107,14 +107,14 @@ class TwoFactorController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if (($user->two_factor_enabled ?? false) && !empty($user->two_factor_secret)) {
+        if (($user->two_factor_enabled ?? false) && ! empty($user->two_factor_secret)) {
             return redirect()->route('profile.edit')->with('status', '2FA is already enabled.');
         }
 
         /** @var Google2FA $google2fa */
         $google2fa = app(Google2FA::class);
 
-        $secret   = $google2fa->generateSecretKey(32);
+        $secret = $google2fa->generateSecretKey(32);
         $recovery = $this->generateRecoveryCodes();
 
         // Hold the pending setup in the session until confirmation.
@@ -125,9 +125,9 @@ class TwoFactorController extends Controller
         $qrUrl = $google2fa->getQRCodeUrl(config('app.name'), $label, $secret);
 
         return view('auth.two_factor_setup', [
-            'secret'        => $secret,
+            'secret' => $secret,
             'recoveryCodes' => $recovery,
-            'qrUrl'         => $qrUrl,
+            'qrUrl' => $qrUrl,
         ]);
     }
 
@@ -144,10 +144,10 @@ class TwoFactorController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $secret   = $request->session()->get('2fa:setup:secret');
+        $secret = $request->session()->get('2fa:setup:secret');
         $recovery = $request->session()->get('2fa:setup:recovery');
 
-        if (!$secret || !$recovery) {
+        if (! $secret || ! $recovery) {
             return redirect()->route('profile.edit')
                 ->withErrors(['two_factor' => '2FA setup session expired. Please try enabling again.']);
         }
@@ -157,13 +157,13 @@ class TwoFactorController extends Controller
 
         $code = preg_replace('/\s+/', '', (string) $request->input('code'));
 
-        if (!$google2fa->verifyKey($secret, $code, 2)) {
+        if (! $google2fa->verifyKey($secret, $code, 2)) {
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
-        $user->two_factor_enabled         = true;
-        $user->two_factor_secret          = $this->encrypt2faSecret($secret);
-        $user->two_factor_recovery_codes  = $this->encryptRecoveryCodes($recovery);
+        $user->two_factor_enabled = true;
+        $user->two_factor_secret = $this->encrypt2faSecret($secret);
+        $user->two_factor_recovery_codes = $this->encryptRecoveryCodes($recovery);
         $user->save();
 
         // Show the recovery codes exactly once.
@@ -183,7 +183,7 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'current_password' => ['required'],
-            'code'             => ['required', 'string', 'max:19'],
+            'code' => ['required', 'string', 'max:19'],
         ]);
 
         /** @var User $user */
@@ -192,27 +192,27 @@ class TwoFactorController extends Controller
         $passwordOk = Auth::validate(['email' => $user->email, 'password' => $request->input('current_password')])
             || Auth::validate(['username' => $user->username, 'password' => $request->input('current_password')]);
 
-        if (!$passwordOk) {
+        if (! $passwordOk) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        if (!($user->two_factor_enabled ?? false) || empty($user->two_factor_secret)) {
+        if (! ($user->two_factor_enabled ?? false) || empty($user->two_factor_secret)) {
             return redirect()->route('profile.edit')->with('status', '2FA is already disabled.');
         }
 
         $secret = $this->getDecryptedSecret($user->two_factor_secret);
-        $code   = trim((string) $request->input('code'));
+        $code = trim((string) $request->input('code'));
 
         $otpCode = preg_replace('/\s+/', '', $code);
-        $otpOk   = strlen($otpCode) <= 6 && app(Google2FA::class)->verifyKey((string) $secret, $otpCode, 2);
+        $otpOk = strlen($otpCode) <= 6 && app(Google2FA::class)->verifyKey((string) $secret, $otpCode, 2);
 
         // A valid OTP or recovery code is required to disable.
-        if (!$otpOk && !$this->consumeRecoveryCode($user, $code)) {
+        if (! $otpOk && ! $this->consumeRecoveryCode($user, $code)) {
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
-        $user->two_factor_enabled        = false;
-        $user->two_factor_secret         = null;
+        $user->two_factor_enabled = false;
+        $user->two_factor_secret = null;
         $user->two_factor_recovery_codes = null;
         $user->save();
 
@@ -232,7 +232,7 @@ class TwoFactorController extends Controller
         $codes = [];
         for ($i = 0; $i < $count; $i++) {
             // e.g. ABCD-EFGH-IJKL
-            $codes[] = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
+            $codes[] = strtoupper(Str::random(4).'-'.Str::random(4).'-'.Str::random(4));
         }
 
         return $codes;
@@ -255,7 +255,7 @@ class TwoFactorController extends Controller
 
         $remaining = array_values(array_filter(
             $codes,
-            static fn ($stored) => !hash_equals(strtoupper((string) $stored), $code)
+            static fn ($stored) => ! hash_equals(strtoupper((string) $stored), $code)
         ));
 
         // No code was removed -> the supplied code did not match.
@@ -304,7 +304,7 @@ class TwoFactorController extends Controller
      */
     private function getDecryptedSecret(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 

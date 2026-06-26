@@ -21,28 +21,31 @@ class MakeAdminUser extends Command
 
     public function handle(): int
     {
-        $name = (string)($this->option('name') ?: $this->ask('Admin name', 'Admin'));
-        $email = (string)($this->option('email') ?: $this->ask('Admin email'));
-        $usernameOpt = (string)($this->option('username') ?: '');
+        $name = (string) ($this->option('name') ?: $this->ask('Admin name', 'Admin'));
+        $email = (string) ($this->option('email') ?: $this->ask('Admin email'));
+        $usernameOpt = (string) ($this->option('username') ?: '');
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->error('Invalid email.');
+
             return self::FAILURE;
         }
 
-        $password = (string)($this->option('password') ?: '');
+        $password = (string) ($this->option('password') ?: '');
         if ($password === '') {
-            $password = (string)$this->secret('Admin password (min 10 chars)');
-            $confirm  = (string)$this->secret('Confirm password');
+            $password = (string) $this->secret('Admin password (min 10 chars)');
+            $confirm = (string) $this->secret('Confirm password');
 
             if ($password !== $confirm) {
                 $this->error('Passwords do not match.');
+
                 return self::FAILURE;
             }
         }
 
         if (mb_strlen($password) < 10) {
             $this->error('Validation failed: The password field must be at least 10 characters.');
+
             return self::FAILURE;
         }
 
@@ -58,7 +61,7 @@ class MakeAdminUser extends Command
             $baseUsername = 'admin';
         }
 
-        $force = (bool)$this->option('force');
+        $force = (bool) $this->option('force');
 
         // Find existing user by email or username
         $user = User::query()
@@ -66,8 +69,9 @@ class MakeAdminUser extends Command
             ->orWhere('username', $baseUsername)
             ->first();
 
-        if ($user && !$force) {
+        if ($user && ! $force) {
             $this->error("User already exists (id={$user->id}). Re-run with --force to update.");
+
             return self::FAILURE;
         }
 
@@ -75,8 +79,8 @@ class MakeAdminUser extends Command
         $username = $this->uniqueUsername($baseUsername, $user?->id);
 
         // Create/update
-        if (!$user) {
-            $user = new User();
+        if (! $user) {
+            $user = new User;
         }
 
         $user->name = $name;
@@ -88,16 +92,16 @@ class MakeAdminUser extends Command
 
         // Ensure Admin role exists, assign it
         $role = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
-        if (!$user->hasRole($role)) {
+        if (! $user->hasRole($role)) {
             $user->assignRole($role);
         }
 
-        $this->info("Admin user ready:");
+        $this->info('Admin user ready:');
         $this->line(" - id: {$user->id}");
         $this->line(" - name: {$user->name}");
         $this->line(" - email: {$user->email}");
         $this->line(" - username: {$user->username}");
-        $this->line(" - role: Admin");
+        $this->line(' - role: Admin');
 
         return self::SUCCESS;
     }
@@ -110,7 +114,7 @@ class MakeAdminUser extends Command
             ->trim('_')
             ->limit(30, '');
 
-        return (string)$v;
+        return (string) $v;
     }
 
     private function uniqueUsername(string $base, ?int $ignoreUserId = null): string
@@ -124,14 +128,14 @@ class MakeAdminUser extends Command
                 $q->where('id', '!=', $ignoreUserId);
             }
 
-            if (!$q->exists()) {
+            if (! $q->exists()) {
                 return $candidate;
             }
 
             $i++;
-            $suffix = (string)$i;
+            $suffix = (string) $i;
             $maxBaseLen = max(1, 30 - (1 + strlen($suffix))); // 30 total; "_" + suffix
-            $candidate = Str::limit($base, $maxBaseLen, '') . '_' . $suffix;
+            $candidate = Str::limit($base, $maxBaseLen, '').'_'.$suffix;
         }
     }
 }
