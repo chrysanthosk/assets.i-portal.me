@@ -187,6 +187,8 @@ Username: admin@example.com
 Password: ChangeMe123!
 ```
 
+> Login is by the **username** field. The bare-metal seeder sets the username
+> equal to the email (`admin@example.com`); the Docker bootstrap uses `admin`.
 > **Important:** Change this password immediately after first login.
 
 ### 6. Build frontend assets
@@ -270,6 +272,28 @@ docker compose exec app php artisan make:admin
 
 > ⚠️ Avoid `migrate:fresh` / `migrate:fresh --seed` in production / Docker — it
 > **drops all tables**. Normal deploys use additive `migrate --force`.
+
+---
+
+## Testing
+
+```bash
+# Unit/feature tests (PHPUnit, in-memory SQLite)
+php artisan test
+./vendor/bin/pint --test          # code style (also enforced by CI)
+```
+
+**End-to-end smoke tests** (`scripts/e2e/`) drive the running Docker stack over
+HTTP to verify the main journeys — money flow (assets → tenants → agreements →
+payments → expenses → FX → P&L + CSV), documents (type/expiry + reminders), and
+ops (`/health`, backups, 2FA enforcement):
+
+```bash
+docker compose up -d --build
+./scripts/e2e/run-all.sh          # BASE_URL / ADMIN_USER / ADMIN_PASS overridable
+```
+
+See [`scripts/e2e/README.md`](scripts/e2e/README.md) for details.
 
 ---
 

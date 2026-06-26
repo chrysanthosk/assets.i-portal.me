@@ -80,6 +80,7 @@ scripts/
   install.sh       # interactive installer — asks: 1) Regular (bare-metal)  2) Docker
   new_deploy.sh    # interactive deploy/update — asks: 1) Regular  2) Docker
   backup-db.sh     # gzip mysqldump of the Dockerised DB with retention
+  e2e/             # HTTP end-to-end smoke scripts (money/documents/ops) + run-all.sh
   uninstall.sh
 docker/
   entrypoint.sh                 # app container bootstrap (key, wait-for-db, migrate, seed, optimize)
@@ -179,5 +180,7 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
   (e.g. `information_schema`, `ALTER … ADD FOREIGN KEY`) behind a driver check.
 - **CI runs `pint --test`** — keep code Pint-clean (`./vendor/bin/pint` before commit).
 - **Tests**: `tests/Feature` + `tests/Unit` (PHPUnit, SQLite `:memory:`). Run `php artisan test`.
+  End-to-end HTTP smoke flows live in `scripts/e2e/` (`./scripts/e2e/run-all.sh`,
+  needs the Docker stack up) — keep them in sync when adding modules.
 - Don't introduce a new framework without need; the front-end is **Bootstrap/AdminLTE only**
   (no Tailwind/Alpine). Match the existing Laravel idioms and surrounding style.
