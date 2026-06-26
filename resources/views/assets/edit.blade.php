@@ -74,6 +74,24 @@
                         @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
+                    <div class="col-md-5">
+                        <label class="form-label">City</label>
+                        <input class="form-control @error('city') is-invalid @enderror" name="city" value="{{ old('city', $asset->city) }}">
+                        @error('city') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Postcode</label>
+                        <input class="form-control @error('postcode') is-invalid @enderror" name="postcode" value="{{ old('postcode', $asset->postcode) }}">
+                        @error('postcode') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Country</label>
+                        <input class="form-control @error('country') is-invalid @enderror" name="country" value="{{ old('country', $asset->country) }}">
+                        @error('country') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
                     {{-- =========================
                     PURCHASE
                     ========================= --}}
