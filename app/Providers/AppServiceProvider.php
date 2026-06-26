@@ -74,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Failed::class, function (Failed $event) {
             Audit::log('auth.login_failed', $event->user, null, [
-                'guard'    => $event->guard ?? 'web',
+                'guard' => $event->guard ?? 'web',
                 // You authenticate by username, not email
                 'username' => $event->credentials['username'] ?? null,
             ]);

@@ -14,13 +14,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assets', function (Blueprint $table) {
-            if (!Schema::hasColumn('assets', 'city')) {
+            if (! Schema::hasColumn('assets', 'city')) {
                 $table->string('city', 100)->nullable()->after('address');
             }
-            if (!Schema::hasColumn('assets', 'postcode')) {
+            if (! Schema::hasColumn('assets', 'postcode')) {
                 $table->string('postcode', 20)->nullable()->after('city');
             }
-            if (!Schema::hasColumn('assets', 'country')) {
+            if (! Schema::hasColumn('assets', 'country')) {
                 $table->string('country', 100)->nullable()->after('postcode');
             }
         });

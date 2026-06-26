@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\OwnerEntity;
+use Illuminate\Database\Seeder;
 
 class OwnerEntitySeeder extends Seeder
 {

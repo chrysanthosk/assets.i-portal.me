@@ -35,7 +35,9 @@ class SmtpSetting extends Model
 
     public function getPasswordPlain(): ?string
     {
-        if (!$this->password) return null;
+        if (! $this->password) {
+            return null;
+        }
 
         try {
             return Crypt::decryptString($this->password);

@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class PortalBootstrapSeeder extends Seeder
 {
@@ -22,7 +22,7 @@ class PortalBootstrapSeeder extends Seeder
 
         // 2) Ensure default roles exist
         $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
-        $userRole  = Role::firstOrCreate(['name' => 'User', 'guard_name' => 'web']);
+        $userRole = Role::firstOrCreate(['name' => 'User', 'guard_name' => 'web']);
 
         // 3) Apply defaults:
         // Admin always gets ALL permissions
@@ -44,7 +44,7 @@ class PortalBootstrapSeeder extends Seeder
         // 4) For any OTHER existing roles, add new permissions that should be default for them (without removing existing)
         $allRoles = Role::all();
         foreach ($allRoles as $role) {
-            if (in_array($role->name, ['Admin','User'], true)) {
+            if (in_array($role->name, ['Admin', 'User'], true)) {
                 continue;
             }
 
@@ -52,7 +52,7 @@ class PortalBootstrapSeeder extends Seeder
 
             foreach ($registry as $permName => $meta) {
                 $defaultRoles = $meta['default_roles'] ?? [];
-                if (in_array($role->name, $defaultRoles, true) && !in_array($permName, $rolePerms, true)) {
+                if (in_array($role->name, $defaultRoles, true) && ! in_array($permName, $rolePerms, true)) {
                     $rolePerms[] = $permName;
                 }
             }

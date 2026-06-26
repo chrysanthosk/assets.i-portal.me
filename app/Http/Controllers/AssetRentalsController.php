@@ -18,7 +18,7 @@ class AssetRentalsController extends Controller
 
         $rentals = AssetRental::query()
             ->with('asset')
-            ->when($assetId, fn($q) => $q->where('asset_id', $assetId))
+            ->when($assetId, fn ($q) => $q->where('asset_id', $assetId))
             ->orderBy('year', 'desc')
             ->orderBy('month', 'desc')
             ->paginate(15)
@@ -34,23 +34,23 @@ class AssetRentalsController extends Controller
     public function storeOrUpdate(Request $request)
     {
         $data = $request->validate([
-            'asset_id' => ['required','integer','exists:assets,id'],
+            'asset_id' => ['required', 'integer', 'exists:assets,id'],
 
-            'tenant_name' => ['nullable','string','max:120'],
-            'agreement_start_date' => ['required','date'],
-            'agreement_end_date' => ['nullable','date','after_or_equal:agreement_start_date'],
-            'rent_type' => ['required','in:Airbnb,Long-term,Other'],
-            'is_active' => ['required','in:0,1'],
+            'tenant_name' => ['nullable', 'string', 'max:120'],
+            'agreement_start_date' => ['required', 'date'],
+            'agreement_end_date' => ['nullable', 'date', 'after_or_equal:agreement_start_date'],
+            'rent_type' => ['required', 'in:Airbnb,Long-term,Other'],
+            'is_active' => ['required', 'in:0,1'],
 
-            'amount' => ['required','numeric','min:0'],
-            'currency' => ['required','string','max:10'],
-            'channel' => ['nullable','string','max:100'],
-            'notes' => ['nullable','string'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'],
+            'channel' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         $start = Carbon::parse($data['agreement_start_date']);
-        $year  = (int)$start->format('Y');
-        $month = (int)$start->format('m');
+        $year = (int) $start->format('Y');
+        $month = (int) $start->format('m');
 
         $rental = AssetRental::create([
             'asset_id' => $data['asset_id'],
@@ -63,7 +63,7 @@ class AssetRentalsController extends Controller
             'agreement_start_date' => $data['agreement_start_date'],
             'agreement_end_date' => $data['agreement_end_date'] ?? null,
             'rent_type' => $data['rent_type'],
-            'is_active' => (int)$data['is_active'] === 1,
+            'is_active' => (int) $data['is_active'] === 1,
 
             'amount' => $data['amount'],
             'currency' => $data['currency'],
@@ -91,23 +91,23 @@ class AssetRentalsController extends Controller
         $old = $rental->toArray();
 
         $data = $request->validate([
-            'asset_id' => ['required','integer','exists:assets,id'],
+            'asset_id' => ['required', 'integer', 'exists:assets,id'],
 
-            'tenant_name' => ['nullable','string','max:120'],
-            'agreement_start_date' => ['required','date'],
-            'agreement_end_date' => ['nullable','date','after_or_equal:agreement_start_date'],
-            'rent_type' => ['required','in:Airbnb,Long-term,Other'],
-            'is_active' => ['required','in:0,1'],
+            'tenant_name' => ['nullable', 'string', 'max:120'],
+            'agreement_start_date' => ['required', 'date'],
+            'agreement_end_date' => ['nullable', 'date', 'after_or_equal:agreement_start_date'],
+            'rent_type' => ['required', 'in:Airbnb,Long-term,Other'],
+            'is_active' => ['required', 'in:0,1'],
 
-            'amount' => ['required','numeric','min:0'],
-            'currency' => ['required','string','max:10'],
-            'channel' => ['nullable','string','max:100'],
-            'notes' => ['nullable','string'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'],
+            'channel' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         $start = Carbon::parse($data['agreement_start_date']);
-        $year  = (int)$start->format('Y');
-        $month = (int)$start->format('m');
+        $year = (int) $start->format('Y');
+        $month = (int) $start->format('m');
 
         $rental->update([
             'asset_id' => $data['asset_id'],
@@ -120,7 +120,7 @@ class AssetRentalsController extends Controller
             'agreement_start_date' => $data['agreement_start_date'],
             'agreement_end_date' => $data['agreement_end_date'] ?? null,
             'rent_type' => $data['rent_type'],
-            'is_active' => (int)$data['is_active'] === 1,
+            'is_active' => (int) $data['is_active'] === 1,
 
             'amount' => $data['amount'],
             'currency' => $data['currency'],

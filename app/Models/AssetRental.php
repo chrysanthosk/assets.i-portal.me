@@ -30,11 +30,11 @@ class AssetRental extends Model
 
     protected $casts = [
         'agreement_start_date' => 'date',
-        'agreement_end_date'   => 'date',
-        'is_active'            => 'boolean',
-        'amount'               => 'decimal:2',
-        'year'                 => 'integer',
-        'month'                => 'integer',
+        'agreement_end_date' => 'date',
+        'is_active' => 'boolean',
+        'amount' => 'decimal:2',
+        'year' => 'integer',
+        'month' => 'integer',
     ];
 
     public function asset(): BelongsTo

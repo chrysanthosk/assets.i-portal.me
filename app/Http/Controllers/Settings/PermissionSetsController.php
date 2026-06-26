@@ -41,7 +41,7 @@ class PermissionSetsController extends Controller
     public function storeRole(Request $request)
     {
         $data = $request->validate([
-            'role_name' => ['required','string','max:50','unique:roles,name'],
+            'role_name' => ['required', 'string', 'max:50', 'unique:roles,name'],
         ]);
 
         $role = Role::create(['name' => $data['role_name']]);

@@ -12,24 +12,24 @@ return new class extends Migration
 
         Schema::table($table, function (Blueprint $tableBlueprint) use ($table) {
 
-            if (!Schema::hasColumn($table, 'agreement_start_date')) {
+            if (! Schema::hasColumn($table, 'agreement_start_date')) {
                 $tableBlueprint->date('agreement_start_date')->nullable()->after('month');
             }
 
-            if (!Schema::hasColumn($table, 'agreement_end_date')) {
+            if (! Schema::hasColumn($table, 'agreement_end_date')) {
                 $tableBlueprint->date('agreement_end_date')->nullable()->after('agreement_start_date');
             }
 
-            if (!Schema::hasColumn($table, 'tenant_name')) {
+            if (! Schema::hasColumn($table, 'tenant_name')) {
                 $tableBlueprint->string('tenant_name', 255)->nullable()->after('agreement_end_date');
             }
 
-            if (!Schema::hasColumn($table, 'rent_type')) {
+            if (! Schema::hasColumn($table, 'rent_type')) {
                 // Airbnb / Long-term (string to keep it flexible)
                 $tableBlueprint->string('rent_type', 30)->nullable()->after('tenant_name');
             }
 
-            if (!Schema::hasColumn($table, 'is_active')) {
+            if (! Schema::hasColumn($table, 'is_active')) {
                 // Optional but useful for dashboard logic:
                 $tableBlueprint->boolean('is_active')->default(true)->after('rent_type');
             }

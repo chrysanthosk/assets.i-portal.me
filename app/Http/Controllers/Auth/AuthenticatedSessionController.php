@@ -30,8 +30,8 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
 
         $twoFaEnabled = $user
-            && (bool)($user->two_factor_enabled ?? false)
-            && !empty($user->two_factor_secret);
+            && (bool) ($user->two_factor_enabled ?? false)
+            && ! empty($user->two_factor_secret);
 
         if ($twoFaEnabled) {
             // Stash pending login, then logout. User must pass 2FA first.

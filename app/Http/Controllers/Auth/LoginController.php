@@ -17,8 +17,8 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'username' => ['required','string'],
-            'password' => ['required','string'],
+            'username' => ['required', 'string'],
+            'password' => ['required', 'string'],
         ]);
 
         // Attempt auth by username
@@ -27,7 +27,7 @@ class LoginController extends Controller
             $request->boolean('remember')
         );
 
-        if (!$ok) {
+        if (! $ok) {
             throw ValidationException::withMessages([
                 'username' => __('auth.failed'),
             ]);

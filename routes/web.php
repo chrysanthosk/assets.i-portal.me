@@ -1,21 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\AssetDocumentsController;
+use App\Http\Controllers\AssetRentalsController;
+use App\Http\Controllers\AssetsController;
+use App\Http\Controllers\AssetTagsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Settings\PortalSettingsController;
-use App\Http\Controllers\Settings\UsersController;
-use App\Http\Controllers\Settings\PermissionSetsController;
-use App\Http\Controllers\Settings\SmtpSettingsController;
 use App\Http\Controllers\Settings\AssetTypesController;
 use App\Http\Controllers\Settings\OwnerEntitiesController;
+use App\Http\Controllers\Settings\PermissionSetsController;
+use App\Http\Controllers\Settings\PortalSettingsController;
+use App\Http\Controllers\Settings\SmtpSettingsController;
+use App\Http\Controllers\Settings\UsersController;
 use App\Http\Controllers\TwoFactorController;
-
-use App\Http\Controllers\AssetsController;
-use App\Http\Controllers\AssetRentalsController;
-use App\Http\Controllers\AssetTagsController;
-use App\Http\Controllers\AssetDocumentsController;
+use Illuminate\Support\Facades\Route;
 
 /**
  * 2FA challenge routes
@@ -263,4 +261,4 @@ Route::middleware(['auth', '2fa'])->group(function () {
     });
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

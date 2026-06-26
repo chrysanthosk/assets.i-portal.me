@@ -15,8 +15,8 @@ class EnsureTwoFactorIsVerified
 
         // Only enforce when 2FA is truly configured
         $requires2fa = $user
-            && (bool)($user->two_factor_enabled ?? false)
-            && !empty($user->two_factor_secret);
+            && (bool) ($user->two_factor_enabled ?? false)
+            && ! empty($user->two_factor_secret);
 
         if (! $requires2fa) {
             return $next($request);

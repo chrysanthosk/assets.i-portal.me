@@ -13,10 +13,10 @@ class AssetDocumentsController extends Controller
     public function store(Request $request, Asset $asset)
     {
         $data = $request->validate([
-            'notes' => ['nullable','string','max:500'],
+            'notes' => ['nullable', 'string', 'max:500'],
             // Whitelist by real content type (Laravel inspects the file itself,
             // not the client-supplied extension/MIME) and cap at 20MB.
-            'file'  => [
+            'file' => [
                 'required',
                 'file',
                 'max:20480',
@@ -67,7 +67,7 @@ class AssetDocumentsController extends Controller
 
     public function download(Asset $asset, AssetDocument $document)
     {
-        if ((int)$document->asset_id !== (int)$asset->id) {
+        if ((int) $document->asset_id !== (int) $asset->id) {
             abort(404);
         }
 
@@ -75,11 +75,11 @@ class AssetDocumentsController extends Controller
 
         $path = $document->path ?: $document->file_path;
 
-        if (!$path) {
+        if (! $path) {
             return back()->with('error', 'Document path is missing.');
         }
 
-        if (!Storage::disk($disk)->exists($path)) {
+        if (! Storage::disk($disk)->exists($path)) {
             return back()->with('error', 'File not found on storage.');
         }
 
@@ -91,7 +91,7 @@ class AssetDocumentsController extends Controller
 
     public function destroy(Asset $asset, AssetDocument $document)
     {
-        if ((int)$document->asset_id !== (int)$asset->id) {
+        if ((int) $document->asset_id !== (int) $asset->id) {
             abort(404);
         }
 

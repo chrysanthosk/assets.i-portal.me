@@ -28,12 +28,12 @@ class UsersController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'username' => ['required','string','max:255','unique:users,username'],
-            'email' => ['required','email','max:255','unique:users,email'],
-            'name' => ['required','string','max:255'],
-            'surname' => ['required','string','max:255'],
-            'role' => ['required','string','exists:roles,name'],
-            'password' => ['required','confirmed', Password::min(10)->letters()->mixedCase()->numbers()->symbols()],
+            'username' => ['required', 'string', 'max:255', 'unique:users,username'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'password' => ['required', 'confirmed', Password::min(10)->letters()->mixedCase()->numbers()->symbols()],
         ]);
 
         $user = User::create([
@@ -61,12 +61,12 @@ class UsersController extends Controller
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'username' => ['required','string','max:255','unique:users,username,'.$user->id],
-            'email' => ['required','email','max:255','unique:users,email,'.$user->id],
-            'name' => ['required','string','max:255'],
-            'surname' => ['required','string','max:255'],
-            'role' => ['required','string','exists:roles,name'],
-            'password' => ['nullable','confirmed', Password::min(10)->letters()->mixedCase()->numbers()->symbols()],
+            'username' => ['required', 'string', 'max:255', 'unique:users,username,'.$user->id],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'password' => ['nullable', 'confirmed', Password::min(10)->letters()->mixedCase()->numbers()->symbols()],
         ]);
 
         $user->username = $data['username'];
@@ -74,7 +74,7 @@ class UsersController extends Controller
         $user->name = $data['name'];
         $user->surname = $data['surname'];
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);
             $user->two_factor_enabled = false;
             $user->two_factor_secret = null;

@@ -23,7 +23,7 @@ class PortalSettingsController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
-            'portal_name' => ['required','string','max:60'],
+            'portal_name' => ['required', 'string', 'max:60'],
         ]);
 
         PortalSetting::updateOrCreate(

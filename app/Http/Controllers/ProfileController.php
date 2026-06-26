@@ -20,8 +20,8 @@ class ProfileController extends Controller
     public function updateName(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:255'],
-            'surname' => ['required','string','max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
         ]);
 
         $user = $request->user();
@@ -35,7 +35,7 @@ class ProfileController extends Controller
     public function requestEmailChange(Request $request)
     {
         $data = $request->validate([
-            'new_email' => ['required','email','max:255','unique:users,email'],
+            'new_email' => ['required', 'email', 'max:255', 'unique:users,email'],
         ]);
 
         $user = $request->user();
@@ -47,7 +47,7 @@ class ProfileController extends Controller
         $user->save();
 
         Mail::to($user->pending_email)->send(new EmailChangeOtpMail(
-            fullName: trim(($user->name ?? '') . ' ' . ($user->surname ?? '')) ?: $user->username,
+            fullName: trim(($user->name ?? '').' '.($user->surname ?? '')) ?: $user->username,
             otp: $otp
         ));
 
@@ -57,7 +57,7 @@ class ProfileController extends Controller
     public function confirmEmailChange(Request $request)
     {
         $data = $request->validate([
-            'otp' => ['required','digits:6'],
+            'otp' => ['required', 'digits:6'],
         ]);
 
         $user = $request->user();

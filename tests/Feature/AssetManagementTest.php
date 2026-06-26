@@ -44,11 +44,11 @@ class AssetManagementTest extends TestCase
         $this->actingAs($user)->get('/assets')->assertOk();
 
         $response = $this->actingAs($user)->post('/assets', [
-            'name'          => 'Flat 1',
+            'name' => 'Flat 1',
             'asset_type_id' => $type->id,
-            'currency'      => 'EUR',
-            'status'        => 'Vacant',
-            'city'          => 'Limassol',
+            'currency' => 'EUR',
+            'status' => 'Vacant',
+            'city' => 'Limassol',
         ]);
 
         $response->assertRedirect(route('assets.index'));
@@ -63,11 +63,11 @@ class AssetManagementTest extends TestCase
         $type = AssetType::create(['name' => 'House', 'is_active' => true, 'sort_order' => 1]);
 
         $this->actingAs($user)->post('/assets', [
-            'name'          => 'Seaside Villa',
+            'name' => 'Seaside Villa',
             'asset_type_id' => $type->id,
-            'currency'      => 'EUR',
-            'status'        => 'Vacant',
-            'city'          => 'Paphos',
+            'currency' => 'EUR',
+            'status' => 'Vacant',
+            'city' => 'Paphos',
         ]);
 
         $this->actingAs($user)

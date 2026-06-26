@@ -12,15 +12,15 @@ class AuditLogsController extends Controller
     public function index(Request $request)
     {
         // Filters
-        $q        = trim((string) $request->get('q', ''));
-        $userId   = $request->filled('user_id') ? (int) $request->get('user_id') : null;
-        $entity   = trim((string) $request->get('entity', ''));
-        $action   = trim((string) $request->get('action', ''));
+        $q = trim((string) $request->get('q', ''));
+        $userId = $request->filled('user_id') ? (int) $request->get('user_id') : null;
+        $entity = trim((string) $request->get('entity', ''));
+        $action = trim((string) $request->get('action', ''));
         $dateFrom = trim((string) $request->get('date_from', ''));
-        $dateTo   = trim((string) $request->get('date_to', ''));
+        $dateTo = trim((string) $request->get('date_to', ''));
 
         // For dropdowns
-        $users = User::orderBy('name')->get(['id','name','email']);
+        $users = User::orderBy('name')->get(['id', 'name', 'email']);
 
         // Distinct entities/actions (keep it light)
         $entities = AuditLog::query()
@@ -44,9 +44,9 @@ class AuditLogsController extends Controller
         // Query
         $logs = AuditLog::query()
             ->with('user:id,name,email')
-            ->when($userId, fn($qq) => $qq->where('user_id', $userId))
-            ->when($entity !== '', fn($qq) => $qq->where('entity', $entity))
-            ->when($action !== '', fn($qq) => $qq->where('action', $action))
+            ->when($userId, fn ($qq) => $qq->where('user_id', $userId))
+            ->when($entity !== '', fn ($qq) => $qq->where('entity', $entity))
+            ->when($action !== '', fn ($qq) => $qq->where('action', $action))
             ->when($q !== '', function ($qq) use ($q) {
                 $qq->where(function ($w) use ($q) {
                     $w->where('action', 'like', "%{$q}%")

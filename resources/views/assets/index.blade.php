@@ -36,12 +36,12 @@
       <table class="table table-sm align-middle">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>City</th>
-            <th class="text-end">Purchase Price</th>
-            <th>Title Deed</th>
-            <th class="text-end">Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Type</th>
+            <th scope="col">City</th>
+            <th scope="col" class="text-end">Purchase Price</th>
+            <th scope="col">Title Deed</th>
+            <th scope="col" class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -69,14 +69,33 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="text-center text-muted py-4">No assets found.</td>
+              <td colspan="6" class="text-center text-muted py-5">
+                @if(request('q'))
+                  No assets match “{{ request('q') }}”.
+                  <a href="{{ route('assets.index') }}">Clear search</a>.
+                @else
+                  <div class="mb-2">No assets yet.</div>
+                  @can('manage_assets')
+                    <a href="{{ route('assets.create') }}" class="btn btn-sm btn-primary">
+                      <i class="bi bi-plus-lg"></i> Add your first asset
+                    </a>
+                  @endcan
+                @endif
+              </td>
             </tr>
           @endforelse
         </tbody>
       </table>
     </div>
 
-    <div class="mt-3">
+    <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <small class="text-muted">
+        @if($assets->total())
+          Showing {{ $assets->firstItem() }}–{{ $assets->lastItem() }} of {{ $assets->total() }}
+        @else
+          0 results
+        @endif
+      </small>
       {{ $assets->links() }}
     </div>
   </div>
