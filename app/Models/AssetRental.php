@@ -47,4 +47,9 @@ class AssetRental extends Model
     {
         return $this->belongsTo(Tenant::class);
     }
+
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(RentalPayment::class);
+    }
 }

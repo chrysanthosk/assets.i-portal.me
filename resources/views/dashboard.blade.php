@@ -114,6 +114,29 @@
     </div>
   </div>
 
+  <!-- Outstanding payments / arrears -->
+  <div class="col-12 col-lg-3 mb-3">
+    <div class="card {{ ($overduePaymentsCount ?? 0) ? 'border-danger' : '' }}">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted text-uppercase small">Outstanding</div>
+            @forelse(($outstandingByCurrency ?? collect()) as $row)
+              <div class="fs-5 fw-semibold">{{ $row->currency }} {{ number_format((float) $row->total, 2) }}</div>
+            @empty
+              <div class="fs-5 fw-semibold text-muted">—</div>
+            @endforelse
+            <div class="small {{ ($overduePaymentsCount ?? 0) ? 'text-danger' : 'text-muted' }}">
+              {{ $overduePaymentsCount ?? 0 }} overdue
+              @can('manage_rental_payments') · <a href="{{ route('payments.index') }}">view</a> @endcan
+            </div>
+          </div>
+          <i class="bi bi-wallet2 fs-1 text-muted"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Monthly Income (Active agreements only) -->
   <div class="col-12 col-lg-6 mb-3">
     <div class="card">

@@ -73,6 +73,12 @@ return [
             'default_roles' => ['Admin'],
         ],
 
+        'manage_rental_payments' => [
+            'label' => 'Manage Rental Payments',
+            'group' => 'Assets',
+            'default_roles' => ['Admin'],
+        ],
+
         // --------------------
         // Asset Configuration
         // --------------------
