@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $portalName ?? 'i-portal' }}</title>
+    <title>{{ $portalName ?? 'assets.i-portal.me' }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -31,7 +31,7 @@
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
 
 @php
-$portalNameValue = \App\Models\PortalSetting::where('key','portal_name')->value('value') ?? 'i-portal';
+$portalNameValue = \App\Models\PortalSetting::where('key','portal_name')->value('value') ?? 'assets.i-portal.me';
 
 $settingsOpen = request()->is('settings*');
 $assetsOpen   = request()->is('assets*');

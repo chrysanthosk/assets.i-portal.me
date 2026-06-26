@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "chrysanthosk/assets.i-portal.me",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "assets.i-portal.me — Laravel 12 assets & rentals management portal.",
+    "keywords": ["laravel", "assets", "rentals", "portal"],
     "license": "MIT",
     "require": {
         "php": "^8.2",

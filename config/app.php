@@ -55,6 +55,15 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | When the app runs behind a reverse proxy / port mapping (e.g. Docker
+    | publishes :8080 -> container :80), the internal SERVER_PORT differs from
+    | the public one, so generated URLs would drop the public port. Enabling
+    | this forces all generated URLs to use APP_URL as their root.
+    */
+
+    'force_root_url' => env('APP_FORCE_ROOT_URL', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

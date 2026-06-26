@@ -14,14 +14,29 @@ class AssetDocumentsController extends Controller
     {
         $data = $request->validate([
             'notes' => ['nullable','string','max:500'],
-            'file'  => ['required','file','max:20480'], // 20MB
+            // Whitelist by real content type (Laravel inspects the file itself,
+            // not the client-supplied extension/MIME) and cap at 20MB.
+            'file'  => [
+                'required',
+                'file',
+                'max:20480',
+                'mimes:pdf,jpg,jpeg,png,webp,gif,doc,docx,xls,xlsx,csv,txt',
+            ],
         ]);
 
         $file = $request->file('file');
 
-        $disk = 'local'; // private-ish by convention; adjust if you add a dedicated disk
+        $disk = 'local'; // private disk (storage/app/private); never web-served
         $dir = "assets/{$asset->id}";
         $storedPath = $file->store($dir, $disk);
+
+        // Server-detected MIME (cannot be spoofed by the client) and a sanitised
+        // display name (strip any path components / null bytes).
+        $mime = $file->getMimeType() ?: 'application/octet-stream';
+        $originalName = mb_substr(basename(str_replace('\\', '/', (string) $file->getClientOriginalName())), 0, 255);
+        if ($originalName === '') {
+            $originalName = 'document';
+        }
 
         $doc = AssetDocument::create([
             'asset_id' => $asset->id,
@@ -30,18 +45,18 @@ class AssetDocumentsController extends Controller
             'title' => null,
             'notes' => $data['notes'] ?? null,
 
-            'original_name' => $file->getClientOriginalName(),
+            'original_name' => $originalName,
 
             'disk' => $disk,
 
             // new schema
             'path' => $storedPath,
-            'mime_type' => $file->getClientMimeType(),
+            'mime_type' => $mime,
             'size_bytes' => (int) $file->getSize(),
 
             // legacy schema compatibility
             'file_path' => $storedPath,
-            'mime' => $file->getClientMimeType(),
+            'mime' => $mime,
             'size' => (int) $file->getSize(),
         ]);
 

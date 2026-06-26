@@ -7,6 +7,17 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    /**
+     * These information_schema lookups + ALTER TABLE ADD FOREIGN KEY are only
+     * supported on MySQL / MariaDB. On other drivers (e.g. SQLite used in tests)
+     * the columns and their FKs are already created inline by an earlier
+     * migration, so this one is a no-op.
+     */
+    private function isMysql(): bool
+    {
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+    }
+
     private function fkExists(string $table, string $constraintName): bool
     {
         // Works for MySQL / MariaDB
@@ -45,6 +56,11 @@ return new class extends Migration
             }
         });
 
+        // FK (re)attachment below is MySQL/MariaDB-only.
+        if (!$this->isMysql()) {
+            return;
+        }
+
         // Add FK for asset_type_id if missing
         $fk1 = 'assets_asset_type_id_foreign';
         if ($this->columnExists($table, 'asset_type_id') && !$this->fkExists($table, $fk1)) {
@@ -69,6 +85,10 @@ return new class extends Migration
     public function down(): void
     {
         $table = 'assets';
+
+        if (!$this->isMysql()) {
+            return;
+        }
 
         // Drop FK only if exists (safe)
         foreach ([

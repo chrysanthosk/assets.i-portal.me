@@ -12,7 +12,7 @@ class PortalSettingsController extends Controller
     {
         $setting = PortalSetting::firstOrCreate(
             ['key' => 'portal_name'],
-            ['value' => 'i-portal']
+            ['value' => 'assets.i-portal.me']
         );
 
         return view('settings.portal', [

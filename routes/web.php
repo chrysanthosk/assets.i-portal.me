@@ -17,19 +17,15 @@ use App\Http\Controllers\AssetRentalsController;
 use App\Http\Controllers\AssetTagsController;
 use App\Http\Controllers\AssetDocumentsController;
 
-Route::get('/__whoami', function () {
-    return response()->json([
-        'project' => base_path(),
-        'time' => now()->toDateTimeString(),
-    ]);
-});
-
 /**
  * 2FA challenge routes
  * IMPORTANT: do NOT put these behind 'auth'. The controller guards using session '2fa:user:id'.
+ * The verify endpoint is throttled to blunt OTP / recovery-code brute force.
  */
 Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])->name('2fa.challenge');
-Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])->name('2fa.verify');
+Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])
+    ->middleware('throttle:6,1')
+    ->name('2fa.verify');
 
 /**
  * Root: only accessible after auth + 2fa
@@ -152,7 +148,9 @@ Route::middleware(['auth', '2fa'])->group(function () {
     // --------------------
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile/name', [ProfileController::class, 'updateName'])->name('profile.updateName');
-    Route::post('/profile/email/request', [ProfileController::class, 'requestEmailChange'])->name('profile.requestEmailChange');
+    Route::post('/profile/email/request', [ProfileController::class, 'requestEmailChange'])
+        ->middleware('throttle:5,15')
+        ->name('profile.requestEmailChange');
     Route::post('/profile/email/confirm', [ProfileController::class, 'confirmEmailChange'])->name('profile.confirmEmailChange');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
 

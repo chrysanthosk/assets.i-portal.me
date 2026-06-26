@@ -284,7 +284,59 @@ restart_services(){
   fi
 }
 
+#############################################
+# Docker deploy path
+#############################################
+docker_deploy(){
+  log "=== Docker deploy ==="
+
+  command_exists docker || die "Docker is not installed. See https://docs.docker.com/engine/install/"
+  docker compose version >/dev/null 2>&1 || die "Docker Compose v2 plugin not found."
+
+  local repo_root
+  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  [[ -f "${repo_root}/docker-compose.yml" ]] || die "docker-compose.yml not found at ${repo_root}"
+  [[ -f "${repo_root}/.env" ]] || warn "No .env at repo root; compose will fall back to defaults."
+
+  warn "The MySQL data volume (db_data) is preserved — your database is NOT dropped on deploy."
+
+  if yesno "Pull latest base images (includes latest MySQL)?" "n"; then
+    ( cd "$repo_root" && docker compose pull )
+  fi
+
+  log "Rebuilding the app image and recreating containers (named volumes preserved)..."
+  ( cd "$repo_root" && docker compose up -d --build )
+
+  # Migrations run automatically and additively (migrate --force) from the app
+  # entrypoint on container start — never migrate:fresh, so data is retained.
+  log "Migrations applied automatically via the app entrypoint (additive, --force)."
+
+  log "Pruning dangling images..."
+  docker image prune -f >/dev/null 2>&1 || true
+
+  ( cd "$repo_root" && docker compose ps )
+
+  log "DOCKER DEPLOY DONE."
+  echo "-------------------------------------------"
+  echo "Stack:        $(cd "$repo_root" && docker compose ps --services | tr '\n' ' ')"
+  echo "Database:     preserved (volume: db_data)"
+  echo "Logs:         docker compose logs -f app"
+  echo "-------------------------------------------"
+}
+
 main(){
+  log "=== assets.i-portal.me Deploy ==="
+  echo "Choose deployment type:"
+  echo "  1) Regular   — bare-metal update under /opt/<project>"
+  echo "  2) Docker    — rebuild & restart the docker compose stack"
+  local DEPLOY_TYPE=""
+  prompt DEPLOY_TYPE "Deployment type [1/2]" "1"
+
+  if [[ "$DEPLOY_TYPE" == "2" || "$DEPLOY_TYPE" =~ ^[Dd] ]]; then
+    docker_deploy
+    return
+  fi
+
   require_root
   detect_os_family
 

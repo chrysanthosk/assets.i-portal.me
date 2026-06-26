@@ -27,5 +27,10 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+
+        // A unique username must be derived since the login form uses it.
+        $user = \App\Models\User::where('email', 'test@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertNotEmpty($user->username);
     }
 }

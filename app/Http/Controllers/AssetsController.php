@@ -57,6 +57,9 @@ class AssetsController extends Controller
             'asset_type_id' => ['required','integer','exists:asset_types,id'],
 
             'address' => ['nullable','string'],
+            'city' => ['nullable','string','max:100'],
+            'postcode' => ['nullable','string','max:20'],
+            'country' => ['nullable','string','max:100'],
             'notes' => ['nullable','string'],
 
             'purchase_date' => ['nullable','date'],
@@ -149,6 +152,9 @@ class AssetsController extends Controller
             'asset_type_id' => ['required','integer','exists:asset_types,id'],
 
             'address' => ['nullable','string'],
+            'city' => ['nullable','string','max:100'],
+            'postcode' => ['nullable','string','max:20'],
+            'country' => ['nullable','string','max:100'],
             'notes' => ['nullable','string'],
 
             'purchase_date' => ['nullable','date'],

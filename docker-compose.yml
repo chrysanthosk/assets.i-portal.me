@@ -1,0 +1,84 @@
+###############################################
+# assets.i-portal.me — Docker Compose stack
+#
+#   app   : Laravel application — Nginx + PHP-FPM + queue worker (Supervisor)
+#   db    : MySQL (latest) with a persistent volume
+#
+# Quick start:
+#   cp .env.docker.example .env   # adjust values (or let the entrypoint create .env)
+#   docker compose up -d --build
+###############################################
+
+# Stable project name (containers/volumes/network), independent of the folder name.
+name: assets
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    image: assets-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    environment:
+      APP_NAME: "${APP_NAME:-assets.i-portal.me}"
+      APP_ENV: "${APP_ENV:-production}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      # APP_URL follows WEB_PORT automatically unless you set APP_URL explicitly
+      APP_URL: "${APP_URL:-http://localhost:${WEB_PORT:-8080}}"
+      # Generate URLs from APP_URL (the published port differs from the internal one)
+      APP_FORCE_ROOT_URL: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: "${DB_DATABASE:-assets}"
+      DB_USERNAME: "${DB_USERNAME:-assets}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+      CACHE_STORE: "${CACHE_STORE:-database}"
+      SESSION_DRIVER: "${SESSION_DRIVER:-database}"
+      QUEUE_CONNECTION: "${QUEUE_CONNECTION:-database}"
+      # Optional one-shot admin bootstrap (entrypoint runs make:admin when both are set)
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
+      ADMIN_NAME: "${ADMIN_NAME:-Admin}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+    volumes:
+      # Persist user-uploaded files and logs across rebuilds
+      - app_storage:/var/www/html/storage
+    networks:
+      - portal
+
+  db:
+    image: mysql:latest
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: "${DB_DATABASE:-assets}"
+      MYSQL_USER: "${DB_USERNAME:-assets}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-secret}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootsecret}"
+    ports:
+      # Exposed for local DB tools; remove in hardened deployments
+      - "${DB_EXPOSED_PORT:-3306}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-rootsecret}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - portal
+
+volumes:
+  db_data:
+  app_storage:
+
+networks:
+  portal:
+    driver: bridge
