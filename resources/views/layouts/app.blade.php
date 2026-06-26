@@ -40,6 +40,7 @@ $canAssets = auth()->check() && (
 auth()->user()->can('manage_assets') ||
 auth()->user()->can('manage_asset_rentals') ||
 auth()->user()->can('manage_rental_payments') ||
+auth()->user()->can('manage_asset_expenses') ||
 auth()->user()->can('manage_tenants') ||
 auth()->user()->can('manage_asset_tags')
 );
@@ -159,6 +160,16 @@ auth()->user()->can('manage_audit_logs')
                                    class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-wallet2"></i>
                                     <p>Payments</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_asset_expenses')
+                            <li class="nav-item">
+                                <a href="{{ route('expenses.index') }}"
+                                   class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-receipt"></i>
+                                    <p>Expenses</p>
                                 </a>
                             </li>
                             @endcan

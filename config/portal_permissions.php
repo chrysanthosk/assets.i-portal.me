@@ -79,6 +79,12 @@ return [
             'default_roles' => ['Admin'],
         ],
 
+        'manage_asset_expenses' => [
+            'label' => 'Manage Asset Expenses',
+            'group' => 'Assets',
+            'default_roles' => ['Admin'],
+        ],
+
         // --------------------
         // Asset Configuration
         // --------------------
