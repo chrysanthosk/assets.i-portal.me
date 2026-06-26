@@ -11,6 +11,7 @@ class AssetRental extends Model
 
     protected $fillable = [
         'asset_id',
+        'tenant_id',
 
         // IMPORTANT (legacy NOT NULL columns)
         'year',
@@ -40,5 +41,10 @@ class AssetRental extends Model
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }

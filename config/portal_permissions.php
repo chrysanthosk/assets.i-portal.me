@@ -67,6 +67,12 @@ return [
             'default_roles' => ['Admin'],
         ],
 
+        'manage_tenants' => [
+            'label' => 'Manage Tenants',
+            'group' => 'Assets',
+            'default_roles' => ['Admin'],
+        ],
+
         // --------------------
         // Asset Configuration
         // --------------------
