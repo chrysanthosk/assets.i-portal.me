@@ -8,7 +8,9 @@ use App\Http\Controllers\AssetTagsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalPaymentsController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\Settings\AssetTypesController;
+use App\Http\Controllers\Settings\CurrenciesController;
 use App\Http\Controllers\Settings\OwnerEntitiesController;
 use App\Http\Controllers\Settings\PermissionSetsController;
 use App\Http\Controllers\Settings\PortalSettingsController;
@@ -75,6 +77,14 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::get('/expenses', [AssetExpensesController::class, 'index'])->name('expenses.index');
         Route::post('/expenses', [AssetExpensesController::class, 'store'])->name('expenses.store');
         Route::delete('/expenses/{expense}', [AssetExpensesController::class, 'destroy'])->name('expenses.destroy');
+    });
+
+    // --------------------
+    // Reports (P&L)
+    // --------------------
+    Route::middleware('permission:view_reports')->group(function () {
+        Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportsController::class, 'exportCsv'])->name('reports.export');
     });
 
     // --------------------
@@ -290,6 +300,14 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::delete('/owner-entities/{ownerEntity}', [OwnerEntitiesController::class, 'destroy'])
             ->name('ownerEntities.destroy')
             ->middleware('permission:manage_owner_entities');
+
+        // Currencies & FX
+        Route::middleware('permission:manage_fx_rates')->group(function () {
+            Route::get('/currencies', [CurrenciesController::class, 'edit'])->name('currencies.edit');
+            Route::post('/currencies/base', [CurrenciesController::class, 'updateBase'])->name('currencies.updateBase');
+            Route::post('/currencies/rates', [CurrenciesController::class, 'storeRate'])->name('currencies.storeRate');
+            Route::delete('/currencies/rates/{rate}', [CurrenciesController::class, 'destroyRate'])->name('currencies.destroyRate');
+        });
     });
 });
 
