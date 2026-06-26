@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AssetDocumentsController;
+use App\Http\Controllers\AssetExpensesController;
 use App\Http\Controllers\AssetRentalsController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetTagsController;
@@ -65,6 +66,15 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::post('/payments', [RentalPaymentsController::class, 'store'])->name('payments.store');
         Route::post('/payments/{payment}/paid', [RentalPaymentsController::class, 'markPaid'])->name('payments.markPaid');
         Route::delete('/payments/{payment}', [RentalPaymentsController::class, 'destroy'])->name('payments.destroy');
+    });
+
+    // --------------------
+    // Asset expenses
+    // --------------------
+    Route::middleware('permission:manage_asset_expenses')->group(function () {
+        Route::get('/expenses', [AssetExpensesController::class, 'index'])->name('expenses.index');
+        Route::post('/expenses', [AssetExpensesController::class, 'store'])->name('expenses.store');
+        Route::delete('/expenses/{expense}', [AssetExpensesController::class, 'destroy'])->name('expenses.destroy');
     });
 
     // --------------------

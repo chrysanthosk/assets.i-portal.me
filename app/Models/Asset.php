@@ -85,4 +85,9 @@ class Asset extends Model
     {
         return $this->hasMany(AssetDocument::class);
     }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(AssetExpense::class);
+    }
 }
