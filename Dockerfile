@@ -76,6 +76,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Custom PHP runtime settings + web server / process manager configs
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
+COPY docker/php/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-app.conf
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
