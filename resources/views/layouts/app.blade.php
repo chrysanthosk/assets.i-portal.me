@@ -41,6 +41,7 @@ auth()->user()->can('manage_assets') ||
 auth()->user()->can('manage_asset_rentals') ||
 auth()->user()->can('manage_rental_payments') ||
 auth()->user()->can('manage_asset_expenses') ||
+auth()->user()->can('view_reports') ||
 auth()->user()->can('manage_tenants') ||
 auth()->user()->can('manage_asset_tags')
 );
@@ -52,6 +53,7 @@ auth()->user()->can('manage_permission_sets') ||
 auth()->user()->can('manage_smtp_settings') ||
 auth()->user()->can('manage_asset_types') ||
 auth()->user()->can('manage_owner_entities') ||
+auth()->user()->can('manage_fx_rates') ||
 auth()->user()->can('manage_audit_logs')
 );
 @endphp
@@ -174,6 +176,16 @@ auth()->user()->can('manage_audit_logs')
                             </li>
                             @endcan
 
+                            @can('view_reports')
+                            <li class="nav-item">
+                                <a href="{{ route('reports.index') }}"
+                                   class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-graph-up"></i>
+                                    <p>Reports (P&amp;L)</p>
+                                </a>
+                            </li>
+                            @endcan
+
                             @can('manage_tenants')
                             <li class="nav-item">
                                 <a href="{{ route('tenants.index') }}"
@@ -261,6 +273,16 @@ auth()->user()->can('manage_audit_logs')
                                 <a href="{{ route('settings.ownerEntities.index') }}" class="nav-link {{ request()->routeIs('settings.ownerEntities.*') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-building"></i>
                                     <p>Owner Entities</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_fx_rates')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.currencies.edit') }}"
+                                   class="nav-link {{ request()->routeIs('settings.currencies.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-currency-exchange"></i>
+                                    <p>Currencies &amp; FX</p>
                                 </a>
                             </li>
                             @endcan

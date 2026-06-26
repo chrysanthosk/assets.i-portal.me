@@ -85,6 +85,18 @@ return [
             'default_roles' => ['Admin'],
         ],
 
+        'view_reports' => [
+            'label' => 'View Reports',
+            'group' => 'Assets',
+            'default_roles' => ['Admin'],
+        ],
+
+        'manage_fx_rates' => [
+            'label' => 'Manage Currencies & FX',
+            'group' => 'Settings',
+            'default_roles' => ['Admin'],
+        ],
+
         // --------------------
         // Asset Configuration
         // --------------------
