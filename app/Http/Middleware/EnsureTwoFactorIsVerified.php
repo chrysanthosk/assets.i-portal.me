@@ -19,6 +19,12 @@ class EnsureTwoFactorIsVerified
             && ! empty($user->two_factor_secret);
 
         if (! $requires2fa) {
+            // Optionally force privileged users to enroll in 2FA first.
+            if ($user && config('portal.require_2fa_for_admins') && $this->mustEnroll($request, $user)) {
+                return redirect()->route('profile.edit')
+                    ->with('warning', 'Two-factor authentication is required for your role. Please enable it below.');
+            }
+
             return $next($request);
         }
 
@@ -41,5 +47,20 @@ class EnsureTwoFactorIsVerified
         $request->session()->regenerateToken();
 
         return redirect()->route('2fa.challenge');
+    }
+
+    /**
+     * Whether this privileged user must enroll in 2FA before continuing.
+     * Profile, 2FA and logout routes are always allowed (so they can enroll).
+     */
+    private function mustEnroll(Request $request, $user): bool
+    {
+        if ($request->routeIs('profile.*') || $request->routeIs('2fa.*') || $request->routeIs('logout')) {
+            return false;
+        }
+
+        $adminRole = config('portal.admin_role', 'Admin');
+
+        return $user->hasRole($adminRole) || $user->can('manage_users');
     }
 }

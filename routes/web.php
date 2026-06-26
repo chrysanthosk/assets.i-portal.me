@@ -6,6 +6,7 @@ use App\Http\Controllers\AssetRentalsController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetTagsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalPaymentsController;
 use App\Http\Controllers\ReportsController;
@@ -25,6 +26,9 @@ use Illuminate\Support\Facades\Route;
  * IMPORTANT: do NOT put these behind 'auth'. The controller guards using session '2fa:user:id'.
  * The verify endpoint is throttled to blunt OTP / recovery-code brute force.
  */
+// Unauthenticated health probe (DB connectivity) for monitoring/load balancers.
+Route::get('/health', HealthController::class)->name('health');
+
 Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])->name('2fa.challenge');
 Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])
     ->middleware('throttle:6,1')
