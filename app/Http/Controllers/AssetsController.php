@@ -100,13 +100,6 @@ class AssetsController extends Controller
         $data['parking'] = (int) ($data['parking'] ?? 0) === 1;
         $data['ownership_percentage'] = $data['ownership_percentage'] ?? 100;
 
-        // keep legacy string fields in sync (safe if columns exist)
-        $type = AssetType::find($data['asset_type_id']);
-        $owner = ! empty($data['owner_entity_id']) ? OwnerEntity::find($data['owner_entity_id']) : null;
-
-        $data['type'] = $type?->name;
-        $data['owner_entity'] = $owner?->name;
-
         $asset = Asset::create($data);
         $asset->tags()->sync($data['tags'] ?? []);
 
@@ -196,13 +189,6 @@ class AssetsController extends Controller
         $data['financed'] = (int) ($data['financed'] ?? 0) === 1;
         $data['parking'] = (int) ($data['parking'] ?? 0) === 1;
         $data['ownership_percentage'] = $data['ownership_percentage'] ?? $asset->ownership_percentage ?? 100;
-
-        // keep legacy string fields in sync
-        $type = AssetType::find($data['asset_type_id']);
-        $owner = ! empty($data['owner_entity_id']) ? OwnerEntity::find($data['owner_entity_id']) : null;
-
-        $data['type'] = $type?->name;
-        $data['owner_entity'] = $owner?->name;
 
         $asset->update($data);
         $asset->tags()->sync($data['tags'] ?? []);

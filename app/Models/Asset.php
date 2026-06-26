@@ -11,7 +11,6 @@ class Asset extends Model
 {
     protected $fillable = [
         'name',
-        'type', // legacy (optional for now)
         'asset_type_id',
         'address',
         'notes',
@@ -20,7 +19,6 @@ class Asset extends Model
         'purchase_price',
         'currency',
 
-        'owner_entity', // legacy (optional for now)
         'owner_entity_id',
         'ownership_percentage',
 

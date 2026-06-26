@@ -59,9 +59,8 @@ class OwnerEntitiesController extends Controller
 
     public function destroy(OwnerEntity $ownerEntity)
     {
-        // Option 1: block if referenced
-        $isUsed = Asset::where('owner_entity_id', $ownerEntity->id)->exists()
-            || Asset::where('owner_entity', $ownerEntity->name)->exists(); // legacy fallback
+        // Block deletion while any asset still references this entity.
+        $isUsed = Asset::where('owner_entity_id', $ownerEntity->id)->exists();
 
         if ($isUsed) {
             return back()->with('error', 'Cannot delete this Owner Entity because it is used by one or more assets.');

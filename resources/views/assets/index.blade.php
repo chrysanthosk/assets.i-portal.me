@@ -48,7 +48,7 @@
           @forelse ($assets as $asset)
             <tr>
               <td class="fw-semibold">{{ $asset->name }}</td>
-              <td>{{ $asset->type }}</td>
+              <td>{{ $asset->assetType?->name ?? '—' }}</td>
               <td>{{ $asset->city ?: '—' }}</td>
               <td class="text-end">
                 {{ $asset->currency ?? 'EUR' }} {{ number_format((float)$asset->purchase_price, 2) }}

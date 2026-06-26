@@ -15,8 +15,8 @@ strtolower($status) === 'occupied' ? 'text-bg-success' :
 (strtolower($status) === 'vacant' ? 'text-bg-secondary' : 'text-bg-info');
 
 // FK-aware labels
-$assetTypeName   = optional($asset->assetType)->name ?: ($asset->type ?? '—');
-$ownerEntityName = optional($asset->ownerEntity)->name ?: ($asset->owner_entity ?? '—');
+$assetTypeName   = optional($asset->assetType)->name ?: '—';
+$ownerEntityName = optional($asset->ownerEntity)->name ?: '—';
 
 // documents collection (controller eager-loads, but safe fallback)
 $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->documents ?? collect());
@@ -343,7 +343,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                             <td>
                                 <div class="fw-semibold">{{ $doc->original_name }}</div>
                                 <div class="text-muted small">
-                                    {{ $doc->mime_type ?: ($doc->mime ?: '—') }}
+                                    {{ $doc->mime_type ?: '—' }}
                                     • {{ $doc->created_at?->format('Y-m-d H:i') }}
                                     @if($doc->notes) • {{ $doc->notes }} @endif
                                 </div>
@@ -362,7 +362,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                                 @endif
                             </td>
                             <td class="text-end text-muted">
-                                @php $bytes = $doc->size_bytes ?: $doc->size; @endphp
+                                @php $bytes = $doc->size_bytes; @endphp
                                 @if($bytes)
                                 {{ number_format($bytes / 1024, 1) }} KB
                                 @else
