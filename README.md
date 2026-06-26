@@ -1,22 +1,30 @@
 # assets.i-portal.me
 
-A modern **Laravel 12 + AdminLTE 4 (Bootstrap 5)** portal featuring authentication, roles & permissions, 2FA, SMTP configuration, and a clean, extensible settings architecture.
+A **Laravel 12 + AdminLTE 4 (Bootstrap 5)** property/real-estate portfolio manager:
+track owned assets, tenants, rental agreements & payments, expenses, documents,
+and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 
 ---
 
 ## Features
 
-- Username + password authentication
-- Role & permission management (Spatie)
-- User management (Admin / User permission sets)
-- Profile management (name, email with OTP confirmation)
-- Password strength meter (zxcvbn)
-- Two-Factor Authentication (Google Authenticator)
-- SMTP configuration & test email
-- Dark / Light mode toggle (persistent)
-- Expandable Settings menu (AdminLTE treeview)
-- Inline validation feedback
-- Modal delete confirmations
+**Platform**
+- Username + password authentication, 2FA (Google Authenticator) with recovery codes
+- Role & permission management (Spatie) + per-route permission gates
+- User & profile management (name, email with OTP confirmation)
+- Password strength meter (zxcvbn), SMTP configuration & test email
+- Audit logging across all mutations
+- Dark / Light mode, security headers, encrypted sessions
+
+**Asset & rentals modules**
+- **Assets** — properties with purchase, financing, title-deed, location & physical details, tags, documents
+- **Tenants** — first-class tenant records linked to rental agreements
+- **Rental income** — agreements per asset (currency, period, active status)
+- **Rental payments** — record/schedule payments, track **arrears & overdue**
+- **Expenses** — categorised property costs (maintenance, tax, insurance, …)
+- **Reports** — per-asset & portfolio **P&L** with **CSV export**, consolidated to a base currency via **FX rates**
+- **Document lifecycle** — type classification + **expiry reminders** (insurance/certs)
+- **Dashboard** — totals, monthly income, occupancy, outstanding payments, document-expiry reminders
 
 ---
 
@@ -265,23 +273,56 @@ docker compose exec app php artisan make:admin
 
 ---
 
+## Permissions
+
+Access is gated per route by Spatie permissions (synced from
+`config/portal_permissions.php` via `PortalPermissionsSeeder`). Notable ones:
+
+| Permission | Grants |
+|------------|--------|
+| `manage_assets`, `manage_asset_tags`, `manage_asset_types`, `manage_owner_entities` | Assets & their configuration |
+| `manage_tenants` | Tenants |
+| `manage_asset_rentals` | Rental agreements |
+| `manage_rental_payments` | Rental payments & arrears |
+| `manage_asset_expenses` | Expenses |
+| `view_reports` | P&L reports + CSV export |
+| `manage_fx_rates` | Base currency & FX rates |
+| `manage_users`, `manage_permission_sets`, `manage_smtp_settings`, `manage_portal_settings`, `manage_audit_logs` | Administration |
+
+Admins get all permissions. After changing the registry, run
+`php artisan db:seed --class=PortalPermissionsSeeder` (the Docker entrypoint does this automatically).
+
+---
+
+## Operations & observability
+
+- **Health check:** `GET /health` (unauthenticated) returns `200` + DB status, `503` if the database is unreachable. Laravel's `/up` is also available.
+- **Database backups:** `./scripts/backup-db.sh` dumps the Dockerised MySQL to `backups/*.sql.gz` with retention (`RETENTION_DAYS`, default 14). Schedule it via cron.
+- **Logging:** in Docker, the app logs to **stderr** (`docker compose logs -f app`).
+- **Error tracking (optional):** set `SENTRY_LARAVEL_DSN` in `.env` to enable Sentry; blank = disabled.
+- **Enforce 2FA for admins (optional):** set `REQUIRE_2FA_FOR_ADMINS=true` to require admins / user-managers to enroll in 2FA before using the app.
+- **CI:** `.github/workflows/ci.yml` runs Pint (lint), the Vite build, and PHPUnit on every push/PR.
+
+---
+
 ## Security Notes
 
 - Change the default admin password immediately
 - Do not commit `.env`
-- Use HTTPS in production
-- Enable 2FA for admin accounts
-- Use strong SMTP credentials
+- Use HTTPS in production (security headers + HSTS are applied automatically)
+- Enable 2FA for admin accounts (optionally enforce via `REQUIRE_2FA_FOR_ADMINS`)
+- Use strong SMTP credentials (SMTP passwords are stored encrypted)
+- Sessions are encrypted (`SESSION_ENCRYPT=true`)
 
 ---
 
 ## Roadmap
 
-- Additional modules (Finance, CRM, Reports)
-- Audit logs
-- API authentication
-- Webhooks
-- Multi-tenant support
+- API authentication / public API
+- Webhooks & notifications (e.g. overdue-payment / document-expiry alerts)
+- Rental payment schedules (auto-generate expected payments)
+- Asset valuation history & equity tracking
+- Multi-unit (building → units) hierarchy
 
 ---
 

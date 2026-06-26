@@ -23,20 +23,28 @@ Guidance for Claude Code (and other AI assistants) when working in this reposito
 
 ## Project overview
 
-**assets.i-portal.me** — a Laravel 12 + AdminLTE 4 (Bootstrap 5) admin portal.
+**assets.i-portal.me** — a Laravel 12 + AdminLTE 4 (Bootstrap 5) property/real-estate
+portfolio manager.
 
-Features: username/password auth, Spatie roles & permissions, 2FA (Google
-Authenticator), profile management with email OTP, password strength meter
-(zxcvbn), SMTP configuration + test email, an assets/rentals module, audit logs,
-and a dark/light theme toggle.
+Platform: username/password auth, 2FA (Google Authenticator) with recovery codes,
+Spatie roles & permissions, profile management with email OTP, zxcvbn meter, SMTP
+config + test email, audit logging, dark/light theme.
+
+Domain modules: **Assets**, **Tenants**, **Rental income** (agreements),
+**Rental payments** (arrears/overdue), **Expenses**, **Reports** (per-asset &
+portfolio P&L + CSV export), **Currencies & FX** (base currency + rates),
+**Document lifecycle** (type + expiry reminders). The dashboard surfaces income,
+occupancy, outstanding payments, and document-expiry reminders.
 
 ### Stack
 - **PHP 8.4+** (the `composer.lock` resolves dependencies that require ≥ 8.4)
 - **Laravel 12**, Composer
 - **MySQL 8+** in production / **`mysql:latest`** in Docker (SQLite is the default
-  for local quick experiments via `.env.example`)
-- **Node 18+ / npm**, **Vite 7**, Tailwind 3, Bootstrap 5, AdminLTE 4
-- Key packages: `spatie/laravel-permission`, `pragmarx/google2fa-laravel`
+  for local quick experiments via `.env.example`, and is used by the test suite)
+- **Node 18+ / npm**, **Vite 7**, Bootstrap 5, AdminLTE 4
+  (Tailwind/Alpine were removed — the build is pure Bootstrap/AdminLTE)
+- Key packages: `spatie/laravel-permission`, `pragmarx/google2fa-laravel`,
+  `sentry/sentry-laravel` (optional, inert without a DSN)
 
 ---
 
@@ -45,11 +53,19 @@ and a dark/light theme toggle.
 ```
 app/
   Console/Commands/MakeAdminUser.php   # `php artisan make:admin` — creates/updates an Admin
-  Http/                                # Controllers, middleware (auth, 2fa, permission:*)
-  Models/                              # User, Asset*, OwnerEntity, AuditLog, PortalSetting, SmtpSetting
-  Listeners/ Mail/ Providers/ Support/ View/
+  Http/Controllers/                    # Assets, Tenants, AssetRentals, RentalPayments,
+                                       #   AssetExpenses, Reports, Health, Dashboard, TwoFactor,
+                                       #   Settings/* (Users, Smtp, Currencies, AssetTypes, …)
+  Http/Middleware/                     # EnsureTwoFactorIsVerified (+ admin enforce), SecurityHeaders
+  Models/                              # User, Asset, AssetType, OwnerEntity, AssetTag, AssetDocument,
+                                       #   AssetRental, Tenant, RentalPayment, AssetExpense, FxRate,
+                                       #   PortalSetting, SmtpSetting, AuditLog
+  Support/                             # Audit (audit-log helper), Fx (currency conversion)
+  Listeners/ Mail/ Providers/ View/
 config/
   permission.php, portal_permissions.php   # permission registry used by seeders
+  portal.php                               # REQUIRE_2FA_FOR_ADMINS toggle + admin role
+  sentry.php                               # error tracking (DSN via SENTRY_LARAVEL_DSN)
 database/
   migrations/                          # users, cache, jobs, permissions, portal_settings, assets*
   seeders/
@@ -59,9 +75,11 @@ database/
     AssetTypeSeeder.php, OwnerEntitySeeder.php
 routes/  web.php  auth.php  console.php
 resources/  css/app.css  js/app.js  views/
+.github/workflows/ci.yml          # CI: Pint (lint) + Vite build + PHPUnit on SQLite
 scripts/
   install.sh       # interactive installer — asks: 1) Regular (bare-metal)  2) Docker
   new_deploy.sh    # interactive deploy/update — asks: 1) Regular  2) Docker
+  backup-db.sh     # gzip mysqldump of the Dockerised DB with retention
   uninstall.sh
 docker/
   entrypoint.sh                 # app container bootstrap (key, wait-for-db, migrate, seed, optimize)
@@ -151,7 +169,15 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
   names live in `config/portal_permissions.php`. After changing them, run
   `PortalPermissionsSeeder` and `php artisan permission:cache-reset`.
 - **Seeders are idempotent** (`firstOrCreate` / `syncPermissions`) — safe to re-run.
-- **Tests**: `tests/Feature` + `tests/Unit` (PHPUnit). Run `php artisan test`.
-- Lint/format: `./vendor/bin/pint`.
-- Don't introduce a non-Anthropic provider or new framework without need; match the
-  existing Laravel idioms and the surrounding code style.
+- **Schema is FK-based**: assets use `asset_type_id` / `owner_entity_id` (the legacy
+  `type` / `owner_entity` strings were dropped); documents use `path` / `mime_type` /
+  `size_bytes` (legacy `file_path` / `mime` / `size` dropped). Read via relationships.
+- **Currency**: amounts carry their own `currency`; consolidate via `App\Support\Fx`
+  (base currency in `portal_settings`, rates in `fx_rates`). Call `Fx::flush()` in
+  tests that change rates/base.
+- **Migrations must be portable** (the suite runs on SQLite): guard MySQL-only DDL
+  (e.g. `information_schema`, `ALTER … ADD FOREIGN KEY`) behind a driver check.
+- **CI runs `pint --test`** — keep code Pint-clean (`./vendor/bin/pint` before commit).
+- **Tests**: `tests/Feature` + `tests/Unit` (PHPUnit, SQLite `:memory:`). Run `php artisan test`.
+- Don't introduce a new framework without need; the front-end is **Bootstrap/AdminLTE only**
+  (no Tailwind/Alpine). Match the existing Laravel idioms and surrounding style.
