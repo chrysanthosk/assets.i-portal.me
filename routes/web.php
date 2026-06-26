@@ -12,6 +12,7 @@ use App\Http\Controllers\Settings\PermissionSetsController;
 use App\Http\Controllers\Settings\PortalSettingsController;
 use App\Http\Controllers\Settings\SmtpSettingsController;
 use App\Http\Controllers\Settings\UsersController;
+use App\Http\Controllers\TenantsController;
 use App\Http\Controllers\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +45,16 @@ Route::middleware(['auth', '2fa'])->group(function () {
     Route::get('/audit-logs', [\App\Http\Controllers\AuditLogsController::class, 'index'])
         ->name('audit.index')
         ->middleware('permission:manage_audit_logs');
+
+    // --------------------
+    // Tenants
+    // --------------------
+    Route::middleware('permission:manage_tenants')->group(function () {
+        Route::get('/tenants', [TenantsController::class, 'index'])->name('tenants.index');
+        Route::post('/tenants', [TenantsController::class, 'store'])->name('tenants.store');
+        Route::put('/tenants/{tenant}', [TenantsController::class, 'update'])->name('tenants.update');
+        Route::delete('/tenants/{tenant}', [TenantsController::class, 'destroy'])->name('tenants.destroy');
+    });
 
     // --------------------
     // Assets Management

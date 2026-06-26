@@ -39,6 +39,7 @@ $assetsOpen   = request()->is('assets*');
 $canAssets = auth()->check() && (
 auth()->user()->can('manage_assets') ||
 auth()->user()->can('manage_asset_rentals') ||
+auth()->user()->can('manage_tenants') ||
 auth()->user()->can('manage_asset_tags')
 );
 
@@ -147,6 +148,16 @@ auth()->user()->can('manage_audit_logs')
                                    class="nav-link {{ request()->routeIs('assets.rentals.*') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-cash-coin"></i>
                                     <p>Rental Income</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_tenants')
+                            <li class="nav-item">
+                                <a href="{{ route('tenants.index') }}"
+                                   class="nav-link {{ request()->routeIs('tenants.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-people"></i>
+                                    <p>Tenants</p>
                                 </a>
                             </li>
                             @endcan

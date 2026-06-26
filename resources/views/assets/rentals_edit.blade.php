@@ -31,7 +31,18 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label">Tenant Name</label>
+                        <label class="form-label">Tenant</label>
+                        <select name="tenant_id" class="form-select @error('tenant_id') is-invalid @enderror">
+                            <option value="">— Select tenant —</option>
+                            @foreach(($tenants ?? []) as $tenant)
+                                <option value="{{ $tenant->id }}" @selected((string) old('tenant_id', $rental->tenant_id) === (string) $tenant->id)>{{ $tenant->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('tenant_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">…or type a name</label>
                         <input type="text" name="tenant_name" class="form-control @error('tenant_name') is-invalid @enderror"
                                value="{{ old('tenant_name', $rental->tenant_name) }}">
                         @error('tenant_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
