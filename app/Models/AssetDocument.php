@@ -29,11 +29,8 @@ class AssetDocument extends Model
         'original_name',
         'disk',
         'path',
-        'file_path',   // legacy support
         'mime_type',
-        'mime',        // legacy support
         'size_bytes',
-        'size',        // legacy support
         'notes',
     ];
 
@@ -41,7 +38,6 @@ class AssetDocument extends Model
         'asset_id' => 'integer',
         'uploaded_by' => 'integer',
         'size_bytes' => 'integer',
-        'size' => 'integer',
         'expires_at' => 'date',
     ];
 

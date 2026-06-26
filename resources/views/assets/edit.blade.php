@@ -451,7 +451,7 @@
                                 <tr>
                                     <td class="fw-semibold">
                                         {{ $doc->original_name }}
-                                        <div class="text-muted small">{{ $doc->mime }} • {{ number_format(($doc->size ?? 0) / 1024, 0) }} KB</div>
+                                        <div class="text-muted small">{{ $doc->mime_type }} • {{ number_format(($doc->size_bytes ?? 0) / 1024, 0) }} KB</div>
                                     </td>
                                     <td>{{ $doc->notes ?: '—' }}</td>
                                     <td class="text-muted">

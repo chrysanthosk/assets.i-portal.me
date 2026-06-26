@@ -59,9 +59,8 @@ class AssetTypesController extends Controller
 
     public function destroy(AssetType $assetType)
     {
-        // Option 1: block if referenced
-        $isUsed = Asset::where('asset_type_id', $assetType->id)->exists()
-            || Asset::where('type', $assetType->name)->exists(); // legacy fallback
+        // Block deletion while any asset still references this type.
+        $isUsed = Asset::where('asset_type_id', $assetType->id)->exists();
 
         if ($isUsed) {
             return back()->with('error', 'Cannot delete this Asset Type because it is used by one or more assets.');

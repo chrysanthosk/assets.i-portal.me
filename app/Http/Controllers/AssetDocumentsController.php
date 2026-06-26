@@ -53,15 +53,9 @@ class AssetDocumentsController extends Controller
 
             'disk' => $disk,
 
-            // new schema
             'path' => $storedPath,
             'mime_type' => $mime,
             'size_bytes' => (int) $file->getSize(),
-
-            // legacy schema compatibility
-            'file_path' => $storedPath,
-            'mime' => $mime,
-            'size' => (int) $file->getSize(),
         ]);
 
         Audit::log('asset_document.uploaded', $doc, null, $doc->toArray());
@@ -77,7 +71,7 @@ class AssetDocumentsController extends Controller
 
         $disk = $document->disk ?: 'local';
 
-        $path = $document->path ?: $document->file_path;
+        $path = $document->path;
 
         if (! $path) {
             return back()->with('error', 'Document path is missing.');
@@ -102,7 +96,7 @@ class AssetDocumentsController extends Controller
         $old = $document->toArray();
 
         $disk = $document->disk ?: 'local';
-        $path = $document->path ?: $document->file_path;
+        $path = $document->path;
 
         if ($path) {
             try {
