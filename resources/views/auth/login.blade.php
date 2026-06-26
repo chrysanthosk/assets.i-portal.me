@@ -13,7 +13,7 @@
 <div class="login-box">
   <div class="card card-outline card-primary">
     <div class="card-header text-center">
-      <b>i-portal</b>
+      <b>assets.i-portal.me</b>
     </div>
 
     <div class="card-body">

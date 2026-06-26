@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
@@ -12,12 +13,18 @@ use PragmaRX\Google2FA\Google2FA;
 class TwoFactorController extends Controller
 {
     /**
+     * Session key set once a user has cleared the 2FA gate for this session.
+     * Must match App\Http\Middleware\EnsureTwoFactorIsVerified.
+     */
+    private const VERIFIED_KEY = '2fa_passed';
+
+    /**
      * GET /two-factor
-     * Show challenge form after login when 2FA is enabled but not yet verified.
+     * Show the challenge form after login when 2FA is enabled but not verified.
      */
     public function challengeForm(Request $request)
     {
-        // If no pending 2FA user in session, go to login
+        // If no pending 2FA user in session, go back to login.
         if (!$request->session()->has('2fa:user:id')) {
             return redirect()->route('login');
         }
@@ -27,19 +34,15 @@ class TwoFactorController extends Controller
 
     /**
      * POST /two-factor
-     * Verify the submitted OTP and complete login.
+     * Verify the submitted OTP (or recovery code) and complete login.
      */
     public function challengeVerify(Request $request)
     {
         $request->validate([
-            'code' => ['required', 'string', 'max:6'],
+            'code' => ['required', 'string', 'max:19'],
         ]);
 
-<<<<<<< HEAD
-        $pendingUserId = $request->session()->get('2fa:user:id');
-=======
-        $userId = $request->session()->get('2fa:user:id');
->>>>>>> b047e10 (updates)
+        $userId  = $request->session()->get('2fa:user:id');
         $remember = (bool) $request->session()->get('2fa:remember', false);
 
         if (!$userId) {
@@ -49,123 +52,88 @@ class TwoFactorController extends Controller
         /** @var User $user */
         $user = User::query()->findOrFail($userId);
 
-<<<<<<< HEAD
-        if (
-            !$user ||
-            empty($user->two_factor_secret) ||
-            !((bool)($user->two_factor_enabled ?? false))
-        ) {
+        // If the user disabled 2FA while the challenge was pending, just log in.
+        if (!((bool) ($user->two_factor_enabled ?? false)) || empty($user->two_factor_secret)) {
+            Auth::login($user, $remember);
+            $request->session()->put(self::VERIFIED_KEY, true);
             $request->session()->forget(['2fa:user:id', '2fa:remember']);
-            return redirect()->route('login')->withErrors([
-                'code' => 'Invalid 2FA session. Please login again.'
-            ]);
+
+            return redirect()->intended(route('dashboard'));
         }
 
-        $code = trim((string) $request->input('code'));
-
-        // Decrypt secret (supports legacy plain secrets too)
+        $code   = trim((string) $request->input('code'));
         $secret = $this->getDecryptedSecret($user->two_factor_secret);
 
         if (empty($secret)) {
             $request->session()->forget(['2fa:user:id', '2fa:remember']);
+
             return redirect()->route('login')->withErrors([
-                'code' => '2FA secret is invalid. Please re-enable 2FA from profile.'
+                'code' => '2FA secret is invalid. Please re-enable 2FA from your profile.',
             ]);
         }
 
         /** @var Google2FA $google2fa */
         $google2fa = app(Google2FA::class);
 
-        // OTP check (allow small window)
-        $otpOk = $google2fa->verifyKey($secret, $code, 2);
+        // Try the rolling OTP first (allow a small clock-drift window), then
+        // fall back to a one-time recovery code.
+        $otpCode  = preg_replace('/\s+/', '', $code);
+        $otpOk    = strlen($otpCode) <= 6 && $google2fa->verifyKey($secret, $otpCode, 2);
+        $recovery = $otpOk ? false : $this->consumeRecoveryCode($user, $code);
 
-        // If not OTP, try recovery code
-        $recoveryOk = false;
-        if (!$otpOk) {
-            $recoveryOk = $this->consumeRecoveryCode($user, $code);
-=======
-        if (!$user->two_factor_enabled || empty($user->two_factor_secret)) {
-            // If user disabled 2FA while pending, just login
-            Auth::login($user, $remember);
-            $request->session()->forget(['2fa:user:id', '2fa:remember']);
-            return redirect()->intended(route('dashboard'));
-        }
+        if (!$otpOk && !$recovery) {
+            Audit::log('2fa.challenge_failed', $user);
 
-        $google2fa = new Google2FA();
-
-        $secret = $this->decrypt2faSecret($user->two_factor_secret);
-
-        $code = preg_replace('/\s+/', '', (string) $request->input('code'));
-
-        if (!$google2fa->verifyKey($secret, $code)) {
             return back()->withErrors(['code' => 'Invalid authentication code.']);
->>>>>>> b047e10 (updates)
         }
 
         Auth::login($user, $remember);
 
-        // Mark 2FA verified in session
-        $request->session()->put('2fa:verified', true);
+        $request->session()->put(self::VERIFIED_KEY, true);
         $request->session()->forget(['2fa:user:id', '2fa:remember']);
+
+        Audit::log($recovery ? '2fa.recovery_code_used' : '2fa.verified', $user);
 
         return redirect()->intended(route('dashboard'));
     }
 
     /**
      * POST /profile/2fa/enable
-<<<<<<< HEAD
-     * Shows QR + secret, stores temp setup session only
-=======
-     * Start 2FA setup (generate secret + recovery codes, show QR + confirmation form)
->>>>>>> b047e10 (updates)
+     * Generate a secret + recovery codes and show the QR / confirmation form.
+     * Nothing is persisted until the confirm step succeeds.
      */
     public function enable(Request $request)
     {
         /** @var User $user */
         $user = $request->user();
 
-<<<<<<< HEAD
-        /** @var Google2FA $google2fa */
-        $google2fa = app(Google2FA::class);
-
-        $secret = $google2fa->generateSecretKey();
-=======
-        // Already enabled
-        if ($user->two_factor_enabled && !empty($user->two_factor_secret)) {
+        if (($user->two_factor_enabled ?? false) && !empty($user->two_factor_secret)) {
             return redirect()->route('profile.edit')->with('status', '2FA is already enabled.');
         }
 
-        $google2fa = new Google2FA();
+        /** @var Google2FA $google2fa */
+        $google2fa = app(Google2FA::class);
 
-        $secret = $google2fa->generateSecretKey(32);
-
-        // Recovery codes (simple + readable)
->>>>>>> b047e10 (updates)
+        $secret   = $google2fa->generateSecretKey(32);
         $recovery = $this->generateRecoveryCodes();
 
-        // Store temporarily in session until confirm step
+        // Hold the pending setup in the session until confirmation.
         $request->session()->put('2fa:setup:secret', $secret);
         $request->session()->put('2fa:setup:recovery', $recovery);
 
-        // IMPORTANT: use getQRCodeUrl() (exists) instead of getQRCodeInline() (missing)
         $label = $user->email ?? $user->username ?? 'user';
         $qrUrl = $google2fa->getQRCodeUrl(config('app.name'), $label, $secret);
 
-        // Show setup screen (QR + code confirm)
         return view('auth.two_factor_setup', [
-            'secret' => $secret,
+            'secret'        => $secret,
             'recoveryCodes' => $recovery,
-            'qrUrl' => $qrUrl,
+            'qrUrl'         => $qrUrl,
         ]);
     }
 
     /**
      * POST /profile/2fa/confirm
-<<<<<<< HEAD
-     * Confirms OTP and persists encrypted secret
-=======
-     * Confirm OTP then persist encrypted secret + recovery codes.
->>>>>>> b047e10 (updates)
+     * Confirm the OTP, then persist the encrypted secret + recovery codes.
      */
     public function confirm(Request $request)
     {
@@ -176,7 +144,7 @@ class TwoFactorController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $secret = $request->session()->get('2fa:setup:secret');
+        $secret   = $request->session()->get('2fa:setup:secret');
         $recovery = $request->session()->get('2fa:setup:recovery');
 
         if (!$secret || !$recovery) {
@@ -184,35 +152,26 @@ class TwoFactorController extends Controller
                 ->withErrors(['two_factor' => '2FA setup session expired. Please try enabling again.']);
         }
 
-<<<<<<< HEAD
         /** @var Google2FA $google2fa */
         $google2fa = app(Google2FA::class);
 
-        $ok = $google2fa->verifyKey($secret, trim((string)$request->input('code')), 2);
-=======
-        $google2fa = new Google2FA();
->>>>>>> b047e10 (updates)
-
         $code = preg_replace('/\s+/', '', (string) $request->input('code'));
 
-        if (!$google2fa->verifyKey($secret, $code)) {
+        if (!$google2fa->verifyKey($secret, $code, 2)) {
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
-<<<<<<< HEAD
-        // IMPORTANT: store encrypted secret
-        $user->two_factor_secret = Crypt::encryptString($secret);
-=======
->>>>>>> b047e10 (updates)
-        $user->two_factor_enabled = true;
-        $user->two_factor_secret = $this->encrypt2faSecret($secret);
-        $user->two_factor_recovery_codes = $this->encryptRecoveryCodes($recovery);
+        $user->two_factor_enabled         = true;
+        $user->two_factor_secret          = $this->encrypt2faSecret($secret);
+        $user->two_factor_recovery_codes  = $this->encryptRecoveryCodes($recovery);
         $user->save();
 
-        // Show recovery codes once
+        // Show the recovery codes exactly once.
         $request->session()->forget(['2fa:setup:secret', '2fa:setup:recovery']);
         $request->session()->flash('2fa_show_backup_codes', true);
         $request->session()->flash('2fa_backup_codes', $recovery);
+
+        Audit::log('2fa.enabled', $user);
 
         return redirect()->route('profile.edit')->with('status', '2FA enabled successfully.');
     }
@@ -224,63 +183,114 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'current_password' => ['required'],
-            'code' => ['required', 'string', 'max:6'],
+            'code'             => ['required', 'string', 'max:19'],
         ]);
 
         /** @var User $user */
         $user = $request->user();
 
-        if (!Auth::validate(['email' => $user->email, 'password' => $request->input('current_password')]) &&
-            !Auth::validate(['username' => $user->username, 'password' => $request->input('current_password')])) {
+        $passwordOk = Auth::validate(['email' => $user->email, 'password' => $request->input('current_password')])
+            || Auth::validate(['username' => $user->username, 'password' => $request->input('current_password')]);
+
+        if (!$passwordOk) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        if (!$user->two_factor_enabled || empty($user->two_factor_secret)) {
+        if (!($user->two_factor_enabled ?? false) || empty($user->two_factor_secret)) {
             return redirect()->route('profile.edit')->with('status', '2FA is already disabled.');
         }
 
-        $google2fa = new Google2FA();
+        $secret = $this->getDecryptedSecret($user->two_factor_secret);
+        $code   = trim((string) $request->input('code'));
 
-        $secret = $this->decrypt2faSecret($user->two_factor_secret);
-        $code = preg_replace('/\s+/', '', (string) $request->input('code'));
+        $otpCode = preg_replace('/\s+/', '', $code);
+        $otpOk   = strlen($otpCode) <= 6 && app(Google2FA::class)->verifyKey((string) $secret, $otpCode, 2);
 
-        if (!$google2fa->verifyKey($secret, $code)) {
+        // A valid OTP or recovery code is required to disable.
+        if (!$otpOk && !$this->consumeRecoveryCode($user, $code)) {
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
-        $user->two_factor_enabled = false;
-        $user->two_factor_secret = null;
+        $user->two_factor_enabled        = false;
+        $user->two_factor_secret         = null;
         $user->two_factor_recovery_codes = null;
         $user->save();
 
-        // Also clear any “verified” session
-        $request->session()->forget(['2fa:verified']);
+        $request->session()->forget([self::VERIFIED_KEY]);
+
+        Audit::log('2fa.disabled', $user);
 
         return redirect()->route('profile.edit')->with('status', '2FA disabled successfully.');
     }
 
-    // ---------------------------
+    // ---------------------------------------------------------------------
     // Helpers
-    // ---------------------------
+    // ---------------------------------------------------------------------
 
     private function generateRecoveryCodes(int $count = 8): array
     {
         $codes = [];
         for ($i = 0; $i < $count; $i++) {
-            // Example: ABCD-EFGH-IJKL
+            // e.g. ABCD-EFGH-IJKL
             $codes[] = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
         }
+
         return $codes;
+    }
+
+    /**
+     * Validate a recovery code and, if valid, consume it (single use).
+     */
+    private function consumeRecoveryCode(User $user, string $code): bool
+    {
+        $code = strtoupper(trim($code));
+        if ($code === '') {
+            return false;
+        }
+
+        $codes = $this->getRecoveryCodes($user);
+        if (empty($codes)) {
+            return false;
+        }
+
+        $remaining = array_values(array_filter(
+            $codes,
+            static fn ($stored) => !hash_equals(strtoupper((string) $stored), $code)
+        ));
+
+        // No code was removed -> the supplied code did not match.
+        if (count($remaining) === count($codes)) {
+            return false;
+        }
+
+        $user->two_factor_recovery_codes = $this->encryptRecoveryCodes($remaining);
+        $user->save();
+
+        return true;
+    }
+
+    private function getRecoveryCodes(User $user): array
+    {
+        $raw = $user->two_factor_recovery_codes;
+        if (empty($raw)) {
+            return [];
+        }
+
+        try {
+            $json = Crypt::decryptString($raw);
+        } catch (\Throwable $e) {
+            // Legacy / already-plain JSON.
+            $json = $raw;
+        }
+
+        $decoded = json_decode((string) $json, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function encrypt2faSecret(string $secret): string
     {
         return Crypt::encryptString($secret);
-    }
-
-    private function decrypt2faSecret(string $encrypted): string
-    {
-        return Crypt::decryptString($encrypted);
     }
 
     private function encryptRecoveryCodes(array $codes): string
@@ -289,17 +299,18 @@ class TwoFactorController extends Controller
     }
 
     /**
-     * Decrypt secret if encrypted, otherwise return as-is.
+     * Decrypt a secret if it is encrypted, otherwise return it as-is
+     * (supports legacy plain-text secrets).
      */
     private function getDecryptedSecret(?string $value): ?string
     {
-        if (!$value) return null;
+        if (!$value) {
+            return null;
+        }
 
-        // Try decrypting (for values like "eyJpdiI6...")
         try {
             return Crypt::decryptString($value);
         } catch (\Throwable $e) {
-            // Not encrypted (legacy plain secret)
             return $value;
         }
     }

@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email_otp_expires_at',
         'two_factor_enabled',
         'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     protected $hidden = [
@@ -29,6 +30,7 @@ class User extends Authenticatable
         'remember_token',
         'email_otp_hash',
         'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     protected function casts(): array

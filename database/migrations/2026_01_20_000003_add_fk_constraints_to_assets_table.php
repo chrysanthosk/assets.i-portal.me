@@ -7,6 +7,15 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    /**
+     * MySQL / MariaDB only — information_schema + ALTER ADD FOREIGN KEY are not
+     * portable. On other drivers (SQLite in tests) the FKs already exist inline.
+     */
+    private function isMysql(): bool
+    {
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+    }
+
     private function fkExists(string $table, string $constraintName): bool
     {
         $db = DB::getDatabaseName();
@@ -27,6 +36,10 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (!$this->isMysql()) {
+            return;
+        }
+
         $table = 'assets';
 
         // IMPORTANT: use explicit names so we can detect duplicates safely
@@ -56,6 +69,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!$this->isMysql()) {
+            return;
+        }
+
         $table = 'assets';
 
         // Drop by constraint name (most reliable)

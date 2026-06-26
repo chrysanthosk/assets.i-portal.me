@@ -26,6 +26,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // When running behind a reverse proxy / port mapping (e.g. Docker
+        // publishes :8080 -> container :80), force generated URLs to use
+        // APP_URL as their root so the public scheme/host/port are preserved.
+        if (config('app.force_root_url') && config('app.url')) {
+            \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
+
+            if (str_starts_with((string) config('app.url'), 'https://')) {
+                \Illuminate\Support\Facades\URL::forceScheme('https');
+            }
+        }
+
         /**
          * IMPORTANT:
          * Never clear Spatie permission cache on every request in production.
@@ -37,7 +48,13 @@ class AppServiceProvider extends ServiceProvider
          *   php artisan optimize:clear
          */
         if (App::environment(['local', 'testing'])) {
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            // Best-effort only: must never crash boot when the cache/DB backend
+            // is not reachable yet (fresh install, migrations not run, etc.).
+            try {
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
+            } catch (\Throwable $e) {
+                // ignore — permissions cache will refresh on its own / via optimize:clear
+            }
         }
 
         // -----------------------------

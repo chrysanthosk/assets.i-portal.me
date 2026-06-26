@@ -59,16 +59,17 @@ class DashboardController extends Controller
         // Occupied/Vacant mapping based on your real-world statuses
         // Example status: "Rented (long-term)" => Occupied
         // ---------------------------------------------------------
-        $occupiedCount = Asset::query()
-            ->whereRaw('LOWER(status) LIKE ?', ['%rented%'])
-            ->orWhereRaw('LOWER(status) LIKE ?', ['%occupied%'])
-            ->count();
+        // Bucket every asset's status into occupied / vacant in a single pass
+        // instead of issuing a separate COUNT query per bucket.
+        $statusCounts = Asset::query()
+            ->selectRaw(
+                "SUM(CASE WHEN LOWER(status) LIKE '%rented%' OR LOWER(status) LIKE '%occupied%' THEN 1 ELSE 0 END) AS occupied,"
+                . " SUM(CASE WHEN LOWER(status) LIKE '%vacant%' OR LOWER(status) LIKE '%available%' THEN 1 ELSE 0 END) AS vacant"
+            )
+            ->first();
 
-        $vacantCount = Asset::query()
-            ->whereRaw('LOWER(status) LIKE ?', ['%vacant%'])
-            ->orWhereRaw('LOWER(status) LIKE ?', ['%available%'])
-            ->count();
-
+        $occupiedCount = (int) ($statusCounts->occupied ?? 0);
+        $vacantCount = (int) ($statusCounts->vacant ?? 0);
         $otherStatusCount = max(0, $totalAssets - $occupiedCount - $vacantCount);
 
         return view('dashboard', [

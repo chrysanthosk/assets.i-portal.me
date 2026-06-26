@@ -1,0 +1,41 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Local environment / secrets
+.env
+.env.backup
+.env.production
+auth.json
+
+# Dependencies & build output (rebuilt inside the image)
+node_modules
+vendor
+public/build
+public/hot
+public/storage
+
+# Runtime / generated
+storage/*.key
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+
+# Tooling / editor / OS junk
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+.fleet
+.nova
+.zed
+.phpunit.result.cache
+.phpunit.cache
+
+# Docs / CI that don't belong in the image
+README.md
+phpunit.xml
+tests
