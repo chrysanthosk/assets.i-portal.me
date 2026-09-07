@@ -32,6 +32,8 @@ services:
       # Persistent encryption key from the host .env (scripts/docker-preflight.sh
       # generates it once). Blank = the entrypoint generates a throwaway key.
       APP_KEY: "${APP_KEY:-}"
+      # Local timezone for due dates and reminder times (e.g. Europe/Nicosia)
+      APP_TIMEZONE: "${APP_TIMEZONE:-UTC}"
       # APP_URL follows WEB_PORT automatically unless you set APP_URL explicitly
       APP_URL: "${APP_URL:-http://localhost:${WEB_PORT:-8080}}"
       # Generate URLs from APP_URL (the published port differs from the internal one)

@@ -130,6 +130,12 @@
               {{ $overduePaymentsCount ?? 0 }} overdue
               @can('manage_rental_payments') · <a href="{{ route('payments.index') }}">view</a> @endcan
             </div>
+            @if(($unconfirmedPaymentsCount ?? 0) > 0)
+            <div class="small text-warning-emphasis">
+              {{ $unconfirmedPaymentsCount }} awaiting confirmation
+              @can('manage_rental_payments') · <a href="{{ route('payments.unconfirmed') }}">rent check</a> @endcan
+            </div>
+            @endif
           </div>
           <i class="bi bi-wallet2 fs-1 text-muted"></i>
         </div>

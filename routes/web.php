@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalPaymentsController;
+use App\Http\Controllers\RentConfirmationController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\Settings\AssetTypesController;
 use App\Http\Controllers\Settings\CurrenciesController;
@@ -33,6 +34,18 @@ Route::get('/two-factor', [TwoFactorController::class, 'challengeForm'])->name('
 Route::post('/two-factor', [TwoFactorController::class, 'challengeVerify'])
     ->middleware('throttle:6,1')
     ->name('2fa.verify');
+
+/**
+ * One-click rent confirmation from the reminder email. No login: the link is a
+ * temporary signed URL. GET shows the page, POST applies the answer (so mail
+ * scanners that prefetch links cannot confirm by accident).
+ */
+Route::middleware('signed')->group(function () {
+    Route::get('/rent/confirm/{payment}/{answer}', [RentConfirmationController::class, 'show'])
+        ->whereIn('answer', ['received', 'not-received'])->name('rent.confirm');
+    Route::post('/rent/confirm/{payment}/{answer}', [RentConfirmationController::class, 'store'])
+        ->whereIn('answer', ['received', 'not-received'])->middleware('throttle:20,1');
+});
 
 /**
  * Root: only accessible after auth + 2fa
@@ -69,6 +82,10 @@ Route::middleware(['auth', '2fa'])->group(function () {
     // --------------------
     Route::middleware('permission:manage_rental_payments')->group(function () {
         Route::get('/payments', [RentalPaymentsController::class, 'index'])->name('payments.index');
+        Route::get('/payments/unconfirmed', [RentalPaymentsController::class, 'unconfirmed'])->name('payments.unconfirmed');
+        Route::post('/payments/generate', [RentalPaymentsController::class, 'generate'])->name('payments.generate');
+        Route::post('/payments/send-reminders', [RentalPaymentsController::class, 'sendReminders'])->name('payments.sendReminders');
+        Route::post('/payments/{payment}/not-received', [RentalPaymentsController::class, 'markNotReceived'])->name('payments.markNotReceived');
         Route::post('/payments', [RentalPaymentsController::class, 'store'])->name('payments.store');
         Route::post('/payments/{payment}/paid', [RentalPaymentsController::class, 'markPaid'])->name('payments.markPaid');
         Route::delete('/payments/{payment}', [RentalPaymentsController::class, 'destroy'])->name('payments.destroy');
