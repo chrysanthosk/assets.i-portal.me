@@ -296,7 +296,12 @@ docker_deploy(){
   local repo_root
   repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   [[ -f "${repo_root}/docker-compose.yml" ]] || die "docker-compose.yml not found at ${repo_root}"
-  [[ -f "${repo_root}/.env" ]] || warn "No .env at repo root; compose will fall back to defaults."
+
+  # Ensure .env exists, APP_KEY is persisted, and host ports don't clash with
+  # other stacks on this machine (see scripts/docker-preflight.sh).
+  # shellcheck disable=SC1091
+  source "${repo_root}/scripts/docker-preflight.sh"
+  docker_preflight
 
   warn "The MySQL data volume (db_data) is preserved — your database is NOT dropped on deploy."
 
@@ -319,6 +324,7 @@ docker_deploy(){
   log "DOCKER DEPLOY DONE."
   echo "-------------------------------------------"
   echo "Stack:        $(cd "$repo_root" && docker compose ps --services | tr '\n' ' ')"
+  echo "URL:          $(env_get APP_URL)  (host port $(env_get WEB_PORT))"
   echo "Database:     preserved (volume: db_data)"
   echo "Logs:         docker compose logs -f app"
   echo "-------------------------------------------"

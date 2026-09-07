@@ -98,7 +98,8 @@ With the values from `.env.docker.example`, an admin is created on first boot:
 > `ADMIN_EMAIL` in `.env`.
 
 On first boot the `app` container automatically:
-1. creates `.env` (if missing) and generates `APP_KEY`,
+1. creates its own `.env` (if missing) and uses the `APP_KEY` from the host
+   `.env` (generating a throwaway one only if none is provided),
 2. waits for MySQL to become healthy,
 3. runs `php artisan migrate --force` (**additive — never drops data**),
 4. seeds roles & permissions (idempotent `PortalPermissionsSeeder`),
@@ -134,7 +135,21 @@ docker compose down -v                  # stop AND delete the database volume
 ```
 
 To redeploy after pulling new code you can also run
-`./scripts/new_deploy.sh` and pick the **Docker** option.
+`./scripts/new_deploy.sh` and pick the **Docker** option. Before rebuilding it
+runs `scripts/docker-preflight.sh`, which:
+
+- creates `.env` from `.env.docker.example` if it is missing (with random DB
+  passwords),
+- generates `APP_KEY` once and stores it in the host `.env` so it survives
+  rebuilds (2FA secrets are encrypted with it — never rotate it on a live
+  install),
+- moves `WEB_PORT` / `DB_EXPOSED_PORT` to the next free host port when another
+  process or stack already listens there. A `localhost` `APP_URL` follows the
+  new port; a custom `APP_URL` is left untouched with a warning so you can
+  update your reverse proxy target.
+
+The preflight is idempotent and can be run on its own:
+`./scripts/docker-preflight.sh`.
 
 ---
 

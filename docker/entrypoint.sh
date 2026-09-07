@@ -21,9 +21,16 @@ if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
-# Generate APP_KEY only when it is missing/empty
-if ! grep -qE '^APP_KEY=base64:.+' .env; then
-    log "Generating application key"
+# Prefer the APP_KEY passed in from the host .env (via docker-compose.yml) so
+# the key survives image rebuilds — 2FA secrets are encrypted with it.
+if [ -n "${APP_KEY:-}" ]; then
+    if grep -qE '^APP_KEY=' .env; then
+        sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env
+    else
+        echo "APP_KEY=${APP_KEY}" >> .env
+    fi
+elif ! grep -qE '^APP_KEY=base64:.+' .env; then
+    log "WARNING: no APP_KEY provided — generating one that will NOT survive a rebuild (set APP_KEY in the host .env)"
     php artisan key:generate --force --no-interaction
 fi
 
