@@ -196,7 +196,7 @@
 
 {{-- ========== Loan ========== --}}
 <div class="card mb-3">
-    <div class="card-header d-flex align-items-center justify-content-between">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <h6 class="mb-0"><i class="bi bi-bank me-1"></i> Loan</h6>
         <div class="form-check form-switch mb-0">
             <input type="hidden" name="financed" value="0">

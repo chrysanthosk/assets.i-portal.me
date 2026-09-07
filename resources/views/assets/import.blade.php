@@ -4,7 +4,7 @@
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <h5 class="mb-0"><i class="bi bi-file-earmark-arrow-up me-1"></i> Import property from title deed</h5>
                 <a href="{{ route('assets.index') }}" class="btn btn-sm btn-outline-secondary">Back</a>
             </div>
@@ -47,7 +47,7 @@
     <div class="col-lg-5">
         <div class="card">
             <div class="card-header"><h6 class="mb-0">Recent imports</h6></div>
-            <div class="card-body p-0">
+            <div class="card-body p-0 table-responsive">
                 <table class="table table-sm mb-0 align-middle">
                     <tbody>
                     @forelse($recent as $r)

@@ -5,7 +5,7 @@
     <div class="col-12">
 
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <h5 class="mb-0">Asset Types</h5>
                 <span class="text-muted small">Configure the list used in Assets → Type</span>
             </div>

@@ -54,7 +54,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
 
     <div class="col-12 col-lg-7 mb-3">
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
                     <h5 class="mb-0">Asset Details</h5>
                     <small class="text-muted">General information</small>
@@ -214,7 +214,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
         @include('assets._title_deed_card')
 
         <div class="card mb-3">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
                     <h5 class="mb-0">Rental History</h5>
                     <small class="text-muted">Last 24 entries</small>
@@ -263,7 +263,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
         ASSET DOCUMENTS
         ========================== --}}
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
                     <h5 class="mb-0">Documents</h5>
                     <small class="text-muted">Upload deeds, contracts, invoices, etc.</small>

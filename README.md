@@ -1,6 +1,7 @@
 # assets.i-portal.me
 
-A **Laravel 12 + AdminLTE 4 (Bootstrap 5)** property/real-estate portfolio manager:
+A **Laravel 12 + Bootstrap 5** property/real-estate portfolio manager with a modern,
+mobile-friendly portal shell (dark/light):
 track owned assets, tenants, rental agreements & payments, expenses, documents,
 and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 

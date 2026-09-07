@@ -8,7 +8,7 @@
   </div>
 
   <div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
       <strong>SMTP Configuration</strong>
 
       <div class="text-muted small">

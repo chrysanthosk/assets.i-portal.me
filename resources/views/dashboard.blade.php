@@ -2,191 +2,148 @@
 
 @section('content')
 @php
-  $fullName = trim(($user->name ?? '') . ' ' . ($user->surname ?? ''));
-  $periodLabel = sprintf('%04d-%02d', $currentYear, $currentMonth);
+    $fullName = trim(($user->name ?? '').' '.($user->surname ?? '')) ?: $user->username;
+    $periodLabel = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->format('F Y');
+    $money = fn ($n) => '€ '.number_format((float) $n, 2);
+    $byCur = fn ($rows) => collect($rows)->map(fn ($r) => $r->currency.' '.number_format((float) $r->total, 2))->implode(' · ');
+    $attentionCount = ($unconfirmedPaymentsCount ?? 0) + ($overduePaymentsCount ?? 0) + ($expiredDocsCount ?? 0) + ($expiringDocsCount ?? 0);
 @endphp
 
-<div class="row">
-  <div class="col-12 mb-3">
-    <div class="alert alert-secondary mb-0">
-      <strong>{{ $greeting }} {{ $fullName ?: $user->username }}</strong>
-      <div class="text-muted small mt-1">
-        Period: {{ $periodLabel }}
-      </div>
+<div class="page-head">
+    <div>
+        <h1>{{ $greeting }}, {{ $fullName }} 👋</h1>
+        <div class="sub">Here's your portfolio for {{ $periodLabel }}.</div>
     </div>
-  </div>
-
-  <!-- Total Assets -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Total Assets</div>
-            <div class="fs-3 fw-semibold">{{ number_format($totalAssets) }}</div>
-          </div>
-          <i class="bi bi-buildings fs-1 text-muted"></i>
+    @can('manage_assets')
+        <div class="d-flex gap-2">
+            <a href="{{ route('assets.import.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-arrow-up me-1"></i> Import title deed</a>
         </div>
-      </div>
-    </div>
-  </div>
+    @endcan
+</div>
 
-  <!-- Total Value -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Total Value</div>
-            <div class="fs-3 fw-semibold">€ {{ number_format($totalAssetsValue, 2) }}</div>
-            <div class="text-muted small">Sum of purchase prices</div>
-          </div>
-          <i class="bi bi-cash-coin fs-1 text-muted"></i>
+{{-- Stat tiles --}}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <x-stat icon="bi-buildings" label="Properties" :value="number_format($totalAssets)"
+                :sub="number_format($occupiedCount ?? 0).' occupied · '.number_format($vacantCount ?? 0).' vacant'"
+                :href="auth()->user()->can('manage_assets') ? route('assets.index') : null" />
+    </div>
+    <div class="col-6 col-xl-3">
+        <x-stat icon="bi-cash-stack" label="Portfolio value" :value="$money($totalAssetsValue)" sub="Sum of purchase prices" tone="info" />
+    </div>
+    <div class="col-6 col-xl-3">
+        <x-stat icon="bi-graph-up-arrow" label="Monthly rent" :value="$money($monthlyIncomeActiveOnly ?? 0)"
+                :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's')" tone="success" />
+    </div>
+    <div class="col-6 col-xl-3">
+        <x-stat icon="bi-wallet2" label="Outstanding"
+                :value="$outstandingByCurrency->isNotEmpty() ? $byCur($outstandingByCurrency) : '—'"
+                :sub="($overduePaymentsCount ?? 0).' overdue · '.($unconfirmedPaymentsCount ?? 0).' to confirm'"
+                :tone="($overduePaymentsCount ?? 0) ? 'danger' : (($unconfirmedPaymentsCount ?? 0) ? 'warning' : '')"
+                :href="auth()->user()->can('manage_rental_payments') ? route('payments.unconfirmed') : null" />
+    </div>
+</div>
+
+<div class="row g-3">
+    {{-- Rent check --}}
+    @can('manage_rental_payments')
+    <div class="col-12 col-xl-6">
+        <div class="card h-100">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <span><i class="bi bi-question-circle me-1"></i> Did the rent arrive?</span>
+                <a href="{{ route('payments.unconfirmed') }}" class="small">All</a>
+            </div>
+            <div class="card-body p-2">
+                @forelse($rentToConfirm as $p)
+                    <div class="feed-row">
+                        <div class="min-w-0">
+                            <div class="fw-medium text-truncate">{{ $p->asset?->name ?? '—' }}</div>
+                            <div class="small text-muted">{{ $p->tenantName() ?? 'No tenant' }} · {{ $p->periodLabel() }}</div>
+                        </div>
+                        <div class="text-end text-nowrap">
+                            <div class="fw-semibold">{{ $p->currency }} {{ number_format((float) $p->amount, 2) }}</div>
+                            <div class="d-flex gap-1 justify-content-end mt-1">
+                                <form method="POST" action="{{ route('payments.markPaid', $p) }}" data-no-loading>@csrf<button class="btn btn-sm btn-success py-0">Yes</button></form>
+                                <form method="POST" action="{{ route('payments.markNotReceived', $p) }}" data-no-loading>@csrf<button class="btn btn-sm btn-outline-danger py-0">No</button></form>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center text-muted small py-4">Nothing to confirm 🎉</div>
+                @endforelse
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Monthly Income (All records for the period) -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Monthly Income</div>
-            <div class="fs-3 fw-semibold">€ {{ number_format((float)$monthlyIncome, 2) }}</div>
+    {{-- Overdue --}}
+    <div class="col-12 col-xl-6">
+        <div class="card h-100 {{ $overdueRent->isNotEmpty() ? 'border-danger' : '' }}">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <span><i class="bi bi-exclamation-circle me-1 {{ $overdueRent->isNotEmpty() ? 'text-danger' : '' }}"></i> Overdue rent</span>
+                <a href="{{ route('payments.index', ['status' => 'overdue']) }}" class="small">All</a>
+            </div>
+            <div class="card-body p-2">
+                @forelse($overdueRent as $p)
+                    <div class="feed-row">
+                        <div class="min-w-0">
+                            <div class="fw-medium text-truncate">{{ $p->asset?->name ?? '—' }}</div>
+                            <div class="small text-muted">{{ $p->tenantName() ?? 'No tenant' }} · due {{ optional($p->due_date)->format('d M Y') }}</div>
+                        </div>
+                        <div class="text-end text-nowrap">
+                            <div class="fw-semibold text-danger">{{ $p->currency }} {{ number_format((float) $p->amount, 2) }}</div>
+                            <span class="badge text-bg-danger">{{ $p->due_date->diffInDays(now()) }}d late</span>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center text-muted small py-4">No arrears</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+    @endcan
 
-            @if(isset($monthlyIncomeByCurrency) && $monthlyIncomeByCurrency->count() > 0)
-              <div class="text-muted small mt-1">
-                @foreach($monthlyIncomeByCurrency as $row)
-                  <span class="me-2">
-                    {{ $row->currency }} {{ number_format((float)$row->total, 2) }}
-                  </span>
+    {{-- Documents --}}
+    <div class="col-12 col-xl-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-file-earmark-x me-1"></i> Documents expiring</div>
+            <div class="card-body p-2">
+                @forelse($expiringDocs as $d)
+                    @php $expired = $d->expires_at && \Carbon\Carbon::parse($d->expires_at)->isPast(); @endphp
+                    <a class="feed-row text-reset" href="{{ route('assets.show', $d->asset_id) }}">
+                        <div class="min-w-0">
+                            <div class="fw-medium text-truncate">{{ $d->title ?: $d->original_name }}</div>
+                            <div class="small text-muted">{{ $d->asset?->name ?? '—' }} @if($d->doc_type)· {{ $d->doc_type }}@endif</div>
+                        </div>
+                        <span class="badge {{ $expired ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $expired ? 'expired' : 'expires' }} {{ \Carbon\Carbon::parse($d->expires_at)->format('d M') }}</span>
+                    </a>
+                @empty
+                    <div class="text-center text-muted small py-4">Nothing expiring in the next 30 days</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    {{-- Recent activity --}}
+    @if($recentActivity->isNotEmpty())
+    <div class="col-12 col-xl-6">
+        <div class="card h-100">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <span><i class="bi bi-clipboard-data me-1"></i> Recent activity</span>
+                @can('manage_audit_logs')<a href="{{ route('audit.index') }}" class="small">Audit log</a>@endcan
+            </div>
+            <div class="card-body p-2">
+                @foreach($recentActivity as $a)
+                    <div class="feed-row">
+                        <div class="min-w-0">
+                            <span class="mono">{{ $a->action }}</span>
+                            <span class="small text-muted ms-1">{{ $a->user?->username ?? 'system' }}@if($a->entity) · {{ $a->entity }}@if($a->entity_id) #{{ $a->entity_id }}@endif @endif</span>
+                        </div>
+                        <span class="when">{{ $a->created_at?->diffForHumans(null, true) }} ago</span>
+                    </div>
                 @endforeach
-              </div>
-            @else
-              <div class="text-muted small mt-1">No income records for this period</div>
-            @endif
-          </div>
-          <i class="bi bi-graph-up-arrow fs-1 text-muted"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Occupied / Vacant -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Occupied / Vacant</div>
-            <div class="fs-6 fw-semibold">
-              <span class="me-2"><i class="bi bi-door-open"></i> Occupied: {{ number_format($occupiedCount ?? 0) }}</span>
-              <span><i class="bi bi-door-closed"></i> Vacant: {{ number_format($vacantCount ?? 0) }}</span>
             </div>
-
-            @if(($otherStatusCount ?? 0) > 0)
-              <div class="text-muted small mt-1">
-                Other: {{ number_format($otherStatusCount) }}
-              </div>
-            @endif
-          </div>
-          <i class="bi bi-house-check fs-1 text-muted"></i>
         </div>
-      </div>
     </div>
-  </div>
-
-  <!-- Active Agreements -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Active Agreements</div>
-            <div class="fs-3 fw-semibold">{{ number_format($activeAgreementsCount ?? 0) }}</div>
-            <div class="text-muted small">Based on start/end dates</div>
-          </div>
-          <i class="bi bi-file-earmark-check fs-1 text-muted"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Outstanding payments / arrears -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card {{ ($overduePaymentsCount ?? 0) ? 'border-danger' : '' }}">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Outstanding</div>
-            @forelse(($outstandingByCurrency ?? collect()) as $row)
-              <div class="fs-5 fw-semibold">{{ $row->currency }} {{ number_format((float) $row->total, 2) }}</div>
-            @empty
-              <div class="fs-5 fw-semibold text-muted">—</div>
-            @endforelse
-            <div class="small {{ ($overduePaymentsCount ?? 0) ? 'text-danger' : 'text-muted' }}">
-              {{ $overduePaymentsCount ?? 0 }} overdue
-              @can('manage_rental_payments') · <a href="{{ route('payments.index') }}">view</a> @endcan
-            </div>
-            @if(($unconfirmedPaymentsCount ?? 0) > 0)
-            <div class="small text-warning-emphasis">
-              {{ $unconfirmedPaymentsCount }} awaiting confirmation
-              @can('manage_rental_payments') · <a href="{{ route('payments.unconfirmed') }}">rent check</a> @endcan
-            </div>
-            @endif
-          </div>
-          <i class="bi bi-wallet2 fs-1 text-muted"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Document expiry reminders -->
-  <div class="col-12 col-lg-3 mb-3">
-    <div class="card {{ ($expiredDocsCount ?? 0) ? 'border-danger' : (($expiringDocsCount ?? 0) ? 'border-warning' : '') }}">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Documents</div>
-            <div class="fs-3 fw-semibold {{ ($expiredDocsCount ?? 0) ? 'text-danger' : '' }}">{{ $expiredDocsCount ?? 0 }}</div>
-            <div class="small {{ ($expiringDocsCount ?? 0) ? 'text-warning-emphasis' : 'text-muted' }}">
-              {{ $expiredDocsCount ?? 0 }} expired · {{ $expiringDocsCount ?? 0 }} expiring ≤30d
-            </div>
-          </div>
-          <i class="bi bi-file-earmark-text fs-1 text-muted"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Monthly Income (Active agreements only) -->
-  <div class="col-12 col-lg-6 mb-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-muted text-uppercase small">Monthly Income (Active Only)</div>
-            <div class="fs-3 fw-semibold">€ {{ number_format((float)($monthlyIncomeActiveOnly ?? 0), 2) }}</div>
-
-            @if(isset($monthlyIncomeActiveByCurrency) && $monthlyIncomeActiveByCurrency->count() > 0)
-              <div class="text-muted small mt-1">
-                @foreach($monthlyIncomeActiveByCurrency as $row)
-                  <span class="me-2">
-                    {{ $row->currency }} {{ number_format((float)$row->total, 2) }}
-                  </span>
-                @endforeach
-              </div>
-            @else
-              <div class="text-muted small mt-1">No active-agreement income for this period</div>
-            @endif
-          </div>
-          <i class="bi bi-currency-exchange fs-1 text-muted"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
+    @endif
 </div>
 @endsection
