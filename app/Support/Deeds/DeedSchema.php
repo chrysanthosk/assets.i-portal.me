@@ -61,7 +61,13 @@ class DeedSchema
                         ],
                     ],
                 ],
-                'property_type' => ['type' => ['string', 'null'], 'enum' => ['apartment', 'house', 'maisonette', 'land', 'commercial', 'office', 'other', null]],
+                'property_type' => [
+                    'description' => 'apartment | house | maisonette | land | commercial | office | other',
+                    'anyOf' => [
+                        ['type' => 'string', 'enum' => ['apartment', 'house', 'maisonette', 'land', 'commercial', 'office', 'other']],
+                        ['type' => 'null'],
+                    ],
+                ],
                 'property_description' => $str + ['description' => 'Περιγραφή Ακίνητης Ιδιοκτησίας translated to English, one paragraph, including parking/storage rights'],
                 'parking_spaces' => $int,
                 'storage_rooms' => $int,
