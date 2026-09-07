@@ -5,7 +5,7 @@
   <div class="col-12">
 
     <div class="card">
-      <div class="card-header d-flex align-items-center justify-content-between">
+      <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <h5 class="mb-0">Permission Sets</h5>
 
         <form method="POST" action="{{ route('settings.permissionSets.storeRole') }}" class="d-flex gap-2">

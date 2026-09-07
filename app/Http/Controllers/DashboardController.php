@@ -97,7 +97,24 @@ class DashboardController extends Controller
             ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
             ->count();
 
+        // Panels: what needs attention + recent activity
+        $rentToConfirm = RentalPayment::query()->with(['asset', 'rental.tenant'])
+            ->awaitingConfirmation()->orderBy('due_date')->limit(6)->get();
+        $overdueRent = RentalPayment::query()->with(['asset', 'rental.tenant'])
+            ->overdue()->orderBy('due_date')->limit(6)->get();
+        $expiringDocs = AssetDocument::query()->with('asset')
+            ->whereNotNull('expires_at')
+            ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
+            ->orderBy('expires_at')->limit(6)->get();
+        $recentActivity = $user->can('manage_audit_logs')
+            ? \App\Models\AuditLog::query()->with('user')->latest()->limit(8)->get()
+            : collect();
+
         return view('dashboard', [
+            'rentToConfirm' => $rentToConfirm,
+            'overdueRent' => $overdueRent,
+            'expiringDocs' => $expiringDocs,
+            'recentActivity' => $recentActivity,
             'user' => $user,
             'greeting' => $greeting,
 

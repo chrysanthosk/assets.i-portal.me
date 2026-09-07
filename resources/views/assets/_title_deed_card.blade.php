@@ -7,7 +7,7 @@
     $fmt = fn ($n) => $n === null ? '—' : number_format((float) $n, 2);
 @endphp
 <div class="card mb-3">
-    <div class="card-header d-flex align-items-center justify-content-between">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <h5 class="mb-0"><i class="bi bi-file-earmark-text me-1"></i> Title deed</h5>
         <small class="text-muted">imported from scan</small>
     </div>

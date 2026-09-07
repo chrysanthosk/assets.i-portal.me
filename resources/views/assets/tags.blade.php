@@ -5,7 +5,7 @@
   <div class="col-12">
 
     <div class="card">
-      <div class="card-header d-flex align-items-center justify-content-between">
+      <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <div>
           <h5 class="mb-0">Asset Tags</h5>
           <small class="text-muted">Create tags like “Paphos”, “Airbnb”, “Commercial”</small>

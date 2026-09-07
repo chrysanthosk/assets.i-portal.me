@@ -91,7 +91,7 @@
         </div>
 
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
                     <strong>Logs</strong>
                     <span class="text-muted ms-2">({{ $logs->total() }} total)</span>

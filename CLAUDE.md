@@ -23,8 +23,8 @@ Guidance for Claude Code (and other AI assistants) when working in this reposito
 
 ## Project overview
 
-**assets.i-portal.me** — a Laravel 12 + AdminLTE 4 (Bootstrap 5) property/real-estate
-portfolio manager.
+**assets.i-portal.me** — a Laravel 12 + Bootstrap 5 property/real-estate
+portfolio manager with a custom portal shell (no AdminLTE).
 
 Platform: username/password auth, 2FA (Google Authenticator) with recovery codes,
 Spatie roles & permissions, profile management with email OTP, zxcvbn meter, SMTP
@@ -44,8 +44,9 @@ document-expiry reminders.
 - **Laravel 12**, Composer
 - **MySQL 8+** in production / **`mysql:latest`** in Docker (SQLite is the default
   for local quick experiments via `.env.example`, and is used by the test suite)
-- **Node 18+ / npm**, **Vite 7**, Bootstrap 5, AdminLTE 4
-  (Tailwind/Alpine were removed — the build is pure Bootstrap/AdminLTE)
+- **Node 18+ / npm**, **Vite 7**, Bootstrap 5, Bootstrap Icons, Inter (self-hosted via
+  `@fontsource-variable/inter`). No Tailwind/Alpine/AdminLTE — the shell (sidebar, topbar,
+  theme tokens, stat tiles) is hand-written in `resources/css/app.css` + `resources/js/app.js`.
 - Key packages: `spatie/laravel-permission`, `pragmarx/google2fa-laravel`,
   `sentry/sentry-laravel` (optional, inert without a DSN)
 
@@ -202,5 +203,11 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
   The key is stored encrypted in `portal_settings` (Settings → Portal) with
   `ANTHROPIC_API_KEY` as env fallback; model from `ANTHROPIC_MODEL` (default
   `claude-opus-5`). Tests bind a fake `DeedExtractor` — never call the API in tests.
-- Don't introduce a new framework without need; the front-end is **Bootstrap/AdminLTE only**
-  (no Tailwind/Alpine). Match the existing Laravel idioms and surrounding style.
+- Don't introduce a new framework without need; the front-end is **Bootstrap 5 only**
+  (no Tailwind/Alpine/AdminLTE). Layout classes: `.shell`, `.sidebar` (`.sb-link`,
+  `.sb-header`, `.sb-sub`), `.topbar`, `.content`, `.stat` tiles (`<x-stat>`), `.feed-row`.
+  Light/dark come from CSS tokens on `:root` / `[data-bs-theme="dark"]`; the theme is
+  persisted in localStorage and applied before first paint. Page titles come from
+  `@section('title')` or the route-name map in `layouts/app.blade.php`. Mobile: the sidebar
+  is off-canvas under 992px (hamburger in the topbar), tables must sit in `.table-responsive`,
+  card headers use `d-flex flex-wrap`. Match the existing Laravel idioms and surrounding style.
