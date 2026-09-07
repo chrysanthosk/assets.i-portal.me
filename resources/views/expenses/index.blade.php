@@ -11,13 +11,13 @@
                     <small class="text-muted">Maintenance, tax, insurance and other property costs</small>
                 </div>
                 <form method="GET" action="{{ route('expenses.index') }}" class="d-flex gap-2 align-items-center ms-auto">
-                    <select name="asset_id" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 160px;">
+                    <select name="asset_id" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All assets</option>
                         @foreach($assets as $a)
                             <option value="{{ $a->id }}" @selected((int) $assetId === $a->id)>{{ $a->name }}</option>
                         @endforeach
                     </select>
-                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 150px;">
+                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All categories</option>
                         @foreach($categories as $c)
                             <option value="{{ $c }}" @selected($category === $c)>{{ $c }}</option>

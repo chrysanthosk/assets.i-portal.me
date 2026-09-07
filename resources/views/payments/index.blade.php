@@ -42,7 +42,7 @@
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Rental Payments</h5>
                 <form method="GET" action="{{ route('payments.index') }}" class="d-flex gap-2 align-items-center ms-auto">
-                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 160px;">
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All statuses</option>
                         <option value="pending" @selected($status === 'pending')>Pending</option>
                         <option value="overdue" @selected($status === 'overdue')>Overdue</option>
