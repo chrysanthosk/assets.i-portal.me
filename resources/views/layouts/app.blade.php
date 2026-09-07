@@ -14,17 +14,12 @@
         .form-control.is-invalid,
         .form-select.is-invalid { border-color: var(--bs-danger); }
 
-        /* Make parent menu items clickable + show pointer */
-        .nav-sidebar .nav-link { cursor: pointer; }
-
-        /* Chevron rotation */
-        .nav-link .chev {
-            transition: transform .15s ease;
-            display: inline-block;
+        /* Sidebar: AdminLTE 4 handles the tree, arrows and badges; only tune the section headers */
+        .sidebar-menu .nav-header {
+            font-size: .7rem; letter-spacing: .08em; font-weight: 600;
+            color: var(--bs-secondary-color);
         }
-        .nav-item.menu-open > .nav-link .chev {
-            transform: rotate(180deg); /* down -> up */
-        }
+        .sidebar-menu .nav-badge { font-size: .7rem; }
     </style>
 </head>
 
@@ -33,18 +28,7 @@
 @php
 $portalNameValue = \App\Models\PortalSetting::where('key','portal_name')->value('value') ?? 'assets.i-portal.me';
 
-$settingsOpen = request()->is('settings*');
-$assetsOpen   = request()->is('assets*');
-
-$canAssets = auth()->check() && (
-auth()->user()->can('manage_assets') ||
-auth()->user()->can('manage_asset_rentals') ||
-auth()->user()->can('manage_rental_payments') ||
-auth()->user()->can('manage_asset_expenses') ||
-auth()->user()->can('view_reports') ||
-auth()->user()->can('manage_tenants') ||
-auth()->user()->can('manage_asset_tags')
-);
+$settingsOpen = request()->is('settings*') || request()->is('assets/tags*') || request()->is('audit*');
 
 $canSettings = auth()->check() && (
 auth()->user()->can('manage_portal_settings') ||
@@ -54,7 +38,8 @@ auth()->user()->can('manage_smtp_settings') ||
 auth()->user()->can('manage_asset_types') ||
 auth()->user()->can('manage_owner_entities') ||
 auth()->user()->can('manage_fx_rates') ||
-auth()->user()->can('manage_audit_logs')
+auth()->user()->can('manage_audit_logs') ||
+auth()->user()->can('manage_asset_tags')
 );
 @endphp
 
@@ -109,9 +94,15 @@ auth()->user()->can('manage_audit_logs')
 
         <div class="sidebar-wrapper">
             <nav>
-                <ul class="nav nav-pills nav-sidebar flex-column"
+                @php
+                    $unconfirmedRent = auth()->check() && auth()->user()->can('manage_rental_payments')
+                        ? \App\Models\RentalPayment::query()->awaitingConfirmation()->count()
+                        : 0;
+                @endphp
+                <ul class="nav sidebar-menu flex-column"
                     data-lte-toggle="treeview"
-                    role="menu"
+                    role="navigation"
+                    aria-label="Main navigation"
                     data-accordion="false">
 
                     @can('view_dashboard')
@@ -123,108 +114,103 @@ auth()->user()->can('manage_audit_logs')
                     </li>
                     @endcan
 
-                    <!-- ASSETS (Expandable) -->
-                    @if($canAssets)
-                    <li class="nav-item {{ $assetsOpen ? 'menu-open' : '' }}">
-                        <a class="nav-link {{ $assetsOpen ? 'active' : '' }}" href="#">
+                    {{-- PORTFOLIO --}}
+                    @if(auth()->check() && (auth()->user()->can('manage_assets') || auth()->user()->can('manage_tenants')))
+                    <li class="nav-header">PORTFOLIO</li>
+
+                    @can('manage_assets')
+                    <li class="nav-item">
+                        <a href="{{ route('assets.index') }}"
+                           class="nav-link {{ request()->routeIs('assets.index', 'assets.create', 'assets.edit', 'assets.show') ? 'active' : '' }}">
                             <i class="nav-icon bi bi-buildings"></i>
-                            <p>
-                                Assets
-                                <i class="bi bi-chevron-down float-end chev"></i>
-                            </p>
+                            <p>Properties</p>
                         </a>
-
-                        <ul class="nav nav-treeview">
-
-                            @can('manage_assets')
-                            <li class="nav-item">
-                                <a href="{{ route('assets.index') }}"
-                                   class="nav-link {{ request()->routeIs('assets.index') || request()->routeIs('assets.create') || request()->routeIs('assets.edit') || request()->routeIs('assets.show') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-list-ul"></i>
-                                    <p>Assets List</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_asset_rentals')
-                            <li class="nav-item">
-                                <a href="{{ route('assets.rentals.index') }}"
-                                   class="nav-link {{ request()->routeIs('assets.rentals.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-cash-coin"></i>
-                                    <p>Rental Income</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_rental_payments')
-                            <li class="nav-item">
-                                <a href="{{ route('payments.index') }}"
-                                   class="nav-link {{ request()->routeIs('payments.index') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-wallet2"></i>
-                                    <p>Payments</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('payments.unconfirmed') }}"
-                                   class="nav-link {{ request()->routeIs('payments.unconfirmed') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-question-circle"></i>
-                                    <p>Rent check</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_asset_expenses')
-                            <li class="nav-item">
-                                <a href="{{ route('expenses.index') }}"
-                                   class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-receipt"></i>
-                                    <p>Expenses</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('view_reports')
-                            <li class="nav-item">
-                                <a href="{{ route('reports.index') }}"
-                                   class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-graph-up"></i>
-                                    <p>Reports (P&amp;L)</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_tenants')
-                            <li class="nav-item">
-                                <a href="{{ route('tenants.index') }}"
-                                   class="nav-link {{ request()->routeIs('tenants.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-people"></i>
-                                    <p>Tenants</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_asset_tags')
-                            <li class="nav-item">
-                                <a href="{{ route('assets.tags.index') }}"
-                                   class="nav-link {{ request()->routeIs('assets.tags.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-tags"></i>
-                                    <p>Tags</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                        </ul>
                     </li>
+                    @endcan
+
+                    @can('manage_tenants')
+                    <li class="nav-item">
+                        <a href="{{ route('tenants.index') }}"
+                           class="nav-link {{ request()->routeIs('tenants.*') ? 'active' : '' }}">
+                            <i class="nav-icon bi bi-people"></i>
+                            <p>Tenants</p>
+                        </a>
+                    </li>
+                    @endcan
                     @endif
 
-                    <!-- SETTINGS (Expandable) - only show if user has any settings permission -->
+                    {{-- RENT --}}
+                    @if(auth()->check() && (auth()->user()->can('manage_asset_rentals') || auth()->user()->can('manage_rental_payments')))
+                    <li class="nav-header">RENT</li>
+
+                    @can('manage_rental_payments')
+                    <li class="nav-item">
+                        <a href="{{ route('payments.unconfirmed') }}"
+                           class="nav-link {{ request()->routeIs('payments.unconfirmed') ? 'active' : '' }}">
+                            <i class="nav-icon bi bi-question-circle"></i>
+                            <p>
+                                Rent check
+                                @if($unconfirmedRent)
+                                    <span class="nav-badge badge text-bg-warning ms-2">{{ $unconfirmedRent }}</span>
+                                @endif
+                            </p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('payments.index') }}"
+                           class="nav-link {{ request()->routeIs('payments.index') ? 'active' : '' }}">
+                            <i class="nav-icon bi bi-wallet2"></i>
+                            <p>Payments</p>
+                        </a>
+                    </li>
+                    @endcan
+
+                    @can('manage_asset_rentals')
+                    <li class="nav-item">
+                        <a href="{{ route('assets.rentals.index') }}"
+                           class="nav-link {{ request()->routeIs('assets.rentals.*') ? 'active' : '' }}">
+                            <i class="nav-icon bi bi-file-earmark-text"></i>
+                            <p>Agreements</p>
+                        </a>
+                    </li>
+                    @endcan
+                    @endif
+
+                    {{-- FINANCE --}}
+                    @if(auth()->check() && (auth()->user()->can('manage_asset_expenses') || auth()->user()->can('view_reports')))
+                    <li class="nav-header">FINANCE</li>
+
+                    @can('manage_asset_expenses')
+                    <li class="nav-item">
+                        <a href="{{ route('expenses.index') }}"
+                           class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                            <i class="nav-icon bi bi-receipt"></i>
+                            <p>Expenses</p>
+                        </a>
+                    </li>
+                    @endcan
+
+                    @can('view_reports')
+                    <li class="nav-item">
+                        <a href="{{ route('reports.index') }}"
+                           class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                            <i class="nav-icon bi bi-graph-up"></i>
+                            <p>Reports (P&amp;L)</p>
+                        </a>
+                    </li>
+                    @endcan
+                    @endif
+
+                    {{-- SETTINGS --}}
                     @if($canSettings)
+                    <li class="nav-header">SYSTEM</li>
+
                     <li class="nav-item {{ $settingsOpen ? 'menu-open' : '' }}">
                         <a class="nav-link {{ $settingsOpen ? 'active' : '' }}" href="#">
                             <i class="nav-icon bi bi-gear"></i>
                             <p>
                                 Settings
-                                <i class="bi bi-chevron-down float-end chev"></i>
+                                <i class="nav-arrow bi bi-chevron-right"></i>
                             </p>
                         </a>
 
@@ -234,25 +220,7 @@ auth()->user()->can('manage_audit_logs')
                             <li class="nav-item">
                                 <a href="{{ route('settings.portal.edit') }}" class="nav-link {{ request()->routeIs('settings.portal.*') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-sliders"></i>
-                                    <p>Portal Settings</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_users')
-                            <li class="nav-item">
-                                <a href="{{ route('settings.users.index') }}" class="nav-link {{ request()->routeIs('settings.users.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-people"></i>
-                                    <p>Users</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_permission_sets')
-                            <li class="nav-item">
-                                <a href="{{ route('settings.permissionSets.index') }}" class="nav-link {{ request()->routeIs('settings.permissionSets.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-shield-lock"></i>
-                                    <p>Permission Sets</p>
+                                    <p>Portal &amp; reminders</p>
                                 </a>
                             </li>
                             @endcan
@@ -261,25 +229,7 @@ auth()->user()->can('manage_audit_logs')
                             <li class="nav-item">
                                 <a href="{{ route('settings.smtp.edit') }}" class="nav-link {{ request()->routeIs('settings.smtp.*') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-envelope-at"></i>
-                                    <p>SMTP Settings</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_asset_types')
-                            <li class="nav-item">
-                                <a href="{{ route('settings.assetTypes.index') }}" class="nav-link {{ request()->routeIs('settings.assetTypes.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-ui-checks"></i>
-                                    <p>Asset Types</p>
-                                </a>
-                            </li>
-                            @endcan
-
-                            @can('manage_owner_entities')
-                            <li class="nav-item">
-                                <a href="{{ route('settings.ownerEntities.index') }}" class="nav-link {{ request()->routeIs('settings.ownerEntities.*') ? 'active' : '' }}">
-                                    <i class="nav-icon bi bi-building"></i>
-                                    <p>Owner Entities</p>
+                                    <p>Email (SMTP)</p>
                                 </a>
                             </li>
                             @endcan
@@ -294,12 +244,58 @@ auth()->user()->can('manage_audit_logs')
                             </li>
                             @endcan
 
+                            @can('manage_asset_types')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.assetTypes.index') }}" class="nav-link {{ request()->routeIs('settings.assetTypes.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-ui-checks"></i>
+                                    <p>Property types</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_owner_entities')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.ownerEntities.index') }}" class="nav-link {{ request()->routeIs('settings.ownerEntities.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-building"></i>
+                                    <p>Owner entities</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_asset_tags')
+                            <li class="nav-item">
+                                <a href="{{ route('assets.tags.index') }}"
+                                   class="nav-link {{ request()->routeIs('assets.tags.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-tags"></i>
+                                    <p>Tags</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_users')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.users.index') }}" class="nav-link {{ request()->routeIs('settings.users.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-person-gear"></i>
+                                    <p>Users</p>
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('manage_permission_sets')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.permissionSets.index') }}" class="nav-link {{ request()->routeIs('settings.permissionSets.*') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-shield-lock"></i>
+                                    <p>Permission sets</p>
+                                </a>
+                            </li>
+                            @endcan
+
                             @can('manage_audit_logs')
                             <li class="nav-item">
                                 <a href="{{ route('audit.index') }}"
                                    class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-clipboard-data"></i>
-                                    <p>Audit Logs</p>
+                                    <p>Audit log</p>
                                 </a>
                             </li>
                             @endcan
