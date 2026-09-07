@@ -159,9 +159,16 @@ auth()->user()->can('manage_audit_logs')
                             @can('manage_rental_payments')
                             <li class="nav-item">
                                 <a href="{{ route('payments.index') }}"
-                                   class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                                   class="nav-link {{ request()->routeIs('payments.index') ? 'active' : '' }}">
                                     <i class="nav-icon bi bi-wallet2"></i>
                                     <p>Payments</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('payments.unconfirmed') }}"
+                                   class="nav-link {{ request()->routeIs('payments.unconfirmed') ? 'active' : '' }}">
+                                    <i class="nav-icon bi bi-question-circle"></i>
+                                    <p>Rent check</p>
                                 </a>
                             </li>
                             @endcan

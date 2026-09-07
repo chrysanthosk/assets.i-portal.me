@@ -76,16 +76,14 @@ class DashboardController extends Controller
 
         // Outstanding rental payments (arrears)
         $outstandingByCurrency = RentalPayment::query()
-            ->where('status', 'pending')
+            ->where('status', '!=', RentalPayment::STATUS_PAID)
             ->selectRaw('currency, SUM(amount) as total')
             ->groupBy('currency')
             ->orderBy('currency')
             ->get();
 
-        $overduePaymentsCount = RentalPayment::query()
-            ->where('status', 'pending')
-            ->whereDate('due_date', '<', now()->toDateString())
-            ->count();
+        $overduePaymentsCount = RentalPayment::query()->overdue()->count();
+        $unconfirmedPaymentsCount = RentalPayment::query()->awaitingConfirmation()->count();
 
         // Document expiry reminders
         $expiredDocsCount = AssetDocument::query()
@@ -123,6 +121,7 @@ class DashboardController extends Controller
 
             'outstandingByCurrency' => $outstandingByCurrency,
             'overduePaymentsCount' => $overduePaymentsCount,
+            'unconfirmedPaymentsCount' => $unconfirmedPaymentsCount,
 
             'expiredDocsCount' => $expiredDocsCount,
             'expiringDocsCount' => $expiringDocsCount,

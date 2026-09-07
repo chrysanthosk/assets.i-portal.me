@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\Audit;
+use App\Support\MailConfig;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -36,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
                 \Illuminate\Support\Facades\URL::forceScheme('https');
             }
         }
+
+        // Route all outgoing mail through the SMTP server configured in the UI.
+        MailConfig::apply();
 
         /**
          * IMPORTANT:

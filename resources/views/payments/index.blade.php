@@ -16,7 +16,16 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-3">
+        <div class="card h-100 {{ $unconfirmedCount ? 'border-warning' : '' }}">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Awaiting confirmation</h6>
+                <div class="fs-5 fw-semibold {{ $unconfirmedCount ? 'text-warning-emphasis' : '' }}">{{ $unconfirmedCount }}</div>
+                <a href="{{ route('payments.unconfirmed') }}" class="small">Did the rent arrive?</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card h-100 {{ $overdueCount ? 'border-danger' : '' }}">
             <div class="card-body">
                 <h6 class="text-muted mb-2">Overdue payments</h6>
@@ -37,6 +46,7 @@
                         <option value="">All statuses</option>
                         <option value="pending" @selected($status === 'pending')>Pending</option>
                         <option value="overdue" @selected($status === 'overdue')>Overdue</option>
+                        <option value="not_received" @selected($status === 'not_received')>Not received</option>
                         <option value="paid" @selected($status === 'paid')>Paid</option>
                     </select>
                 </form>
@@ -112,20 +122,25 @@
                         </thead>
                         <tbody>
                         @forelse($payments as $p)
-                            @php $overdue = $p->status === 'pending' && $p->due_date && $p->due_date->isPast(); @endphp
+                            @php $overdue = $p->isOverdue(); @endphp
                             <tr class="{{ $overdue ? 'table-danger' : '' }}">
                                 <td>{{ $p->asset?->name ?? '—' }}</td>
-                                <td>{{ $p->rental?->tenant?->name ?? $p->rental?->tenant_name ?? '—' }}</td>
-                                <td>{{ optional($p->due_date)->format('Y-m-d') }}</td>
+                                <td>{{ $p->tenantName() ?? '—' }}</td>
+                                <td>{{ optional($p->due_date)->format('Y-m-d') }}
+                                    @if($p->period)<div class="small text-muted">{{ $p->periodLabel() }}</div>@endif
+                                </td>
                                 <td class="text-end">{{ $p->currency }} {{ number_format((float) $p->amount, 2) }}</td>
                                 <td>
-                                    @if($p->status === 'paid')
+                                    @if($p->isPaid())
                                         <span class="badge text-bg-success">Paid</span>
+                                    @elseif($p->status === \App\Models\RentalPayment::STATUS_NOT_RECEIVED)
+                                        <span class="badge text-bg-danger">Not received</span>
                                     @elseif($overdue)
                                         <span class="badge text-bg-danger">Overdue</span>
                                     @else
                                         <span class="badge text-bg-warning">Pending</span>
                                     @endif
+                                    @if($p->reminder_count)<span class="badge text-bg-light border ms-1" title="Reminders sent">{{ $p->reminder_count }} <i class="bi bi-envelope"></i></span>@endif
                                 </td>
                                 <td class="text-end text-nowrap">
                                     @if($p->status !== 'paid')
