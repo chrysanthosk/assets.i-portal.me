@@ -63,9 +63,9 @@ class AdvancedModeTest extends TestCase
         \App\Models\AssetType::create(['name' => 'Apartment', 'is_active' => true, 'sort_order' => 1]);
 
         $this->actingAs($user)->get('/assets/create')->assertOk()
-            ->assertDontSee('Owner Entity')->assertDontSee('name="tags[]"', false);
+            ->assertDontSee('Owner entity')->assertDontSee('name="tags[]"', false);
 
         Portal::setAdvanced(true);
-        $this->actingAs($user)->get('/assets/create')->assertOk()->assertSee('Owner Entity');
+        $this->actingAs($user)->get('/assets/create')->assertOk()->assertSee('Owner entity');
     }
 }
