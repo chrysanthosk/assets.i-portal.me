@@ -221,6 +221,8 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
 
     <div class="col-12 col-lg-5 mb-3">
 
+        @include('assets._title_deed_card')
+
         <div class="card mb-3">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <div>

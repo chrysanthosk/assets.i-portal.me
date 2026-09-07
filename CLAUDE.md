@@ -33,8 +33,11 @@ config + test email, audit logging, dark/light theme.
 Domain modules: **Assets**, **Tenants**, **Rental income** (agreements),
 **Rental payments** (arrears/overdue), **Expenses**, **Reports** (per-asset &
 portfolio P&L + CSV export), **Currencies & FX** (base currency + rates),
-**Document lifecycle** (type + expiry reminders). The dashboard surfaces income,
-occupancy, outstanding payments, and document-expiry reminders.
+**Document lifecycle** (type + expiry reminders), **Rent check** (auto-generated
+monthly payments + email confirmation loop), **Title deed import** (upload a scanned
+Cyprus Land Registry sheet → Claude extracts the fields → review → asset + document).
+The dashboard surfaces income, occupancy, outstanding/unconfirmed payments, and
+document-expiry reminders.
 
 ### Stack
 - **PHP 8.4+** (the `composer.lock` resolves dependencies that require ≥ 8.4)
@@ -60,7 +63,9 @@ app/
   Models/                              # User, Asset, AssetType, OwnerEntity, AssetTag, AssetDocument,
                                        #   AssetRental, Tenant, RentalPayment, AssetExpense, FxRate,
                                        #   PortalSetting, SmtpSetting, AuditLog
-  Support/                             # Audit (audit-log helper), Fx (currency conversion)
+  Support/                             # Audit (audit-log helper), Fx (currency conversion),
+                                       #   RentSchedule (monthly payments + reminders), MailConfig,
+                                       #   Deeds/ (DeedExtractor interface, ClaudeDeedExtractor, DeedSchema, DeedMapper)
   Listeners/ Mail/ Providers/ View/
 config/
   permission.php, portal_permissions.php   # permission registry used by seeders
@@ -187,5 +192,10 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
   (e.g. `information_schema`, `ALTER … ADD FOREIGN KEY`) behind a driver check.
 - **CI runs `pint --test`** — keep code Pint-clean (`./vendor/bin/pint` before commit).
 - **Tests**: `tests/Feature` + `tests/Unit` (PHPUnit, SQLite `:memory:`). Run `php artisan test`.
+- **Title deed import** calls the Anthropic API via `anthropic-ai/sdk`
+  (`App\Support\Deeds\ClaudeDeedExtractor`, structured JSON output per `DeedSchema`).
+  The key is stored encrypted in `portal_settings` (Settings → Portal) with
+  `ANTHROPIC_API_KEY` as env fallback; model from `ANTHROPIC_MODEL` (default
+  `claude-opus-5`). Tests bind a fake `DeedExtractor` — never call the API in tests.
 - Don't introduce a new framework without need; the front-end is **Bootstrap/AdminLTE only**
   (no Tailwind/Alpine). Match the existing Laravel idioms and surrounding style.

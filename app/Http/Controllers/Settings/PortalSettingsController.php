@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\PortalSetting;
+use App\Support\Deeds\ClaudeDeedExtractor;
 use App\Support\RentSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class PortalSettingsController extends Controller
 {
@@ -23,6 +25,9 @@ class PortalSettingsController extends Controller
             'rentDueDay' => RentSchedule::dueDay(),
             'rentRepeatDays' => RentSchedule::repeatDays(),
             'fallbackRecipients' => PortalSetting::get(RentSchedule::SETTING_EMAIL) ? [] : RentSchedule::recipients(),
+            'anthropicKeySet' => (bool) PortalSetting::get(ClaudeDeedExtractor::SETTING_API_KEY),
+            'anthropicKeyFromEnv' => ! PortalSetting::get(ClaudeDeedExtractor::SETTING_API_KEY) && (bool) config('services.anthropic.key'),
+            'anthropicModel' => ClaudeDeedExtractor::model(),
         ]);
     }
 
@@ -34,6 +39,8 @@ class PortalSettingsController extends Controller
             'rent_reminder_email' => ['nullable', 'string', 'max:500'],
             'rent_due_day' => ['required', 'integer', 'min:1', 'max:28'],
             'rent_reminder_repeat_days' => ['required', 'integer', 'min:1', 'max:30'],
+            'anthropic_api_key' => ['nullable', 'string', 'max:300'],
+            'anthropic_api_key_clear' => ['nullable', 'in:0,1'],
         ]);
 
         // Accept a comma/space separated list; every entry must be a valid address.
@@ -50,6 +57,13 @@ class PortalSettingsController extends Controller
         PortalSetting::set(RentSchedule::SETTING_EMAIL, $emails->implode(', '));
         PortalSetting::set(RentSchedule::SETTING_DUE_DAY, (string) $data['rent_due_day']);
         PortalSetting::set(RentSchedule::SETTING_REPEAT_DAYS, (string) $data['rent_reminder_repeat_days']);
+
+        // API key: only overwrite when a new value is typed; encrypted at rest.
+        if (($data['anthropic_api_key_clear'] ?? '0') === '1') {
+            PortalSetting::set(ClaudeDeedExtractor::SETTING_API_KEY, '');
+        } elseif (trim((string) ($data['anthropic_api_key'] ?? '')) !== '') {
+            PortalSetting::set(ClaudeDeedExtractor::SETTING_API_KEY, Crypt::encryptString(trim($data['anthropic_api_key'])));
+        }
 
         return back()->with('success', 'Portal settings saved.');
     }

@@ -57,6 +57,24 @@
         server under Settings → SMTP; make sure it is enabled and tested.
       </div>
 
+      <div class="col-12"><h6 class="mt-3 mb-0">Title deed import (AI)</h6><hr class="mt-1"></div>
+
+      <div class="col-md-6">
+        <label class="form-label">Anthropic API key</label>
+        <input type="password" autocomplete="off" class="form-control @error('anthropic_api_key') is-invalid @enderror"
+               name="anthropic_api_key" value="" placeholder="{{ $anthropicKeySet ? '•••••••• (saved — type to replace)' : ($anthropicKeyFromEnv ? 'Using ANTHROPIC_API_KEY from the server' : 'sk-ant-…') }}">
+        @error('anthropic_api_key') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        <div class="form-text">
+          Stored encrypted. Needed to read scanned title deeds (model: {{ $anthropicModel }}). Get one at console.anthropic.com.
+        </div>
+        @if($anthropicKeySet)
+          <div class="form-check mt-1">
+            <input class="form-check-input" type="checkbox" id="anthropic_api_key_clear" name="anthropic_api_key_clear" value="1">
+            <label class="form-check-label small" for="anthropic_api_key_clear">Remove the saved key</label>
+          </div>
+        @endif
+      </div>
+
       <div class="col-12">
         <button class="btn btn-primary">Save</button>
       </div>

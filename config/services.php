@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'anthropic' => [
+        // Used by the title deed import. The key saved under Settings → Portal
+        // takes precedence; this env value is the fallback.
+        'key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-5'),
+    ],
+
 ];
