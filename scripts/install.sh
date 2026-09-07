@@ -709,6 +709,13 @@ docker_install(){
   log "Writing Docker env -> ${envfile}"
   write_docker_env "$envfile"
 
+  # Add a persistent APP_KEY and move WEB_PORT/DB_EXPOSED_PORT if already taken.
+  # shellcheck disable=SC1091
+  source "${repo_root}/scripts/docker-preflight.sh"
+  docker_preflight
+  WEB_PORT="$(env_get WEB_PORT)"
+  APP_URL="$(env_get APP_URL)"
+
   log "Pulling latest MySQL image..."
   ( cd "$repo_root" && docker compose pull db )
 
