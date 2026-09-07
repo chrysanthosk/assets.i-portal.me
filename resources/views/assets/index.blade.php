@@ -24,8 +24,11 @@
       </form>
 
       @can('manage_assets')
-        <a href="{{ route('assets.create') }}" class="btn btn-sm btn-primary">
-          <i class="bi bi-plus-lg"></i> Add Asset
+        <a href="{{ route('assets.import.create') }}" class="btn btn-sm btn-primary">
+          <i class="bi bi-file-earmark-arrow-up"></i> Import title deed
+        </a>
+        <a href="{{ route('assets.create') }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-plus-lg"></i> Add manually
         </a>
       @endcan
     </div>

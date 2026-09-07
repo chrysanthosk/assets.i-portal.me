@@ -18,9 +18,15 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 
 **Asset & rentals modules**
 - **Assets** — properties with purchase, financing, title-deed, location & physical details, tags, documents
+- **Title deed import** — upload a scanned Cyprus Land Registry sheet (PDF/photo); Claude reads the
+  registration number, location, plot reference, owners & share, areas and valuations; you review a
+  prefilled form and the property is created with the scan attached as its title-deed document
+  (needs an Anthropic API key under Settings → Portal, or `ANTHROPIC_API_KEY`)
 - **Tenants** — first-class tenant records linked to rental agreements
 - **Rental income** — agreements per asset (currency, period, active status)
 - **Rental payments** — record/schedule payments, track **arrears & overdue**
+- **Rent check** — expected payments are generated monthly from active agreements; a reminder email
+  asks "did the rent arrive?" with one-click Yes/No links and repeats until answered
 - **Expenses** — categorised property costs (maintenance, tax, insurance, …)
 - **Reports** — per-asset & portfolio **P&L** with **CSV export**, consolidated to a base currency via **FX rates**
 - **Document lifecycle** — type classification + **expiry reminders** (insurance/certs)
@@ -335,7 +341,6 @@ Admins get all permissions. After changing the registry, run
 
 - API authentication / public API
 - Webhooks & notifications (e.g. overdue-payment / document-expiry alerts)
-- Rental payment schedules (auto-generate expected payments)
 - Asset valuation history & equity tracking
 - Multi-unit (building → units) hierarchy
 

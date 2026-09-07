@@ -25,6 +25,7 @@ class Asset extends Model
         'title_deed',
         'title_deed_number',
         'title_deed_date',
+        'title_deed_data',
         'lawyer_notary',
 
         'financed',
@@ -50,6 +51,7 @@ class Asset extends Model
     ];
 
     protected $casts = [
+        'title_deed_data' => 'array',
         'title_deed' => 'boolean',
         'financed' => 'boolean',
         'parking' => 'boolean',

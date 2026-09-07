@@ -34,6 +34,9 @@ services:
       APP_KEY: "${APP_KEY:-}"
       # Local timezone for due dates and reminder times (e.g. Europe/Nicosia)
       APP_TIMEZONE: "${APP_TIMEZONE:-UTC}"
+      # Optional: title deed import key/model (can also be set in Settings → Portal)
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      ANTHROPIC_MODEL: "${ANTHROPIC_MODEL:-claude-opus-5}"
       # APP_URL follows WEB_PORT automatically unless you set APP_URL explicitly
       APP_URL: "${APP_URL:-http://localhost:${WEB_PORT:-8080}}"
       # Generate URLs from APP_URL (the published port differs from the internal one)

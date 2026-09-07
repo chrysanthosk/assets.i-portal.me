@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Support\Audit;
+use App\Support\Deeds\ClaudeDeedExtractor;
+use App\Support\Deeds\DeedExtractor;
 use App\Support\MailConfig;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -19,7 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // (intentionally empty)
+        // Title deed OCR/extraction backend (tests bind a fake)
+        $this->app->bind(DeedExtractor::class, ClaudeDeedExtractor::class);
     }
 
     /**

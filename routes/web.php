@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AssetDocumentsController;
 use App\Http\Controllers\AssetExpensesController;
+use App\Http\Controllers\AssetImportController;
 use App\Http\Controllers\AssetRentalsController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetTagsController;
@@ -125,6 +126,15 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::post('/', [AssetsController::class, 'store'])
             ->name('store')
             ->middleware('permission:manage_assets');
+
+        // Import from a scanned title deed (must be registered before /{asset})
+        Route::middleware('permission:manage_assets')->group(function () {
+            Route::get('/import', [AssetImportController::class, 'create'])->name('import.create');
+            Route::post('/import', [AssetImportController::class, 'store'])->name('import.store');
+            Route::get('/import/{import}/review', [AssetImportController::class, 'review'])->name('import.review');
+            Route::post('/import/{import}/confirm', [AssetImportController::class, 'confirm'])->name('import.confirm');
+            Route::delete('/import/{import}', [AssetImportController::class, 'destroy'])->name('import.destroy');
+        });
 
         // Rentals
         Route::get('/rentals', [AssetRentalsController::class, 'index'])
