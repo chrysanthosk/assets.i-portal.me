@@ -23,8 +23,8 @@ a "Κτηματική Σελίδα Μονάδας" (unit sheet) for apartments/u
 English, or Turkish, and are often scans.
 
 Rules:
-- Fill every field you can read; use null for anything not present. Never invent values.
-- Dates: convert DD/MM/YYYY to YYYY-MM-DD. Amounts: plain numbers (99800.00 → 99800). Areas in square metres.
+- Fill every field you can read; use an empty string for anything not present. Never invent values.
+- Dates: convert DD/MM/YYYY to YYYY-MM-DD. Numbers as plain digits in strings ("99800", "2.97"). Areas in square metres.
 - Owner names and building names: keep exactly as written (original script). Place names and street names: give the
   standard English/transliterated form (ΠΑΦΟΣ → Paphos, ΓΕΩΡΓΙΟΥ ΓΡΙΒΑ ΔΙΓΕΝΗ → Georgiou Griva Digeni).
 - Share (Μερίδιο): "ΟΛΟ" means whole = 100%. Fractions like 1/2 = 50.
@@ -125,7 +125,7 @@ TXT;
         }
 
         return new DeedExtraction(
-            $decoded,
+            DeedSchema::normalize($decoded),
             $message->model,
             $message->usage->inputTokens ?? null,
             $message->usage->outputTokens ?? null,

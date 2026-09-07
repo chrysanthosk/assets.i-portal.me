@@ -9,12 +9,25 @@ namespace App\Support\Deeds;
  */
 class DeedSchema
 {
-    /** @return array<string, mixed> */
+    /** Fields that hold numbers (returned as strings by the model, converted in normalize()). */
+    public const NUMERIC = [
+        'parking_spaces', 'storage_rooms', 'enclosed_area_sqm', 'covered_veranda_sqm', 'uncovered_veranda_sqm',
+        'plot_area_sqm', 'common_property_share_pct',
+    ];
+
+    public const INTEGER = ['parking_spaces', 'storage_rooms'];
+
+    /**
+     * Anthropic's structured-output compiler allows at most 16 union-typed
+     * (nullable) fields, so every scalar here is a plain string: "" = unknown,
+     * numbers as plain digits. normalize() turns them back into null/numbers.
+     *
+     * @return array<string, mixed>
+     */
     public static function schema(): array
     {
-        $str = ['type' => ['string', 'null']];
-        $num = ['type' => ['number', 'null']];
-        $int = ['type' => ['integer', 'null']];
+        $str = fn (string $desc = '') => ['type' => 'string', 'description' => trim($desc.' Empty string if not on the document.')];
+        $num = fn (string $desc = '') => ['type' => 'string', 'description' => trim($desc.' Plain number as digits (e.g. "81" or "2.97"); empty string if not on the document.')];
 
         return [
             'type' => 'object',
@@ -29,23 +42,23 @@ class DeedSchema
                 'source_language', 'warnings',
             ],
             'properties' => [
-                'document_type' => $str + ['description' => 'e.g. "Unit sheet (Κτηματική Σελίδα Μονάδας)", "Title deed", "Plot sheet"'],
-                'registration_number' => $str + ['description' => 'Registration number (Αριθμός Εγγραφής), e.g. "0/8443"'],
-                'district' => $str + ['description' => 'District name in English, e.g. "Paphos"'],
-                'municipality_community' => $str + ['description' => 'Municipality / community name in English or transliterated'],
-                'parish' => $str,
-                'locality' => $str + ['description' => 'Τοποθεσία'],
-                'street_address' => $str + ['description' => 'Street name (and number if present), transliterated to Latin characters'],
-                'building_name' => $str + ['description' => 'Όνομα Οικοδομής, keep as written'],
-                'unit_number' => $str + ['description' => 'Door / unit number (Αρ. Θύρας)'],
-                'floor' => $str + ['description' => 'Floor of the unit, e.g. "1st floor", "ground floor"'],
-                'sheet' => $str + ['description' => 'Φύλλο'],
-                'plan' => $str + ['description' => 'Σχέδιο'],
-                'section' => $str + ['description' => 'Τμήμα'],
-                'plot' => $str + ['description' => 'Τεμάχιο, e.g. "ΕΠΙ 1868"'],
-                'registration_date' => $str + ['description' => 'Ημερομηνία Εγγραφής as YYYY-MM-DD'],
-                'file_number' => $str + ['description' => 'Αριθμός Φακέλου'],
-                'issue_date' => $str + ['description' => 'Ημερομηνία Έκδοσης as YYYY-MM-DD'],
+                'document_type' => $str('e.g. "Unit sheet (Κτηματική Σελίδα Μονάδας)", "Title deed", "Plot sheet".'),
+                'registration_number' => $str('Registration number (Αριθμός Εγγραφής), e.g. "0/8443".'),
+                'district' => $str('District name in English, e.g. "Paphos".'),
+                'municipality_community' => $str('Municipality / community name in English or transliterated.'),
+                'parish' => $str(),
+                'locality' => $str('Τοποθεσία.'),
+                'street_address' => $str('Street name (and number if present), transliterated to Latin characters.'),
+                'building_name' => $str('Όνομα Οικοδομής, keep as written.'),
+                'unit_number' => $str('Door / unit number (Αρ. Θύρας).'),
+                'floor' => $str('Floor of the unit, e.g. "1st floor", "ground floor".'),
+                'sheet' => $str('Φύλλο.'),
+                'plan' => $str('Σχέδιο.'),
+                'section' => $str('Τμήμα.'),
+                'plot' => $str('Τεμάχιο, e.g. "ΕΠΙ 1868".'),
+                'registration_date' => $str('Ημερομηνία Εγγραφής as YYYY-MM-DD.'),
+                'file_number' => $str('Αριθμός Φακέλου.'),
+                'issue_date' => $str('Ημερομηνία Έκδοσης as YYYY-MM-DD.'),
                 'owners' => [
                     'type' => 'array',
                     'items' => [
@@ -53,29 +66,26 @@ class DeedSchema
                         'additionalProperties' => false,
                         'required' => ['name', 'address', 'share', 'share_pct', 'id_number'],
                         'properties' => [
-                            'name' => $str + ['description' => 'Owner name as written (keep original script)'],
-                            'address' => $str,
-                            'share' => $str + ['description' => 'Μερίδιο as written, e.g. "ΟΛΟ", "1/2"'],
-                            'share_pct' => $num + ['description' => 'Share as a percentage: ΟΛΟ = 100, 1/2 = 50'],
-                            'id_number' => $str + ['description' => 'Διακριτικός Αριθμός'],
+                            'name' => $str('Owner name as written (keep original script).'),
+                            'address' => $str(),
+                            'share' => $str('Μερίδιο as written, e.g. "ΟΛΟ", "1/2".'),
+                            'share_pct' => $num('Share as a percentage: ΟΛΟ = 100, 1/2 = 50.'),
+                            'id_number' => $str('Διακριτικός Αριθμός.'),
                         ],
                     ],
                 ],
                 'property_type' => [
-                    'description' => 'apartment | house | maisonette | land | commercial | office | other',
-                    'anyOf' => [
-                        ['type' => 'string', 'enum' => ['apartment', 'house', 'maisonette', 'land', 'commercial', 'office', 'other']],
-                        ['type' => 'null'],
-                    ],
+                    'type' => 'string',
+                    'enum' => ['apartment', 'house', 'maisonette', 'land', 'commercial', 'office', 'other', 'unknown'],
                 ],
-                'property_description' => $str + ['description' => 'Περιγραφή Ακίνητης Ιδιοκτησίας translated to English, one paragraph, including parking/storage rights'],
-                'parking_spaces' => $int,
-                'storage_rooms' => $int,
-                'enclosed_area_sqm' => $num + ['description' => 'Κλειστός χώρος'],
-                'covered_veranda_sqm' => $num + ['description' => 'Καλυμμένες βεράντες'],
-                'uncovered_veranda_sqm' => $num + ['description' => 'Ακάλυπτες βεράντες'],
-                'plot_area_sqm' => $num + ['description' => 'Έκταση τεμαχίου for land / houses'],
-                'common_property_share_pct' => $num + ['description' => 'Μερίδιο στην κοινόκτητη ιδιοκτησία, e.g. 2.97'],
+                'property_description' => $str('Περιγραφή Ακίνητης Ιδιοκτησίας translated to English, one paragraph, including parking/storage rights.'),
+                'parking_spaces' => $num('Count of ΧΩΡΟΣ ΣΤΑΘΜΕΥΣΗΣ entries.'),
+                'storage_rooms' => $num('Count of ΑΠΟΘΗΚΗ entries.'),
+                'enclosed_area_sqm' => $num('Κλειστός χώρος in m².'),
+                'covered_veranda_sqm' => $num('Καλυμμένες βεράντες in m².'),
+                'uncovered_veranda_sqm' => $num('Ακάλυπτες βεράντες in m².'),
+                'plot_area_sqm' => $num('Έκταση τεμαχίου in m² for land / houses.'),
+                'common_property_share_pct' => $num('Μερίδιο στην κοινόκτητη ιδιοκτησία, e.g. 2.97.'),
                 'valuations' => [
                     'type' => 'array',
                     'description' => 'Αξία Γεν. Εκτίμησης entries',
@@ -84,15 +94,15 @@ class DeedSchema
                         'additionalProperties' => false,
                         'required' => ['date', 'amount', 'currency'],
                         'properties' => [
-                            'date' => $str + ['description' => 'YYYY-MM-DD'],
-                            'amount' => $num,
-                            'currency' => $str + ['description' => 'ISO code, e.g. EUR'],
+                            'date' => $str('YYYY-MM-DD.'),
+                            'amount' => $num(),
+                            'currency' => $str('ISO code, e.g. EUR.'),
                         ],
                     ],
                 ],
-                'rights_and_encumbrances' => $str + ['description' => 'Δικαιώματα / Δουλείες and Κοινά Δικαιώματα Χρήσης, translated'],
-                'notes' => $str + ['description' => 'Σημειώσεις, translated'],
-                'source_language' => $str,
+                'rights_and_encumbrances' => $str('Δικαιώματα / Δουλείες and Κοινά Δικαιώματα Χρήσης, translated.'),
+                'notes' => $str('Σημειώσεις, translated.'),
+                'source_language' => $str('ISO code of the document language, e.g. "el".'),
                 'warnings' => [
                     'type' => 'array',
                     'description' => 'Anything unreadable, ambiguous, or guessed',
@@ -100,5 +110,71 @@ class DeedSchema
                 ],
             ],
         ];
+    }
+
+    /**
+     * Convert the all-string model output into typed values: "" → null,
+     * numeric strings → int/float, property_type "unknown" → null.
+     *
+     * @param  array<string, mixed>  $raw
+     * @return array<string, mixed>
+     */
+    public static function normalize(array $raw): array
+    {
+        $out = [];
+        foreach ($raw as $key => $value) {
+            $out[$key] = match (true) {
+                $key === 'owners' && is_array($value) => array_values(array_map(
+                    fn ($o) => is_array($o) ? self::normalizeScalars($o, ['share_pct'], []) : $o, $value
+                )),
+                $key === 'valuations' && is_array($value) => array_values(array_map(
+                    fn ($v) => is_array($v) ? self::normalizeScalars($v, ['amount'], []) : $v, $value
+                )),
+                $key === 'warnings' && is_array($value) => array_values(array_filter(array_map('strval', $value), fn ($w) => trim($w) !== '')),
+                $key === 'property_type' => ($value === '' || $value === 'unknown') ? null : $value,
+                default => self::scalar($key, $value, self::NUMERIC, self::INTEGER),
+            };
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<int, string>  $numeric
+     * @param  array<int, string>  $integer
+     * @return array<string, mixed>
+     */
+    private static function normalizeScalars(array $row, array $numeric, array $integer): array
+    {
+        foreach ($row as $k => $v) {
+            $row[$k] = self::scalar($k, $v, $numeric, $integer);
+        }
+
+        return $row;
+    }
+
+    /**
+     * @param  array<int, string>  $numeric
+     * @param  array<int, string>  $integer
+     */
+    private static function scalar(string $key, mixed $value, array $numeric, array $integer): mixed
+    {
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '') {
+                return null;
+            }
+        }
+        if ($value === null || ! in_array($key, $numeric, true)) {
+            return $value;
+        }
+
+        $clean = is_string($value) ? str_replace([',', ' '], ['.', ''], preg_replace('/[^\d.,-]/', '', $value) ?? '') : $value;
+        if (! is_numeric($clean)) {
+            return null;
+        }
+
+        return in_array($key, $integer, true) ? (int) $clean : (float) $clean;
     }
 }
