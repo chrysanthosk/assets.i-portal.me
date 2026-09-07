@@ -24,3 +24,7 @@ Homestead.yaml
 Thumbs.db
 
 /backups
+
+# Server-local compose override (e.g. joining a reverse-proxy network)
+docker-compose.override.yml
+compose.override.yml
