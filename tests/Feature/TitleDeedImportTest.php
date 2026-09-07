@@ -207,6 +207,43 @@ class TitleDeedImportTest extends TestCase
         $this->assertSame(0, DeedImport::count());
     }
 
+    public function test_schema_has_no_union_types_and_normalize_types_the_string_output(): void
+    {
+        $unions = 0;
+        $walk = function ($node) use (&$walk, &$unions) {
+            if (! is_array($node)) {
+                return;
+            }
+            if (isset($node['anyOf']) || (isset($node['type']) && is_array($node['type']))) {
+                $unions++;
+            }
+            foreach ($node as $child) {
+                $walk($child);
+            }
+        };
+        $walk(\App\Support\Deeds\DeedSchema::schema());
+        $this->assertSame(0, $unions, 'Anthropic allows at most 16 union-typed schema fields');
+
+        $n = \App\Support\Deeds\DeedSchema::normalize([
+            'registration_number' => ' 0/8443 ', 'district' => '', 'enclosed_area_sqm' => '81',
+            'common_property_share_pct' => '2,97 %', 'parking_spaces' => '1', 'plot_area_sqm' => '', 'property_type' => 'unknown',
+            'owners' => [['name' => 'X', 'share' => 'ΟΛΟ', 'share_pct' => '100', 'address' => '', 'id_number' => '']],
+            'valuations' => [['date' => '2018-01-01', 'amount' => '99800', 'currency' => 'EUR']],
+            'warnings' => ['', 'check parish'],
+        ]);
+        $this->assertSame('0/8443', $n['registration_number']);
+        $this->assertNull($n['district']);
+        $this->assertSame(81.0, $n['enclosed_area_sqm']);
+        $this->assertSame(2.97, $n['common_property_share_pct']);
+        $this->assertSame(1, $n['parking_spaces']);
+        $this->assertNull($n['plot_area_sqm']);
+        $this->assertNull($n['property_type']);
+        $this->assertSame(100.0, $n['owners'][0]['share_pct']);
+        $this->assertNull($n['owners'][0]['address']);
+        $this->assertSame(99800.0, $n['valuations'][0]['amount']);
+        $this->assertSame(['check parish'], $n['warnings']);
+    }
+
     public function test_mapper_handles_shares_and_missing_data(): void
     {
         $this->assertSame(100.0, DeedMapper::sharePct(null));
