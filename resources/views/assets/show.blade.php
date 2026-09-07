@@ -94,26 +94,14 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                     <div class="col-md-4">
                         <div class="text-muted small">Asset Type</div>
                         <div class="fw-semibold">{{ $assetTypeName }}</div>
-                        <div class="text-muted small">
-                            @if($asset->asset_type_id)
-                            FK: #{{ $asset->asset_type_id }}
-                            @else
-                            Legacy string
-                            @endif
-                        </div>
                     </div>
 
+                    @advanced
                     <div class="col-md-4">
                         <div class="text-muted small">Owner Entity</div>
                         <div class="fw-semibold">{{ $ownerEntityName }}</div>
-                        <div class="text-muted small">
-                            @if($asset->owner_entity_id)
-                            FK: #{{ $asset->owner_entity_id }}
-                            @else
-                            Legacy string
-                            @endif
-                        </div>
                     </div>
+                    @endadvanced
 
                     <div class="col-md-4">
                         <div class="text-muted small">Ownership %</div>
@@ -196,6 +184,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                         </div>
                     </div>
 
+                    @advanced
                     <div class="col-12">
                         <div class="text-muted small mb-1">Tags</div>
                         @if($asset->tags && $asset->tags->count())
@@ -208,6 +197,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                         <div class="text-muted">—</div>
                         @endif
                     </div>
+                    @endadvanced
 
                     <div class="col-12">
                         <div class="text-muted small mb-1">Notes</div>

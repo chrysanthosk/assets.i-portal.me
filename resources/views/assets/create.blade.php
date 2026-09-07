@@ -115,6 +115,7 @@
                         @error('currency') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
+                    @advanced
                     <div class="col-md-4">
                         <label class="form-label">Owner Entity</label>
                         <select class="form-select @error('owner_entity_id') is-invalid @enderror" name="owner_entity_id">
@@ -126,6 +127,7 @@
                             @endforelse
                         </select>
                         <div class="form-text">Configure owners in Settings → Owner Entities.</div>
+                    @endadvanced
                         @error('owner_entity_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
@@ -332,6 +334,7 @@
                         @error('estimated_annual_expenses') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
+                    @advanced
                     {{-- =========================
                     TAGS
                     ========================= --}}
@@ -354,6 +357,7 @@
                         </div>
                         @error('tags') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
+                    @endadvanced
 
                     {{-- =========================
                     NOTES

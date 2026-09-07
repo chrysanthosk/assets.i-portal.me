@@ -79,6 +79,7 @@
                         </select>
                     </div>
 
+                    @advanced
                     <div class="col-md-4">
                         <label class="form-label">Owner entity</label>
                         <select name="owner_entity_id" class="form-select">
@@ -88,6 +89,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @endadvanced
                     <div class="col-md-4">
                         <label class="form-label">Ownership %</label>
                         <input type="number" step="0.01" min="0" max="100" name="ownership_percentage" value="{{ $v('ownership_percentage', 100) }}" class="form-control">

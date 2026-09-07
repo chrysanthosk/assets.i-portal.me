@@ -12,6 +12,19 @@
         @error('portal_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
       </div>
 
+      <div class="col-md-6">
+        <label class="form-label d-block">Advanced features</label>
+        <input type="hidden" name="advanced_mode" value="0">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="advanced_mode"
+                 name="advanced_mode" value="1" @checked(old('advanced_mode', $advancedMode ? '1' : '0') === '1')>
+          <label class="form-check-label" for="advanced_mode">
+            Show users, permission sets, owner entities, tags, currencies &amp; FX and the audit log
+          </label>
+        </div>
+        <div class="form-text">Off keeps the portal to what a single owner needs. Nothing is deleted; the pages are just hidden.</div>
+      </div>
+
       <div class="col-12"><h6 class="mt-3 mb-0">Rent reminders</h6><hr class="mt-1"></div>
 
       <div class="col-12">
