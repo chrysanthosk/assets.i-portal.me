@@ -6,10 +6,12 @@ use App\Support\Audit;
 use App\Support\Deeds\ClaudeDeedExtractor;
 use App\Support\Deeds\DeedExtractor;
 use App\Support\MailConfig;
+use App\Support\Portal;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Permission\PermissionRegistrar;
@@ -43,6 +45,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Route all outgoing mail through the SMTP server configured in the UI.
         MailConfig::apply();
+
+        // @advanced ... @endadvanced — markup only shown when advanced mode is on
+        Blade::if('advanced', fn () => Portal::advanced());
 
         /**
          * IMPORTANT:

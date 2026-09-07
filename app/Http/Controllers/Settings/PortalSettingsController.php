@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\PortalSetting;
 use App\Support\Deeds\ClaudeDeedExtractor;
+use App\Support\Portal;
 use App\Support\RentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -28,6 +29,7 @@ class PortalSettingsController extends Controller
             'anthropicKeySet' => (bool) PortalSetting::get(ClaudeDeedExtractor::SETTING_API_KEY),
             'anthropicKeyFromEnv' => ! PortalSetting::get(ClaudeDeedExtractor::SETTING_API_KEY) && (bool) config('services.anthropic.key'),
             'anthropicModel' => ClaudeDeedExtractor::model(),
+            'advancedMode' => Portal::advanced(),
         ]);
     }
 
@@ -41,6 +43,7 @@ class PortalSettingsController extends Controller
             'rent_reminder_repeat_days' => ['required', 'integer', 'min:1', 'max:30'],
             'anthropic_api_key' => ['nullable', 'string', 'max:300'],
             'anthropic_api_key_clear' => ['nullable', 'in:0,1'],
+            'advanced_mode' => ['nullable', 'in:0,1'],
         ]);
 
         // Accept a comma/space separated list; every entry must be a valid address.
@@ -53,6 +56,7 @@ class PortalSettingsController extends Controller
         }
 
         PortalSetting::set('portal_name', $data['portal_name']);
+        Portal::setAdvanced(($data['advanced_mode'] ?? '0') === '1');
         PortalSetting::set(RentSchedule::SETTING_ENABLED, ($data['rent_reminders_enabled'] ?? '0') === '1' ? '1' : '0');
         PortalSetting::set(RentSchedule::SETTING_EMAIL, $emails->implode(', '));
         PortalSetting::set(RentSchedule::SETTING_DUE_DAY, (string) $data['rent_due_day']);

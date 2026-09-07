@@ -13,6 +13,8 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 - Role & permission management (Spatie) + per-route permission gates
 - User & profile management (name, email with OTP confirmation)
 - Password strength meter (zxcvbn), SMTP configuration & test email
+- **Simple by default**: users, permission sets, owner entities, tags, currencies & FX and the audit log
+  are hidden until "Advanced features" is switched on under Settings → Portal
 - Audit logging across all mutations
 - Dark / Light mode, security headers, encrypted sessions
 

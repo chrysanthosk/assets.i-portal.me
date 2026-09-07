@@ -234,6 +234,7 @@ auth()->user()->can('manage_asset_tags')
                             </li>
                             @endcan
 
+                            @advanced
                             @can('manage_fx_rates')
                             <li class="nav-item">
                                 <a href="{{ route('settings.currencies.edit') }}"
@@ -243,6 +244,7 @@ auth()->user()->can('manage_asset_tags')
                                 </a>
                             </li>
                             @endcan
+                            @endadvanced
 
                             @can('manage_asset_types')
                             <li class="nav-item">
@@ -253,6 +255,7 @@ auth()->user()->can('manage_asset_tags')
                             </li>
                             @endcan
 
+                            @advanced
                             @can('manage_owner_entities')
                             <li class="nav-item">
                                 <a href="{{ route('settings.ownerEntities.index') }}" class="nav-link {{ request()->routeIs('settings.ownerEntities.*') ? 'active' : '' }}">
@@ -261,7 +264,9 @@ auth()->user()->can('manage_asset_tags')
                                 </a>
                             </li>
                             @endcan
+                            @endadvanced
 
+                            @advanced
                             @can('manage_asset_tags')
                             <li class="nav-item">
                                 <a href="{{ route('assets.tags.index') }}"
@@ -271,7 +276,9 @@ auth()->user()->can('manage_asset_tags')
                                 </a>
                             </li>
                             @endcan
+                            @endadvanced
 
+                            @advanced
                             @can('manage_users')
                             <li class="nav-item">
                                 <a href="{{ route('settings.users.index') }}" class="nav-link {{ request()->routeIs('settings.users.*') ? 'active' : '' }}">
@@ -280,7 +287,9 @@ auth()->user()->can('manage_asset_tags')
                                 </a>
                             </li>
                             @endcan
+                            @endadvanced
 
+                            @advanced
                             @can('manage_permission_sets')
                             <li class="nav-item">
                                 <a href="{{ route('settings.permissionSets.index') }}" class="nav-link {{ request()->routeIs('settings.permissionSets.*') ? 'active' : '' }}">
@@ -289,7 +298,9 @@ auth()->user()->can('manage_asset_tags')
                                 </a>
                             </li>
                             @endcan
+                            @endadvanced
 
+                            @advanced
                             @can('manage_audit_logs')
                             <li class="nav-item">
                                 <a href="{{ route('audit.index') }}"
@@ -299,6 +310,7 @@ auth()->user()->can('manage_asset_tags')
                                 </a>
                             </li>
                             @endcan
+                            @endadvanced
 
                         </ul>
                     </li>

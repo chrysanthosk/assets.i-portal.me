@@ -192,6 +192,11 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
   (e.g. `information_schema`, `ALTER … ADD FOREIGN KEY`) behind a driver check.
 - **CI runs `pint --test`** — keep code Pint-clean (`./vendor/bin/pint` before commit).
 - **Tests**: `tests/Feature` + `tests/Unit` (PHPUnit, SQLite `:memory:`). Run `php artisan test`.
+- **Advanced mode** (`App\Support\Portal::advanced()`, Settings → Portal, off by
+  default) gates the multi-user/bookkeeping UI: users, permission sets, owner
+  entities, tags, currencies & FX, audit log, plus the owner-entity/tag fields on
+  asset forms. Wrap such markup in `@advanced … @endadvanced`. Routes stay
+  permission-gated and reachable; only navigation and form fields are hidden.
 - **Title deed import** calls the Anthropic API via `anthropic-ai/sdk`
   (`App\Support\Deeds\ClaudeDeedExtractor`, structured JSON output per `DeedSchema`).
   The key is stored encrypted in `portal_settings` (Settings → Portal) with
