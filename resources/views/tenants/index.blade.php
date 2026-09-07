@@ -12,7 +12,7 @@
                 </div>
                 <form method="GET" action="{{ route('tenants.index') }}" class="d-flex gap-2 align-items-center ms-auto">
                     <input type="text" name="q" value="{{ $q }}" class="form-control form-control-sm"
-                           placeholder="Search name / email / phone" style="min-width: 240px;">
+                           placeholder="Search name / email / phone">
                     <button class="btn btn-sm btn-outline-secondary" aria-label="Search"><i class="bi bi-search"></i></button>
                 </form>
             </div>

@@ -8,15 +8,15 @@
       <small class="text-muted">Manage your purchased assets</small>
     </div>
 
-    <div class="d-flex gap-2 ms-auto align-items-center">
-      <form method="GET" action="{{ route('assets.index') }}" class="d-flex gap-2 align-items-center">
+    <div class="d-flex flex-wrap gap-2 ms-auto align-items-center hdr-tools">
+      <form method="GET" action="{{ route('assets.index') }}" class="d-flex gap-2 align-items-center hdr-search">
         <input
           type="text"
           name="q"
           value="{{ request('q') }}"
           class="form-control form-control-sm"
           placeholder="Search..."
-          style="min-width: 260px;"
+          aria-label="Search assets"
         >
         <button class="btn btn-sm btn-outline-secondary" title="Search" aria-label="Search">
           <i class="bi bi-search"></i>
@@ -24,12 +24,14 @@
       </form>
 
       @can('manage_assets')
-        <a href="{{ route('assets.import.create') }}" class="btn btn-sm btn-primary">
-          <i class="bi bi-file-earmark-arrow-up"></i> Import title deed
-        </a>
-        <a href="{{ route('assets.create') }}" class="btn btn-sm btn-outline-primary">
-          <i class="bi bi-plus-lg"></i> Add manually
-        </a>
+        <div class="d-flex gap-2 hdr-actions">
+          <a href="{{ route('assets.import.create') }}" class="btn btn-sm btn-primary text-nowrap">
+            <i class="bi bi-file-earmark-arrow-up"></i> Import title deed
+          </a>
+          <a href="{{ route('assets.create') }}" class="btn btn-sm btn-outline-primary text-nowrap">
+            <i class="bi bi-plus-lg"></i> Add manually
+          </a>
+        </div>
       @endcan
     </div>
   </div>

@@ -5,7 +5,7 @@
             <div class="stat-icon {{ $tone }}"><i class="bi {{ $icon }}"></i></div>
             <div class="min-w-0">
                 <div class="stat-label">{{ $label }}</div>
-                <div class="stat-value text-truncate">{{ $value }}</div>
+                <div class="stat-value">{{ $value }}</div>
                 @if($sub)<div class="stat-sub">{!! $sub !!}</div>@endif
                 @if($href)<a href="{{ $href }}" class="small stretched-link"></a>@endif
             </div>
