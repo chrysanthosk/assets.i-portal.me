@@ -216,8 +216,8 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
         <div class="card mb-3">
             <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
-                    <h5 class="mb-0">Rental History</h5>
-                    <small class="text-muted">Last 24 entries</small>
+                    <h5 class="mb-0">Agreements</h5>
+                    <small class="text-muted">Most recent first</small>
                 </div>
 
                 @can('manage_asset_rentals')
@@ -232,17 +232,20 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
                     <table class="table table-sm table-striped align-middle mb-0">
                         <thead>
                         <tr>
-                            <th>Period</th>
-                            <th class="text-end">Amount</th>
-                            <th>Channel</th>
+                            <th>Tenant</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th class="text-end">Rent / month</th>
                         </tr>
                         </thead>
                         <tbody>
                         @forelse($asset->rentals as $r)
                         <tr>
-                            <td>{{ sprintf('%04d-%02d', (int)$r->year, (int)$r->month) }}</td>
-                            <td class="text-end">{{ number_format((float)$r->amount, 2) }} {{ $r->currency }}</td>
-                            <td>{{ $r->channel ?: '—' }}</td>
+                            <td>{{ $r->tenant?->name ?? $r->tenant_name ?? '—' }}
+                                @if($r->is_active)<span class="badge text-bg-success ms-1">active</span>@endif</td>
+                            <td>{{ optional($r->agreement_start_date)->format('Y-m-d') ?? '—' }}</td>
+                            <td>{{ optional($r->agreement_end_date)->format('Y-m-d') ?? 'open' }}</td>
+                            <td class="text-end">{{ $r->currency }} {{ number_format((float)$r->amount, 2) }}</td>
                         </tr>
                         @empty
                         <tr>
@@ -255,7 +258,7 @@ $documents = $asset->relationLoaded('documents') ? $asset->documents : ($asset->
             </div>
 
             <div class="card-footer text-muted small">
-                Tip: use the Rental Income page to add/update monthly entries for this asset.
+                Tip: agreements are managed on the Agreements page; monthly payments are generated from active ones.
             </div>
         </div>
 

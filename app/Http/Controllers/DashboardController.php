@@ -124,9 +124,6 @@ class DashboardController extends Controller
             'currentYear' => $year,
             'currentMonth' => $month,
 
-            'periodStart' => $periodStart->toDateString(),
-            'periodEnd' => $periodEnd->toDateString(),
-
             'monthlyIncome' => $monthlyIncome,
             'monthlyIncomeByCurrency' => $monthlyIncomeByCurrency,
 

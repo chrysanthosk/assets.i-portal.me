@@ -152,10 +152,10 @@ runs `scripts/docker-preflight.sh`, which:
 - generates `APP_KEY` once and stores it in the host `.env` so it survives
   rebuilds (2FA secrets are encrypted with it — never rotate it on a live
   install),
-- moves `WEB_PORT` / `DB_EXPOSED_PORT` to the next free host port when another
-  process or stack already listens there. A `localhost` `APP_URL` follows the
-  new port; a custom `APP_URL` is left untouched with a warning so you can
-  update your reverse proxy target.
+- moves `WEB_PORT` to the next free host port when another process or stack
+  already listens there. A `localhost` `APP_URL` follows the new port; a custom
+  `APP_URL` is left untouched with a warning so you can update your reverse
+  proxy target. MySQL is never published on the host.
 
 The preflight is idempotent and can be run on its own:
 `./scripts/docker-preflight.sh`.
@@ -321,7 +321,14 @@ Admins get all permissions. After changing the registry, run
 ## Operations & observability
 
 - **Health check:** `GET /health` (unauthenticated) returns `200` + DB status, `503` if the database is unreachable. Laravel's `/up` is also available.
-- **Database backups:** `./scripts/backup-db.sh` dumps the Dockerised MySQL to `backups/*.sql.gz` with retention (`RETENTION_DAYS`, default 14). Schedule it via cron.
+- **Backups:** `./scripts/backup.sh` dumps MySQL to `backups/<db>-<stamp>.sql.gz` **and**
+  archives uploaded files (`storage/app`, i.e. title deeds and documents) to
+  `backups/storage-<stamp>.tar.gz`, keeping `RETENTION_DAYS` (default 14). Set
+  `BACKUP_REMOTE=user@host:/path` in `.env` to rsync each new archive off the server.
+  Install the nightly job with `sudo ./scripts/backup.sh --install-cron 02:30`
+  (writes `/etc/cron.d/assets-backup`, log in `backups/backup.log`).
+  Restore: `gunzip -c backups/assets-*.sql.gz | docker compose exec -T db mysql -uroot -p<root> assets`
+  and `docker compose exec -T app tar -xzf - -C /var/www/html/storage < backups/storage-*.tar.gz`.
 - **Logging:** in Docker, the app logs to **stderr** (`docker compose logs -f app`).
 - **Error tracking (optional):** set `SENTRY_LARAVEL_DSN` in `.env` to enable Sentry; blank = disabled.
 - **Enforce 2FA for admins (optional):** set `REQUIRE_2FA_FOR_ADMINS=true` to require admins / user-managers to enroll in 2FA before using the app.

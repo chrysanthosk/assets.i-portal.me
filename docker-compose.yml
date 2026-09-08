@@ -75,9 +75,9 @@ services:
       MYSQL_USER: "${DB_USERNAME:-assets}"
       MYSQL_PASSWORD: "${DB_PASSWORD:-secret}"
       MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootsecret}"
-    ports:
-      # Exposed for local DB tools; remove in hardened deployments
-      - "${DB_EXPOSED_PORT:-3306}:3306"
+    # No host port: the app reaches MySQL over the internal network. To use a
+    # local DB tool temporarily, add to docker-compose.override.yml:
+    #   services: { db: { ports: ["127.0.0.1:3307:3306"] } }
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:

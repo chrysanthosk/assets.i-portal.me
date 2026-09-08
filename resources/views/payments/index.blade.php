@@ -41,7 +41,10 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Rental Payments</h5>
-                <form method="GET" action="{{ route('payments.index') }}" class="d-flex gap-2 align-items-center ms-auto">
+                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#oneOffPayment" aria-expanded="false" aria-controls="oneOffPayment">
+                    <i class="bi bi-plus-lg me-1"></i> One-off payment
+                </button>
+                <form method="GET" action="{{ route('payments.index') }}" class="d-flex gap-2 align-items-center">
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All statuses</option>
                         <option value="pending" @selected($status === 'pending')>Pending</option>
@@ -54,10 +57,11 @@
 
             <div class="card-body">
 
-                {{-- Record a payment --}}
-                <form method="POST" action="{{ route('payments.store') }}" class="row g-2 mb-4">
+                {{-- One-off payment (monthly rent is generated automatically) --}}
+                <div class="collapse {{ $errors->hasAny(['asset_rental_id', 'due_date', 'amount', 'currency', 'paid_date']) ? 'show' : '' }} mb-4" id="oneOffPayment">
+                <form method="POST" action="{{ route('payments.store') }}" class="row g-2 border rounded p-3">
                     @csrf
-                    <div class="col-12"><h6 class="mb-0">Record / schedule a payment</h6><hr class="mt-1"></div>
+                    <div class="col-12"><h6 class="mb-0">Add a one-off payment</h6><div class="form-text">Deposits, partial payments, or anything outside the monthly rent.</div></div>
 
                     <div class="col-md-5">
                         <label class="form-label">Agreement *</label>
@@ -103,9 +107,10 @@
                     </div>
 
                     <div class="col-12 d-flex justify-content-end">
-                        <button class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Record Payment</button>
+                        <button class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i> Save payment</button>
                     </div>
                 </form>
+                </div>
 
                 {{-- List --}}
                 <div class="table-responsive">

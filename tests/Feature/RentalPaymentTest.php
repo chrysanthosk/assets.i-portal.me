@@ -36,7 +36,7 @@ class RentalPaymentTest extends TestCase
         ]);
 
         return AssetRental::create([
-            'asset_id' => $asset->id, 'year' => 2026, 'month' => 1,
+            'asset_id' => $asset->id,
             'agreement_start_date' => '2026-01-01', 'rent_type' => 'Long-term',
             'is_active' => true, 'amount' => 1000, 'currency' => 'EUR',
         ]);

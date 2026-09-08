@@ -642,7 +642,6 @@ DB_DATABASE=${DB_NAME_SAFE}
 DB_USERNAME=${DB_USER_SAFE}
 DB_PASSWORD=${DB_PASS}
 DB_ROOT_PASSWORD=${DB_ROOT_PASS}
-DB_EXPOSED_PORT=${DB_EXPOSED_PORT}
 
 CACHE_STORE=database
 SESSION_DRIVER=database
@@ -685,8 +684,6 @@ docker_install(){
   prompt_secret DB_ROOT_PASS "MySQL root password (min 8 chars)"
   ensure_min_len "$DB_ROOT_PASS" 8 "Root password must be at least 8 characters."
 
-  prompt DB_EXPOSED_PORT "Host port to expose MySQL on (for local tools)" "3306"
-
   ADMIN_EMAIL=""
   ADMIN_PASS=""
   ADMIN_NAME="Admin"
@@ -709,7 +706,7 @@ docker_install(){
   log "Writing Docker env -> ${envfile}"
   write_docker_env "$envfile"
 
-  # Add a persistent APP_KEY and move WEB_PORT/DB_EXPOSED_PORT if already taken.
+  # Add a persistent APP_KEY and move WEB_PORT if already taken.
   # shellcheck disable=SC1091
   source "${repo_root}/scripts/docker-preflight.sh"
   docker_preflight
