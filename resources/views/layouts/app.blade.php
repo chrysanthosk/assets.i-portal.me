@@ -157,10 +157,12 @@
                     @can('manage_asset_types')
                         <li><a href="{{ route('settings.assetTypes.index') }}" class="sb-link {{ request()->routeIs('settings.assetTypes.*') ? 'active' : '' }}"><i class="bi bi-ui-checks"></i><span class="sb-label">Property types</span></a></li>
                     @endcan
-                    @advanced
-                        @can('manage_fx_rates')
+                    @can('manage_fx_rates')
+                        @if(\App\Support\Portal::advanced() || \App\Support\Fx::multiCurrencyInUse())
                             <li><a href="{{ route('settings.currencies.edit') }}" class="sb-link {{ request()->routeIs('settings.currencies.*') ? 'active' : '' }}"><i class="bi bi-currency-exchange"></i><span class="sb-label">Currencies &amp; FX</span></a></li>
-                        @endcan
+                        @endif
+                    @endcan
+                    @advanced
                         @can('manage_owner_entities')
                             <li><a href="{{ route('settings.ownerEntities.index') }}" class="sb-link {{ request()->routeIs('settings.ownerEntities.*') ? 'active' : '' }}"><i class="bi bi-building"></i><span class="sb-label">Owner entities</span></a></li>
                         @endcan

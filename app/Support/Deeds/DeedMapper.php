@@ -37,8 +37,8 @@ class DeedMapper
                 isset($deed['unit_number']) && $deed['unit_number'] !== null ? 'No. '.$deed['unit_number'] : null,
             ]))) ?: null,
             'city' => $deed['municipality_community'] ?? $deed['district'] ?? null,
-            'country' => 'Cyprus',
-            'currency' => $deed['valuations'][0]['currency'] ?? 'EUR',
+            'country' => $deed['country'] ?? 'Cyprus',
+            'currency' => $deed['valuations'][0]['currency'] ?? self::currencyFor($deed['country'] ?? null),
             'ownership_percentage' => self::sharePct($owner),
             'title_deed' => 1,
             'title_deed_number' => $deed['registration_number'] ?? null,
@@ -65,6 +65,18 @@ class DeedMapper
         $where = $deed['street_address'] ?? $deed['locality'] ?? $deed['municipality_community'] ?? null;
 
         return trim($type.($where ? ', '.$where : ''));
+    }
+
+    /** Default currency for a deed's country when the deed carries no valuation. */
+    public static function currencyFor(?string $country): string
+    {
+        return match (true) {
+            $country === null => 'EUR',
+            (bool) preg_match('/emirates|dubai|uae/i', $country) => 'AED',
+            (bool) preg_match('/united kingdom|england|scotland|wales/i', $country) => 'GBP',
+            (bool) preg_match('/united states|usa/i', $country) => 'USD',
+            default => 'EUR',
+        };
     }
 
     public static function assetTypeId(?string $propertyType): ?int

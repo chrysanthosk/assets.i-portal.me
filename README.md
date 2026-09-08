@@ -21,7 +21,7 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 
 **Asset & rentals modules**
 - **Assets** — properties with purchase, financing, title-deed, location & physical details, tags, documents
-- **Title deed import** — upload a scanned Cyprus Land Registry sheet (PDF/photo); Claude reads the
+- **Title deed import** — upload a scanned Cyprus Land Registry sheet or a Dubai (DIFC/DLD) title deed (PDF/photo); Claude reads the
   registration number, location, plot reference, owners & share, areas and valuations; you review a
   prefilled form and the property is created with the scan attached as its title-deed document
   (needs an Anthropic API key under Settings → Portal, or `ANTHROPIC_API_KEY`)
@@ -29,7 +29,9 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 - **Rental income** — agreements per asset (currency, period, active status)
 - **Rental payments** — record/schedule payments, track **arrears & overdue**
 - **Rent check** — expected payments are generated monthly from active agreements; a reminder email
-  asks "did the rent arrive?" with one-click Yes/No links and repeats until answered
+  asks "did the rent arrive?" with one-click Yes/No links and repeats until answered. For variable
+  rent (short-let operators) correct the amount, or upload the manager's monthly statement and the
+  net payout is read from it and filed with the property's documents
 - **Expenses** — categorised property costs (maintenance, tax, insurance, …)
 - **Reports** — per-asset & portfolio **P&L** with **CSV export**, consolidated to a base currency via **FX rates**
 - **Document lifecycle** — type classification + **expiry reminders** (dashboard, bell, and a

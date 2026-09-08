@@ -68,16 +68,7 @@
                                         none yet
                                     @endif
                                 </td>
-                                <td class="text-end text-nowrap">
-                                    <form method="POST" action="{{ route('payments.markPaid', $p) }}" class="d-inline">
-                                        @csrf
-                                        <button class="btn btn-sm btn-success"><i class="bi bi-check2"></i> Yes</button>
-                                    </form>
-                                    <form method="POST" action="{{ route('payments.markNotReceived', $p) }}" class="d-inline">
-                                        @csrf
-                                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i> No</button>
-                                    </form>
-                                </td>
+                                <td class="text-end">@include('payments._actions', ['p' => $p])</td>
                             </tr>
                         @empty
                             <tr><td colspan="7" class="text-center text-muted py-4">Nothing awaiting confirmation 🎉</td></tr>
@@ -110,12 +101,7 @@
                                 <td>{{ $p->periodLabel() }}</td>
                                 <td>{{ optional($p->due_date)->format('Y-m-d') }}</td>
                                 <td class="text-end">{{ $p->currency }} {{ number_format((float) $p->amount, 2) }}</td>
-                                <td class="text-end text-nowrap">
-                                    <form method="POST" action="{{ route('payments.markPaid', $p) }}" class="d-inline">
-                                        @csrf
-                                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-check2"></i> Paid now</button>
-                                    </form>
-                                </td>
+                                <td class="text-end">@include('payments._actions', ['p' => $p])</td>
                             </tr>
                         @endforeach
                         </tbody>
@@ -126,4 +112,5 @@
     </div>
     @endif
 </div>
+@include('payments._adjust_modal')
 @endsection

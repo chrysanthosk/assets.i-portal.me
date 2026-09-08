@@ -199,8 +199,12 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
   entities, tags, currencies & FX, audit log, plus the owner-entity/tag fields on
   asset forms. Wrap such markup in `@advanced … @endadvanced`. Routes stay
   permission-gated and reachable; only navigation and form fields are hidden.
-- **Title deed import** calls the Anthropic API via `anthropic-ai/sdk`
-  (`App\Support\Deeds\ClaudeDeedExtractor`, structured JSON output per `DeedSchema`).
+- **Document reading (deeds + manager statements)** goes through
+  `App\Support\Deeds\ClaudeDocumentReader` (Anthropic SDK, vision + structured JSON).
+  `ClaudeDeedExtractor`/`DeedSchema` cover Cyprus and Dubai (DIFC/DLD) deeds;
+  `Statements\ClaudeStatementExtractor`/`StatementSchema` read monthly owner statements
+  (gross, fee, net payable) to correct a payment's amount (`payments.statement` →
+  session → adjust modal → `payments.adjust`). Schemas must stay union-free.
   The key is stored encrypted in `portal_settings` (Settings → Portal) with
   `ANTHROPIC_API_KEY` as env fallback; model from `ANTHROPIC_MODEL` (default
   `claude-opus-5`). Tests bind a fake `DeedExtractor` — never call the API in tests.

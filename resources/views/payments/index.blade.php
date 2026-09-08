@@ -146,15 +146,11 @@
                                         <span class="badge text-bg-warning">Pending</span>
                                     @endif
                                     @if($p->reminder_count)<span class="badge text-bg-light border ms-1" title="Reminders sent">{{ $p->reminder_count }} <i class="bi bi-envelope"></i></span>@endif
+                                    @if($p->statement)<span class="badge text-bg-light border ms-1" title="From statement: gross {{ $p->statement['gross_income'] ?? '—' }}, fee {{ $p->statement['management_fee'] ?? '—' }}, net {{ $p->statement['net_payable'] ?? '—' }}"><i class="bi bi-file-earmark-text"></i></span>@endif
                                 </td>
-                                <td class="text-end text-nowrap">
-                                    @if($p->status !== 'paid')
-                                        <form method="POST" action="{{ route('payments.markPaid', $p) }}" class="d-inline">
-                                            @csrf
-                                            <button class="btn btn-sm btn-outline-success" aria-label="Mark paid"><i class="bi bi-check2"></i> Paid</button>
-                                        </form>
-                                    @endif
-                                    <form method="POST" action="{{ route('payments.destroy', $p) }}" class="d-inline"
+                                <td class="text-end">
+                                    @include('payments._actions', ['p' => $p])
+                                    <form method="POST" action="{{ route('payments.destroy', $p) }}" class="d-inline ms-1"
                                           onsubmit="return confirm('Delete this payment record?');">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-outline-danger" aria-label="Delete payment"><i class="bi bi-trash"></i></button>
@@ -177,4 +173,5 @@
         </div>
     </div>
 </div>
+@include('payments._adjust_modal')
 @endsection

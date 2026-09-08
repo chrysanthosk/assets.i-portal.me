@@ -295,11 +295,7 @@
                                     @elseif($p->isOverdue())<span class="badge text-bg-danger">Overdue</span>
                                     @else<span class="badge text-bg-warning">Pending</span>@endif
                                 </td>
-                                <td class="text-end text-nowrap">
-                                    @if(! $p->isPaid())
-                                        <form method="POST" action="{{ route('payments.markPaid', $p) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success"><i class="bi bi-check2"></i> Paid</button></form>
-                                    @endif
-                                </td>
+                                <td class="text-end">@include('payments._actions', ['p' => $p])</td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded. They are generated monthly from the active agreement.</td></tr>
@@ -341,6 +337,10 @@
         @endcan
     </div>
 </div>
+
+@can('manage_rental_payments')
+@include('payments._adjust_modal')
+@endcan
 
 @can('manage_assets')
 <div class="modal fade" id="deleteAssetModal" tabindex="-1" aria-hidden="true">

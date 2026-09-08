@@ -32,6 +32,8 @@ class CurrenciesController extends Controller
 
         Audit::log('settings.base_currency_updated', null, null, ['base_currency' => strtoupper($data['base_currency'])]);
 
+        Fx::flush();
+
         return back()->with('success', 'Base currency updated.');
     }
 

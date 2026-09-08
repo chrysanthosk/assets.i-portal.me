@@ -7,6 +7,8 @@ use App\Support\Deeds\ClaudeDeedExtractor;
 use App\Support\Deeds\DeedExtractor;
 use App\Support\MailConfig;
 use App\Support\Portal;
+use App\Support\Statements\ClaudeStatementExtractor;
+use App\Support\Statements\StatementExtractor;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Title deed OCR/extraction backend (tests bind a fake)
         $this->app->bind(DeedExtractor::class, ClaudeDeedExtractor::class);
+        $this->app->bind(StatementExtractor::class, ClaudeStatementExtractor::class);
     }
 
     /**
