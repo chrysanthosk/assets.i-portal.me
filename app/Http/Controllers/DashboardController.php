@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetDocument;
+use App\Models\AssetExpense;
 use App\Models\AssetRental;
 use App\Models\AuditLog;
 use App\Models\RentalPayment;
@@ -108,6 +109,20 @@ class DashboardController extends Controller
             ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
             ->count();
 
+        // This year: received rent, what was due, expenses (all in base currency)
+        $yearStart = now()->startOfYear()->toDateString();
+        $toBase = fn ($rows) => collect($rows)->sum(fn ($r) => Fx::toBase((float) $r->total, $r->currency));
+        $yearIncome = $toBase(RentalPayment::query()->where('status', RentalPayment::STATUS_PAID)->whereDate('paid_date', '>=', $yearStart)
+            ->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get());
+        $yearDue = $toBase(RentalPayment::query()->whereYear('due_date', now()->year)->whereDate('due_date', '<=', now()->toDateString())
+            ->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get());
+        $yearDuePaid = $toBase(RentalPayment::query()->where('status', RentalPayment::STATUS_PAID)->whereYear('due_date', now()->year)
+            ->whereDate('due_date', '<=', now()->toDateString())->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get());
+        $yearExpenses = $toBase(AssetExpense::query()->whereDate('spent_on', '>=', $yearStart)
+            ->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get());
+        // Contracted rent for a full year from the agreements active now
+        $yearContracted = (clone $activeAgreementBase)->get()->sum(fn ($r) => Fx::toBase($r->monthlyEquivalent() * 12, $r->currency));
+
         // Panels: what needs attention + recent activity
         $rentToConfirm = RentalPayment::query()->with(['asset', 'rental.tenant'])
             ->awaitingConfirmation()->orderBy('due_date')->limit(6)->get();
@@ -122,6 +137,10 @@ class DashboardController extends Controller
             : collect();
 
         return view('dashboard', [
+            'year' => [
+                'income' => $yearIncome, 'due' => $yearDue, 'duePaid' => $yearDuePaid, 'expenses' => $yearExpenses,
+                'contracted' => $yearContracted, 'rate' => $yearDue > 0 ? (int) round($yearDuePaid / $yearDue * 100) : null,
+            ],
             'base' => Fx::base(),
             'unknownCurrencies' => Fx::unknownCurrencies(),
             'rentToConfirm' => $rentToConfirm,
