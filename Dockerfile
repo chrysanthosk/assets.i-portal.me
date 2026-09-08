@@ -3,7 +3,7 @@
 ###############################################
 # Stage 1 — Build frontend assets (Vite)
 ###############################################
-FROM node:20-alpine AS frontend
+FROM node:22-alpine AS frontend
 
 WORKDIR /app
 
@@ -43,7 +43,7 @@ RUN composer dump-autoload --optimize --no-dev --no-interaction
 ###############################################
 # Stage 3 — Runtime image (PHP-FPM)
 ###############################################
-FROM php:8.4-fpm AS app
+FROM php:8.5-fpm AS app
 
 # System libraries required by the PHP extensions below, plus the web server
 RUN apt-get update && apt-get install -y --no-install-recommends \
