@@ -4,7 +4,7 @@
 @php
     $fullName = trim(($user->name ?? '').' '.($user->surname ?? '')) ?: $user->username;
     $periodLabel = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->format('F Y');
-    $money = fn ($n) => '€ '.number_format((float) $n, 2);
+    $money = fn ($n) => $base.' '.number_format((float) $n, 2);
     $byCur = fn ($rows) => collect($rows)->map(fn ($r) => $r->currency.' '.number_format((float) $r->total, 2))->implode(' · ');
     $attentionCount = ($unconfirmedPaymentsCount ?? 0) + ($overduePaymentsCount ?? 0) + ($expiredDocsCount ?? 0) + ($expiringDocsCount ?? 0);
 @endphp
@@ -29,12 +29,12 @@
                 :href="auth()->user()->can('manage_assets') ? route('assets.index') : null" />
     </div>
     <div class="col-6 col-xl-3">
-        <x-stat icon="bi-cash-stack" label="Portfolio value" :value="$money($totalAssetsValue)" sub="Sum of purchase prices" tone="info" />
+        <x-stat icon="bi-cash-stack" label="Portfolio value" :value="$money($totalAssetsValue)"
+                :sub="'Purchase prices'.(count($unknownCurrencies) ? ' · <span class=\'text-warning-emphasis\'>no FX rate for '.e(implode(', ', $unknownCurrencies)).'</span>' : ' in '.$base)" tone="info" />
     </div>
     <div class="col-6 col-xl-3">
-        <x-stat icon="bi-graph-up-arrow" label="Monthly rent"
-                :value="$monthlyIncomeByCurrency->count() > 1 ? $byCur($monthlyIncomeByCurrency) : $money($monthlyIncome)"
-                :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's')" tone="success" />
+        <x-stat icon="bi-graph-up-arrow" label="Monthly rent" :value="$money($monthlyIncome)"
+                :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's').($monthlyIncomeByCurrency->count() > 1 ? ' · '.e($byCur($monthlyIncomeByCurrency)) : '')" tone="success" />
     </div>
     <div class="col-6 col-xl-3">
         <x-stat icon="bi-wallet2" label="Outstanding"

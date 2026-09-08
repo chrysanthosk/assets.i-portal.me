@@ -279,6 +279,18 @@
         @can('manage_rental_payments')
         <div class="tab-pane fade {{ $tab === 'payments' ? 'show active' : '' }}" id="tab-payments" role="tabpanel">
             <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <div class="text-muted small">
+                        Monthly payments are generated from the active agreement. If a manager pays you a variable amount,
+                        upload their monthly statement: the month is read from it and the net payout is proposed.
+                    </div>
+                    <form method="POST" action="{{ route('payments.statementForAsset', $asset) }}" enctype="multipart/form-data" id="assetStatementForm">@csrf
+                        <input type="file" name="file" accept=".pdf,image/*" class="d-none" onchange="this.form.requestSubmit()">
+                        <button type="button" class="btn btn-sm btn-primary text-nowrap" onclick="document.querySelector('#assetStatementForm input[type=file]').click()">
+                            <i class="bi bi-file-earmark-arrow-up me-1"></i> Upload statement
+                        </button>
+                    </form>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead><tr><th scope="col">Period</th><th scope="col">Due</th><th scope="col">Tenant</th><th scope="col" class="text-end">Amount</th><th scope="col">Status</th><th scope="col" class="text-end"></th></tr></thead>
