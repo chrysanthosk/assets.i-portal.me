@@ -10,7 +10,14 @@
                     <h5 class="mb-0">Tenants</h5>
                     <small class="text-muted">People renting your assets</small>
                 </div>
-                <form method="GET" action="{{ route('tenants.index') }}" class="d-flex gap-2 align-items-center ms-auto">
+                <form method="POST" action="{{ route('tenants.sync') }}" class="ms-auto"
+                      onsubmit="return confirm('Link agreements to tenants and read missing contact details from the filed contracts?');">
+                    @csrf
+                    <button class="btn btn-sm btn-outline-primary" data-loading-text="Reading contracts…" title="Create/link tenants from agreements and fill email, phone and ID from the contract PDFs">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i> Fill from contracts
+                    </button>
+                </form>
+                <form method="GET" action="{{ route('tenants.index') }}" class="d-flex gap-2 align-items-center">
                     <input type="text" name="q" value="{{ $q }}" class="form-control form-control-sm"
                            placeholder="Search name / email / phone">
                     <button class="btn btn-sm btn-outline-secondary" aria-label="Search"><i class="bi bi-search"></i></button>

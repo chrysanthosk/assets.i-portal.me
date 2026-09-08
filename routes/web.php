@@ -76,6 +76,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
     Route::middleware('permission:manage_tenants')->group(function () {
         Route::get('/tenants', [TenantsController::class, 'index'])->name('tenants.index');
         Route::post('/tenants', [TenantsController::class, 'store'])->name('tenants.store');
+        Route::post('/tenants/sync-from-contracts', [TenantsController::class, 'syncFromContracts'])->name('tenants.sync');
         Route::put('/tenants/{tenant}', [TenantsController::class, 'update'])->name('tenants.update');
         Route::delete('/tenants/{tenant}', [TenantsController::class, 'destroy'])->name('tenants.destroy');
     });
