@@ -82,8 +82,11 @@
 
                     <div class="col-md-1">
                         <label class="form-label">Cur.</label>
-                        <input type="text" name="currency" value="{{ old('currency', 'EUR') }}" maxlength="3"
-                               class="form-control @error('currency') is-invalid @enderror" required>
+                        <select name="currency" class="form-select @error('currency') is-invalid @enderror" required>
+                            @foreach(\App\Support\Fx::currencies() as $c)
+                                <option value="{{ $c }}" @selected(old('currency', \App\Support\Fx::base()) === $c)>{{ $c }}</option>
+                            @endforeach
+                        </select>
                         @error('currency') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 

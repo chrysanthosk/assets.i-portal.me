@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Asset;
 use App\Models\AssetExpense;
 use App\Models\AssetRental;
 use App\Models\FxRate;
@@ -47,6 +48,27 @@ class Fx
                 || AssetExpense::query()->where('currency', '!=', $base)->exists()
                 || AssetRental::query()->where('currency', '!=', $base)->exists();
         });
+    }
+
+    /**
+     * Currencies offered in forms: base, every currency with a rate, anything
+     * already used by assets/agreements/payments/expenses, and common defaults.
+     *
+     * @return array<int, string>
+     */
+    public static function currencies(): array
+    {
+        $list = array_merge(
+            [self::base()],
+            array_keys(self::rates()),
+            Asset::query()->distinct()->pluck('currency')->all(),
+            AssetRental::query()->distinct()->pluck('currency')->all(),
+            ['EUR', 'USD', 'GBP', 'AED'],
+        );
+        $list = array_values(array_unique(array_filter(array_map(fn ($c) => strtoupper(trim((string) $c)), $list))));
+        usort($list, fn ($a, $b) => ($a === self::base() ? 0 : 1) <=> ($b === self::base() ? 0 : 1) ?: strcmp($a, $b));
+
+        return $list;
     }
 
     private static function rates(): array

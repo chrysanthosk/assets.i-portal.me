@@ -10,7 +10,7 @@
     $financed = $on('financed') || $errors->hasAny(['lender', 'loan_amount', 'interest_rate', 'loan_start_date', 'loan_end_date', 'monthly_payment']);
     $detailsOpen = $asset !== null || $errors->hasAny(['size_sqm', 'land_sqm', 'bedrooms', 'bathrooms', 'year_built', 'estimated_annual_expenses']);
     $statuses = \App\Http\Requests\AssetRules::STATUSES;
-    $currencies = ['EUR', 'USD', 'GBP'];
+    $currencies = \App\Support\Fx::currencies();
     $ownershipPct = $v('ownership_percentage', 100);
 @endphp
 
