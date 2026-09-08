@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AssetDocument;
+use App\Models\AssetRental;
 use App\Models\Tenant;
+use App\Support\Agreements\AgreementExtractor;
 use App\Support\Audit;
+use App\Support\Deeds\DeedExtractionException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class TenantsController extends Controller
 {
@@ -26,6 +31,65 @@ class TenantsController extends Controller
             ->withQueryString();
 
         return view('tenants.index', compact('tenants', 'q'));
+    }
+
+    /**
+     * Catch up tenants from existing agreements and their filed contracts:
+     *  1) agreements with only a typed name get a Tenant record (found or created)
+     *  2) tenants missing email/phone/ID are filled from the newest 'Contract'
+     *     document on the property, read with the agreement extractor.
+     */
+    public function syncFromContracts(AgreementExtractor $extractor)
+    {
+        $linked = 0;
+        foreach (AssetRental::query()->whereNull('tenant_id')->whereNotNull('tenant_name')->get() as $rental) {
+            $name = trim((string) $rental->tenant_name);
+            if ($name === '') {
+                continue;
+            }
+            $tenant = Tenant::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first() ?? Tenant::create(['name' => $name]);
+            $rental->forceFill(['tenant_id' => $tenant->id])->save();
+            $linked++;
+        }
+
+        $filled = 0;
+        $errors = [];
+        if ($extractor->isConfigured()) {
+            $needing = Tenant::query()->with('rentals')->get()
+                ->filter(fn ($t) => ! $t->email || ! $t->phone || ! $t->id_number);
+            foreach ($needing as $tenant) {
+                $assetIds = $tenant->rentals->pluck('asset_id')->unique()->all();
+                $doc = AssetDocument::query()->whereIn('asset_id', $assetIds)->where('doc_type', 'Contract')->latest()->first();
+                if (! $doc || ! Storage::disk($doc->disk ?: 'local')->exists($doc->path)) {
+                    continue;
+                }
+                try {
+                    $terms = $extractor->extract(Storage::disk($doc->disk ?: 'local')->path($doc->path), $doc->mime_type);
+                } catch (DeedExtractionException $e) {
+                    $errors[] = $tenant->name.': '.$e->getMessage();
+
+                    continue;
+                }
+                $changes = array_filter([
+                    'email' => $tenant->email ?: ($terms['counterparty_email'] ?? null),
+                    'phone' => $tenant->phone ?: ($terms['counterparty_phone'] ?? null),
+                    'id_number' => $tenant->id_number ?: ($terms['counterparty_id_number'] ?? null),
+                ]);
+                if ($changes && array_diff_assoc($changes, $tenant->only(array_keys($changes)))) {
+                    $old = $tenant->toArray();
+                    $tenant->fill($changes)->save();
+                    Audit::log('tenant.filled_from_contract', $tenant, $old, $tenant->fresh()->toArray());
+                    $filled++;
+                }
+            }
+        }
+
+        $msg = "{$linked} agreement(s) linked to tenants, {$filled} tenant(s) filled from contracts.";
+        if (! $extractor->isConfigured()) {
+            $msg .= ' Contact details were not read: no Anthropic API key configured.';
+        }
+
+        return back()->with($errors ? 'error' : 'success', $msg.($errors ? ' Problems: '.implode(' · ', $errors) : ''));
     }
 
     public function store(Request $request)

@@ -9,6 +9,7 @@ use App\Models\AssetType;
 use App\Models\DeedImport;
 use App\Models\PortalSetting;
 use App\Models\RentalPayment;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Agreements\AgreementExtractor;
 use App\Support\Agreements\AgreementMapper;
@@ -207,6 +208,49 @@ class InstallmentAgreementTest extends TestCase
         $this->assertSame(3, RentSchedule::backfill($dubai));
         $this->assertSame(['2026-07', '2026-08', '2026-09'], RentalPayment::where('asset_rental_id', $dubai->id)->orderBy('due_date')->pluck('period')->all());
         Carbon::setTestNow();
+    }
+
+    public function test_fill_from_contracts_links_tenants_and_reads_contact_details(): void
+    {
+        Storage::fake('local');
+        $terms = $this->terms;
+        $this->app->instance(AgreementExtractor::class, new class($terms) implements AgreementExtractor
+        {
+            public function __construct(private array $terms) {}
+
+            public function extract(string $absolutePath, string $mimeType): array
+            {
+                return $this->terms;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+        });
+        $asset = $this->asset();
+        // An agreement imported before tenants were auto-created: name only, contract filed
+        $rental = AssetRental::create(['asset_id' => $asset->id, 'tenant_name' => 'Z&X Holiday Villas', 'agreement_start_date' => '2024-04-01',
+            'rent_type' => 'Other', 'is_active' => true, 'currency' => 'EUR', 'amount' => 18000]);
+        Storage::disk('local')->put("assets/{$asset->id}/contract.pdf", 'pdf');
+        AssetDocument::create(['asset_id' => $asset->id, 'doc_type' => 'Contract', 'original_name' => 'contract.pdf', 'disk' => 'local',
+            'path' => "assets/{$asset->id}/contract.pdf", 'mime_type' => 'application/pdf', 'size_bytes' => 3]);
+
+        $user = User::factory()->create();
+        Permission::findOrCreate('manage_tenants', 'web');
+        $user->givePermissionTo('manage_tenants');
+
+        $this->actingAs($user)->from('/tenants')->post(route('tenants.sync'))->assertRedirect('/tenants')->assertSessionHas('success');
+
+        $tenant = Tenant::sole();
+        $this->assertSame('Z&X Holiday Villas', $tenant->name);
+        $this->assertSame($tenant->id, $rental->fresh()->tenant_id);
+        $this->assertSame('info@zx.example', $tenant->email);
+        $this->assertSame('+357 99 000000', $tenant->phone);
+        $this->assertSame('HE97675', $tenant->id_number);
+
+        // Running again changes nothing
+        $this->actingAs($user)->post(route('tenants.sync'))->assertSessionHas('success', '0 agreement(s) linked to tenants, 0 tenant(s) filled from contracts.');
     }
 
     public function test_agreement_schema_normalizes(): void
