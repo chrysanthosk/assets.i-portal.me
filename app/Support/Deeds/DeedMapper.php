@@ -3,6 +3,7 @@
 namespace App\Support\Deeds;
 
 use App\Models\AssetType;
+use Carbon\Carbon;
 
 /**
  * Turns extracted deed data into a prefilled asset form.
@@ -113,7 +114,7 @@ class DeedMapper
             return null;
         }
         try {
-            return \Carbon\Carbon::parse($value)->toDateString();
+            return Carbon::parse($value)->toDateString();
         } catch (\Throwable $e) {
             return null;
         }

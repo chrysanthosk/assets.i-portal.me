@@ -11,7 +11,7 @@
     </script>
 
     @php
-        $portalNameValue = \App\Models\PortalSetting::where('key', 'portal_name')->value('value') ?? 'assets.i-portal.me';
+        $portalNameValue = \App\Models\PortalSetting::name();
         $routeName = optional(request()->route())->getName() ?? '';
         $titleMap = [
             'dashboard' => 'Dashboard',
@@ -59,8 +59,9 @@
         // Attention counters for the bell + sidebar badge
         $unconfirmedRent = 0; $overdueRent = 0; $expiringDocs = 0;
         if ($user && $user->can('manage_rental_payments')) {
-            $unconfirmedRent = \App\Models\RentalPayment::query()->awaitingConfirmation()->count();
-            $overdueRent = \App\Models\RentalPayment::query()->overdue()->count();
+            $rentCounts = \App\Models\RentalPayment::attentionCounts();
+            $unconfirmedRent = $rentCounts['unconfirmed'];
+            $overdueRent = $rentCounts['overdue'];
         }
         if ($user && $user->can('manage_assets')) {
             $expiringDocs = \App\Models\AssetDocument::query()->whereNotNull('expires_at')

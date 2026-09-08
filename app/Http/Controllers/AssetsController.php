@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AssetRules;
 use App\Models\Asset;
 use App\Models\AssetExpense;
 use App\Models\AssetTag;
@@ -52,55 +53,7 @@ class AssetsController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-
-            'asset_type_id' => ['required', 'integer', 'exists:asset_types,id'],
-
-            'address' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'postcode' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string'],
-
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
-
-            'owner_entity_id' => ['nullable', 'integer', 'exists:owner_entities,id'],
-            'ownership_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
-
-            'title_deed' => ['nullable', 'in:0,1'],
-            'title_deed_number' => ['nullable', 'string', 'max:255'],
-            'title_deed_date' => ['nullable', 'date'],
-            'lawyer_notary' => ['nullable', 'string', 'max:255'],
-
-            'financed' => ['nullable', 'in:0,1'],
-            'lender' => ['nullable', 'string', 'max:255'],
-            'loan_amount' => ['nullable', 'numeric', 'min:0'],
-            'interest_rate' => ['nullable', 'numeric', 'min:0'],
-            'loan_start_date' => ['nullable', 'date'],
-            'loan_end_date' => ['nullable', 'date'],
-            'monthly_payment' => ['nullable', 'numeric', 'min:0'],
-
-            'size_sqm' => ['nullable', 'numeric', 'min:0'],
-            'land_sqm' => ['nullable', 'numeric', 'min:0'],
-            'bedrooms' => ['nullable', 'integer', 'min:0', 'max:99'],
-            'bathrooms' => ['nullable', 'integer', 'min:0', 'max:99'],
-            'parking' => ['nullable', 'in:0,1'],
-            'year_built' => ['nullable', 'integer', 'min:1800', 'max:2100'],
-
-            'status' => ['required', 'string', 'max:50'],
-            'estimated_annual_expenses' => ['nullable', 'numeric', 'min:0'],
-
-            'tags' => ['nullable', 'array'],
-            'tags.*' => ['integer', 'exists:asset_tags,id'],
-        ]);
-
-        $data['title_deed'] = (int) ($data['title_deed'] ?? 0) === 1;
-        $data['financed'] = (int) ($data['financed'] ?? 0) === 1;
-        $data['parking'] = (int) ($data['parking'] ?? 0) === 1;
-        $data['ownership_percentage'] = $data['ownership_percentage'] ?? 100;
+        $data = AssetRules::normalize($request->validate(AssetRules::rules()));
 
         $asset = Asset::create($data);
         $asset->tags()->sync($data['tags'] ?? []);
@@ -164,55 +117,7 @@ class AssetsController extends Controller
     {
         $old = $asset->toArray();
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-
-            'asset_type_id' => ['required', 'integer', 'exists:asset_types,id'],
-
-            'address' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'postcode' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string'],
-
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
-
-            'owner_entity_id' => ['nullable', 'integer', 'exists:owner_entities,id'],
-            'ownership_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
-
-            'title_deed' => ['nullable', 'in:0,1'],
-            'title_deed_number' => ['nullable', 'string', 'max:255'],
-            'title_deed_date' => ['nullable', 'date'],
-            'lawyer_notary' => ['nullable', 'string', 'max:255'],
-
-            'financed' => ['nullable', 'in:0,1'],
-            'lender' => ['nullable', 'string', 'max:255'],
-            'loan_amount' => ['nullable', 'numeric', 'min:0'],
-            'interest_rate' => ['nullable', 'numeric', 'min:0'],
-            'loan_start_date' => ['nullable', 'date'],
-            'loan_end_date' => ['nullable', 'date'],
-            'monthly_payment' => ['nullable', 'numeric', 'min:0'],
-
-            'size_sqm' => ['nullable', 'numeric', 'min:0'],
-            'land_sqm' => ['nullable', 'numeric', 'min:0'],
-            'bedrooms' => ['nullable', 'integer', 'min:0', 'max:99'],
-            'bathrooms' => ['nullable', 'integer', 'min:0', 'max:99'],
-            'parking' => ['nullable', 'in:0,1'],
-            'year_built' => ['nullable', 'integer', 'min:1800', 'max:2100'],
-
-            'status' => ['required', 'string', 'max:50'],
-            'estimated_annual_expenses' => ['nullable', 'numeric', 'min:0'],
-
-            'tags' => ['nullable', 'array'],
-            'tags.*' => ['integer', 'exists:asset_tags,id'],
-        ]);
-
-        $data['title_deed'] = (int) ($data['title_deed'] ?? 0) === 1;
-        $data['financed'] = (int) ($data['financed'] ?? 0) === 1;
-        $data['parking'] = (int) ($data['parking'] ?? 0) === 1;
-        $data['ownership_percentage'] = $data['ownership_percentage'] ?? $asset->ownership_percentage ?? 100;
+        $data = AssetRules::normalize($request->validate(AssetRules::rules()));
 
         $asset->update($data);
         $asset->tags()->sync($data['tags'] ?? []);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <script>try { document.documentElement.setAttribute('data-bs-theme', localStorage.getItem('theme') || 'dark'); } catch (e) {}</script>
-  @php $portalNameValue = \App\Models\PortalSetting::where('key', 'portal_name')->value('value') ?? 'assets.i-portal.me'; @endphp
+  @php $portalNameValue = \App\Models\PortalSetting::name(); @endphp
   <title>Sign in · {{ $portalNameValue }}</title>
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AssetRules;
 use App\Models\Asset;
 use App\Models\AssetDocument;
 use App\Models\AssetType;
@@ -93,7 +94,7 @@ class AssetImportController extends Controller
             'prefill' => DeedMapper::toAssetAttributes($import->extracted),
             'assetTypes' => AssetType::orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'is_active']),
             'ownerEntities' => OwnerEntity::orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'is_active']),
-            'statuses' => ['Vacant', 'Owner-occupied', 'Rented (long-term)', 'Airbnb/Short-term'],
+            'statuses' => AssetRules::STATUSES,
         ]);
     }
 
@@ -103,30 +104,8 @@ class AssetImportController extends Controller
             return redirect()->route('assets.import.create')->with('error', 'This import cannot be confirmed.');
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'asset_type_id' => ['required', 'integer', 'exists:asset_types,id'],
-            'owner_entity_id' => ['nullable', 'integer', 'exists:owner_entities,id'],
-            'status' => ['required', 'string', 'max:50'],
-            'address' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'postcode' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'currency' => ['required', 'string', 'max:10'],
-            'ownership_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'title_deed_number' => ['nullable', 'string', 'max:255'],
-            'title_deed_date' => ['nullable', 'date'],
-            'size_sqm' => ['nullable', 'numeric', 'min:0'],
-            'land_sqm' => ['nullable', 'numeric', 'min:0'],
-            'parking' => ['nullable', 'in:0,1'],
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
+        $data = AssetRules::normalize($request->validate(AssetRules::rules()));
         $data['title_deed'] = true;
-        $data['parking'] = (int) ($data['parking'] ?? 0) === 1;
-        $data['ownership_percentage'] = $data['ownership_percentage'] ?? 100;
         $data['title_deed_data'] = $import->extracted;
 
         $asset = Asset::create($data);

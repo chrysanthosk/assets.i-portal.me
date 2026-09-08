@@ -83,12 +83,11 @@ database/
 routes/  web.php  auth.php  console.php
 resources/  css/app.css  js/app.js  views/
 .github/workflows/ci.yml          # CI: Pint (lint) + Vite build + PHPUnit on SQLite
-scripts/
-  install.sh       # interactive installer — asks: 1) Regular (bare-metal)  2) Docker
-  new_deploy.sh    # interactive deploy/update — asks: 1) Regular  2) Docker
-  docker-preflight.sh  # Docker .env guard: creates .env, persists APP_KEY, resolves port clashes
+scripts/                             # Docker only — there is no bare-metal path
+  install.sh       # first install: asks a few questions, writes .env, builds + starts the stack
+  new_deploy.sh    # update: preflight → docker compose up -d --build (volumes preserved); --pull
+  docker-preflight.sh  # .env guard: creates .env, persists APP_KEY, resolves WEB_PORT clashes
   backup.sh        # DB dump + storage archive with retention; --install-cron writes /etc/cron.d
-  uninstall.sh
 docker/
   entrypoint.sh                 # app container bootstrap (key, wait-for-db, migrate, seed, optimize)
   nginx/default.conf            # Nginx vhost (root = public/, fastcgi -> 127.0.0.1:9000)
@@ -97,7 +96,7 @@ docker/
 Dockerfile                      # 3-stage: node assets -> composer vendor -> php:8.4-fpm runtime
 docker-compose.yml              # services: app (web+fpm+queue), db (mysql:latest)
 .dockerignore
-.env.example                    # bare-metal/local template (SQLite default)
+.env.example                    # local-dev template (SQLite default)
 .env.docker.example             # Docker template (copy to .env for docker compose)
 ```
 
@@ -125,25 +124,20 @@ Architecture notes:
   `docker compose up -d --build`.** Migrations are additive (`migrate --force`).
   Only `docker compose down -v` wipes the database.
 
-### Bare-metal (manual)
+### Local development (no Docker)
 ```bash
-composer install
-npm install
-cp .env.example .env && php artisan key:generate
-# configure MySQL in .env, then:
-php artisan migrate
-php artisan db:seed --class=PortalBootstrapSeeder
+composer install && npm install
+cp .env.example .env && php artisan key:generate     # SQLite by default
+php artisan migrate && php artisan db:seed --class=PortalBootstrapSeeder
 npm run build          # or: npm run dev
 php artisan serve
 ```
 
-### Automated provisioning
-- `sudo ./scripts/install.sh` → choose **Regular** (installs Nginx/PHP-FPM/MySQL,
-  creates system + DB user, Nginx vhost, optional Let's Encrypt) or **Docker**
-  (pulls latest MySQL image, writes `.env`, `docker compose up -d --build`).
-- `./scripts/new_deploy.sh` → choose **Regular** or **Docker** to update an
-  existing deployment (DB volume preserved in Docker mode).
-- Both Docker paths run `scripts/docker-preflight.sh` first. It creates `.env`
+### Automated provisioning (Docker only)
+- `sudo ./scripts/install.sh` — first install: writes `.env`, builds, starts.
+- `./scripts/new_deploy.sh [--pull]` — update after `git pull` (volumes preserved).
+  Non-interactive: no menu, no prompts.
+- Both run `scripts/docker-preflight.sh` first. It creates `.env`
   from `.env.docker.example` (random DB passwords), generates `APP_KEY` once and
   keeps it in the host `.env` (passed through `docker-compose.yml` — never rotate
   it, 2FA secrets are encrypted with it), and moves `WEB_PORT` to the next free
@@ -156,14 +150,15 @@ php artisan serve
 
 ## Common commands
 
-| Task | Bare-metal | Docker |
-|------|------------|--------|
+| Task | Local dev | Docker |
+|------|-----------|--------|
 | Artisan | `php artisan <cmd>` | `docker compose exec app php artisan <cmd>` |
 | Create admin | `php artisan make:admin` | `docker compose exec app php artisan make:admin` |
 | Migrate | `php artisan migrate` | runs automatically on container start |
 | Tests | `php artisan test` | `docker compose exec app php artisan test` |
 | Build assets | `npm run build` | baked into the image at build time |
 | Logs | `storage/logs/laravel.log` | `docker compose logs -f app` |
+| Stop / remove | — | `docker compose down` (add `-v` to also delete the database — never in production) |
 
 **Default login (Docker, from `.env.docker.example`):** username **`admin`** /
 password **`ChangeMe123!`**. Authentication is by the **`username`** column, **not
@@ -181,6 +176,10 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
 
 - **PHP version**: target **8.4+** for Docker images and CI — 8.3 fails the
   Composer platform check baked into `vendor/composer/platform_check.php`.
+- **Property form validation** lives once in `App\Http\Requests\AssetRules` (rules +
+  normalize) and is used by create, update and the deed-import confirm.
+- **Portal settings are cached** (`PortalSetting::get/name`, 5 min, invalidated by
+  `set()`); tests flush the cache in `TestCase::setUp`.
 - **Permissions**: routes are guarded by `permission:<name>` middleware; permission
   names live in `config/portal_permissions.php`. After changing them, run
   `PortalPermissionsSeeder` and `php artisan permission:cache-reset`.

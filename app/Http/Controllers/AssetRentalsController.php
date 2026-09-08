@@ -34,40 +34,7 @@ class AssetRentalsController extends Controller
      */
     public function storeOrUpdate(Request $request)
     {
-        $data = $request->validate([
-            'asset_id' => ['required', 'integer', 'exists:assets,id'],
-
-            'tenant_id' => ['nullable', 'integer', 'exists:tenants,id'],
-            'tenant_name' => ['nullable', 'string', 'max:120'],
-            'agreement_start_date' => ['required', 'date'],
-            'agreement_end_date' => ['nullable', 'date', 'after_or_equal:agreement_start_date'],
-            'rent_type' => ['required', 'in:Airbnb,Long-term,Other'],
-            'is_active' => ['required', 'in:0,1'],
-
-            'amount' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
-            'channel' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $tenantName = $this->resolveTenantName($data);
-
-        $rental = AssetRental::create([
-            'asset_id' => $data['asset_id'],
-            'tenant_id' => $data['tenant_id'] ?? null,
-
-            'tenant_name' => $tenantName,
-            'agreement_start_date' => $data['agreement_start_date'],
-            'agreement_end_date' => $data['agreement_end_date'] ?? null,
-            'rent_type' => $data['rent_type'],
-            'is_active' => (int) $data['is_active'] === 1,
-
-            'amount' => $data['amount'],
-            'currency' => $data['currency'],
-            'channel' => $data['channel'] ?? null,
-            'notes' => $data['notes'] ?? null,
-        ]);
-
+        $rental = $this->persist($request, new AssetRental);
         Audit::log('asset_rental.created', $rental, null, $rental->toArray());
 
         return back()->with('success', 'Agreement saved.');
@@ -88,59 +55,40 @@ class AssetRentalsController extends Controller
     public function update(Request $request, AssetRental $rental)
     {
         $old = $rental->toArray();
+        $this->persist($request, $rental);
+        Audit::log('asset_rental.updated', $rental, $old, $rental->fresh()->toArray());
 
+        return redirect()->route('assets.rentals.index')->with('success', 'Agreement updated.');
+    }
+
+    /** Validate and save an agreement (create or update). */
+    private function persist(Request $request, AssetRental $rental): AssetRental
+    {
         $data = $request->validate([
             'asset_id' => ['required', 'integer', 'exists:assets,id'],
-
             'tenant_id' => ['nullable', 'integer', 'exists:tenants,id'],
             'tenant_name' => ['nullable', 'string', 'max:120'],
             'agreement_start_date' => ['required', 'date'],
             'agreement_end_date' => ['nullable', 'date', 'after_or_equal:agreement_start_date'],
             'rent_type' => ['required', 'in:Airbnb,Long-term,Other'],
             'is_active' => ['required', 'in:0,1'],
-
             'amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'max:10'],
             'channel' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        $tenantName = $this->resolveTenantName($data);
+        // Free-text tenant_name mirrors the linked tenant when one is chosen
+        $data['tenant_name'] = ! empty($data['tenant_id'])
+            ? (Tenant::find($data['tenant_id'])?->name ?? ($data['tenant_name'] ?? null))
+            : ($data['tenant_name'] ?? null);
+        $data['tenant_id'] = $data['tenant_id'] ?? null;
+        $data['agreement_end_date'] = $data['agreement_end_date'] ?? null;
+        $data['is_active'] = (int) $data['is_active'] === 1;
 
-        $rental->update([
-            'asset_id' => $data['asset_id'],
-            'tenant_id' => $data['tenant_id'] ?? null,
+        $rental->fill($data)->save();
 
-            // keep legacy required columns consistent
-
-            'tenant_name' => $tenantName,
-            'agreement_start_date' => $data['agreement_start_date'],
-            'agreement_end_date' => $data['agreement_end_date'] ?? null,
-            'rent_type' => $data['rent_type'],
-            'is_active' => (int) $data['is_active'] === 1,
-
-            'amount' => $data['amount'],
-            'currency' => $data['currency'],
-            'channel' => $data['channel'] ?? null,
-            'notes' => $data['notes'] ?? null,
-        ]);
-
-        Audit::log('asset_rental.updated', $rental, $old, $rental->fresh()->toArray());
-
-        return redirect()->route('assets.rentals.index')->with('success', 'Agreement updated.');
-    }
-
-    /**
-     * Keep the legacy free-text tenant_name in sync: prefer the linked tenant's
-     * name when one is selected, otherwise fall back to the typed value.
-     */
-    private function resolveTenantName(array $data): ?string
-    {
-        if (! empty($data['tenant_id'])) {
-            return Tenant::find($data['tenant_id'])?->name ?? ($data['tenant_name'] ?? null);
-        }
-
-        return $data['tenant_name'] ?? null;
+        return $rental;
     }
 
     public function destroy(AssetRental $rental)

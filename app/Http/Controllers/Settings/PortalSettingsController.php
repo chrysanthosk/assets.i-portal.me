@@ -15,13 +15,8 @@ class PortalSettingsController extends Controller
 {
     public function edit()
     {
-        $setting = PortalSetting::firstOrCreate(
-            ['key' => 'portal_name'],
-            ['value' => 'assets.i-portal.me']
-        );
-
         return view('settings.portal', [
-            'portalName' => $setting->value,
+            'portalName' => PortalSetting::name(),
             'rentRemindersEnabled' => RentSchedule::enabled(),
             'rentReminderEmail' => PortalSetting::get(RentSchedule::SETTING_EMAIL, ''),
             'rentDueDay' => RentSchedule::dueDay(),

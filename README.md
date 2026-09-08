@@ -46,25 +46,20 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
 
 > MySQL, PHP, Nginx and Node are all provided by the containers — nothing else to install.
 
-### Regular (bare-metal) install
-- PHP **8.4+**
-- Composer
-- Node.js **18+**
-- npm
-- MySQL **8.0+**
-- Git
+### Local development (optional, no Docker)
+- PHP **8.4+**, Composer, Node.js **18+** / npm (SQLite is used by default)
 
 ---
 
 ## Installation
 
-There are two ways to install assets.i-portal.me. The interactive `scripts/install.sh`
-asks which one you want; you can also follow the manual steps below.
+Production runs in Docker. The installer asks a few questions, writes `.env`,
+builds the image and starts the stack:
 
 ```bash
 git clone git@github.com:chrysanthosk/assets.i-portal.me.git
 cd assets.i-portal.me
-sudo ./scripts/install.sh     # choose: 1) Regular  or  2) Docker
+sudo ./scripts/install.sh
 ```
 
 ---
@@ -144,9 +139,9 @@ docker compose down                     # stop (data kept)
 docker compose down -v                  # stop AND delete the database volume
 ```
 
-To redeploy after pulling new code you can also run
-`./scripts/new_deploy.sh` and pick the **Docker** option. Before rebuilding it
-runs `scripts/docker-preflight.sh`, which:
+To redeploy after pulling new code run `./scripts/new_deploy.sh` (add `--pull`
+to also fetch the latest MySQL image). It is non-interactive. Before rebuilding
+it runs `scripts/docker-preflight.sh`, which:
 
 - creates `.env` from `.env.docker.example` if it is missing (with random DB
   passwords),
@@ -163,75 +158,19 @@ The preflight is idempotent and can be run on its own:
 
 ---
 
-## Option B — Regular (manual) install
+## Option B — Local development (no Docker)
 
-### 1. Install PHP dependencies
+For hacking on the code with SQLite:
+
 ```bash
-composer install
+composer install && npm install
+cp .env.example .env && php artisan key:generate
+php artisan migrate && php artisan db:seed --class=PortalBootstrapSeeder
+npm run dev            # or: npm run build
+php artisan serve      # http://127.0.0.1:8000 — login admin / (see seeder output)
 ```
 
-### 2. Install Node dependencies
-```bash
-npm install
-```
-
-### 3. Environment configuration
-```bash
-cp .env.example .env
-php artisan key:generate
-```
-
-### 4. MySQL configuration
-
-Create a MySQL database:
-
-```sql
-CREATE DATABASE assets CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-Update your `.env` file:
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=assets
-DB_USERNAME=your_mysql_user
-DB_PASSWORD=your_mysql_password
-```
-
-### 5. Run migrations & seed initial data
-```bash
-php artisan migrate
-php artisan db:seed --class=PortalBootstrapSeeder
-```
-
-#### Default admin credentials
-```
-Username: admin@example.com
-Password: ChangeMe123!
-```
-
-> **Important:** Change this password immediately after first login.
-
-### 6. Build frontend assets
-```bash
-npm run build      # production
-npm run dev        # development (hot reload)
-```
-
-### 7. Start the application
-```bash
-php artisan serve
-```
-
-Open:
-```
-http://127.0.0.1:8000
-```
-
-> For automated production provisioning (Nginx vhost, SSL, system user, DB user),
-> use `sudo ./scripts/install.sh` and choose **Regular**.
+There is no supported bare-metal production install; deploy with Docker.
 
 ---
 
