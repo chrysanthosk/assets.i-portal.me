@@ -8,4 +8,8 @@ export default defineConfig({
             refresh: true,
         }),
     ],
+    build: {
+        // zxcvbn's dictionaries are a deliberately separate, lazily loaded chunk
+        chunkSizeWarningLimit: 1000,
+    },
 });

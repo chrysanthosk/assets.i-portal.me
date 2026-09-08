@@ -1,8 +1,7 @@
 import 'bootstrap';
 
-// Make zxcvbn available globally for the password meters in Blade
-import zxcvbn from 'zxcvbn';
-window.zxcvbn = zxcvbn;
+// zxcvbn (≈800 kB of dictionaries) is loaded on demand by initPasswordMeters()
+// only on pages that actually have a password meter.
 
 // ---------------------------------------------------------------------------
 // Theme (persisted in localStorage; <html data-bs-theme> drives everything)
@@ -84,8 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
 function strengthToLabel(score) { return ['Very weak', 'Weak', 'Fair', 'Good', 'Strong'][score] || 'Very weak'; }
 function strengthToWidth(score) { return [10, 25, 50, 75, 100][score] || 10; }
 
-window.initPasswordMeters = function () {
-  document.querySelectorAll('input[data-password-meter]').forEach((input) => {
+window.initPasswordMeters = async function () {
+  const inputs = document.querySelectorAll('input[data-password-meter]');
+  if (!inputs.length) return;
+  const { default: zxcvbn } = await import('zxcvbn');
+  window.zxcvbn = zxcvbn;
+
+  inputs.forEach((input) => {
     const id = input.getAttribute('data-password-meter');
     const textEl = document.getElementById(id + '-text');
     const barEl = document.getElementById(id + '-bar');
@@ -94,7 +98,7 @@ window.initPasswordMeters = function () {
     const update = () => {
       const val = input.value || '';
       if (!val.length) { textEl.textContent = ''; barEl.style.width = '0%'; barEl.className = 'progress-bar'; return; }
-      const r = window.zxcvbn(val);
+      const r = zxcvbn(val);
       textEl.textContent = strengthToLabel(r.score);
       barEl.style.width = strengthToWidth(r.score) + '%';
       barEl.className = 'progress-bar ' + (r.score <= 1 ? 'bg-danger' : r.score === 2 ? 'bg-warning' : r.score === 3 ? 'bg-info' : 'bg-success');
