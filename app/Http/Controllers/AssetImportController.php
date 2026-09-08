@@ -25,7 +25,7 @@ class AssetImportController extends Controller
 
     public function create()
     {
-        $recent = DeedImport::query()->with('asset')->latest()->limit(10)->get();
+        $recent = DeedImport::query()->where('kind', 'deed')->with('asset')->latest()->limit(10)->get();
 
         return view('assets.import', [
             'configured' => $this->extractor->isConfigured(),

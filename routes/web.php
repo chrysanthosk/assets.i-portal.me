@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgreementImportController;
 use App\Http\Controllers\AssetDocumentsController;
 use App\Http\Controllers\AssetExpensesController;
 use App\Http\Controllers\AssetImportController;
@@ -138,6 +139,15 @@ Route::middleware(['auth', '2fa'])->group(function () {
             Route::get('/import/{import}/review', [AssetImportController::class, 'review'])->name('import.review');
             Route::post('/import/{import}/confirm', [AssetImportController::class, 'confirm'])->name('import.confirm');
             Route::delete('/import/{import}', [AssetImportController::class, 'destroy'])->name('import.destroy');
+        });
+
+        // Contract import → agreement (before /rentals/{rental})
+        Route::middleware('permission:manage_asset_rentals')->prefix('rentals/import')->name('rentals.import.')->group(function () {
+            Route::get('/', [AgreementImportController::class, 'create'])->name('create');
+            Route::post('/', [AgreementImportController::class, 'store'])->name('store');
+            Route::get('/{import}/review', [AgreementImportController::class, 'review'])->name('review');
+            Route::post('/{import}/confirm', [AgreementImportController::class, 'confirm'])->name('confirm');
+            Route::delete('/{import}', [AgreementImportController::class, 'destroy'])->name('destroy');
         });
 
         // Rentals

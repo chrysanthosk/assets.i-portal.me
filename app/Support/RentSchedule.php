@@ -82,11 +82,9 @@ class RentSchedule
         $period = $asOf->format('Y-m');
         $monthStart = $asOf->copy()->startOfMonth();
         $monthEnd = $asOf->copy()->endOfMonth();
-        $dueDate = $monthStart->copy()->day(self::dueDay());
 
         $rentals = AssetRental::query()
             ->where('is_active', true)
-            ->where('amount', '>', 0)
             ->where(fn ($q) => $q->whereNull('agreement_start_date')
                 ->orWhereDate('agreement_start_date', '<=', $monthEnd->toDateString()))
             ->where(fn ($q) => $q->whereNull('agreement_end_date')
@@ -95,29 +93,58 @@ class RentSchedule
 
         $created = 0;
         foreach ($rentals as $rental) {
-            $exists = RentalPayment::query()
-                ->where('asset_rental_id', $rental->id)
-                ->where('period', $period)
-                ->exists();
-            if ($exists) {
+            // Instalment schedule: every instalment whose month is this month
+            if ($rental->isInstallments()) {
+                foreach ($rental->installmentList() as $i => $inst) {
+                    if ($inst['month'] !== (int) $asOf->format('n')) {
+                        continue;
+                    }
+                    $key = $period.'#'.($i + 1);
+                    if (RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $key)->exists()) {
+                        continue;
+                    }
+                    $due = $monthStart->copy()->day(min($inst['day'], $monthEnd->day));
+                    if (($rental->agreement_start_date && $due->lt($rental->agreement_start_date))
+                        || ($rental->agreement_end_date && $due->gt($rental->agreement_end_date))) {
+                        continue;
+                    }
+                    $created += self::createPayment($rental, $due, $key, $inst['amount'],
+                        $inst['label'] ?: sprintf('Instalment %d of %d', $i + 1, count($rental->installmentList())));
+                }
+
                 continue;
             }
 
-            $payment = RentalPayment::create([
-                'asset_rental_id' => $rental->id,
-                'asset_id' => $rental->asset_id,
-                'due_date' => $dueDate->toDateString(),
-                'period' => $period,
-                'amount' => $rental->amount,
-                'currency' => $rental->currency ?: 'EUR',
-                'status' => RentalPayment::STATUS_PENDING,
-            ]);
-
-            Audit::log('rental_payment.generated', $payment, null, $payment->toArray());
-            $created++;
+            // Monthly rent: one row per month, due on the due day (next month when paid in arrears)
+            if ((float) $rental->amount <= 0) {
+                continue;
+            }
+            if (RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $period)->exists()) {
+                continue;
+            }
+            $dueMonth = $rental->paid_in_arrears ? $monthStart->copy()->addMonth() : $monthStart->copy();
+            $due = $dueMonth->day(min(self::dueDay(), $dueMonth->copy()->endOfMonth()->day));
+            $created += self::createPayment($rental, $due, $period, (float) $rental->amount, null);
         }
 
         return $created;
+    }
+
+    private static function createPayment(AssetRental $rental, CarbonInterface $due, string $period, float $amount, ?string $label): int
+    {
+        $payment = RentalPayment::create([
+            'asset_rental_id' => $rental->id,
+            'asset_id' => $rental->asset_id,
+            'due_date' => $due->toDateString(),
+            'period' => $period,
+            'label' => $label,
+            'amount' => $amount,
+            'currency' => $rental->currency ?: 'EUR',
+            'status' => RentalPayment::STATUS_PENDING,
+        ]);
+        Audit::log('rental_payment.generated', $payment, null, $payment->toArray());
+
+        return 1;
     }
 
     /**

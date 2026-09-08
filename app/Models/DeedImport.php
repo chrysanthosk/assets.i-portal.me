@@ -16,7 +16,7 @@ class DeedImport extends Model
     public const STATUS_COMPLETED = 'completed';
 
     protected $fillable = [
-        'user_id', 'asset_id', 'original_name', 'disk', 'path', 'mime_type', 'size_bytes',
+        'kind', 'user_id', 'asset_id', 'original_name', 'disk', 'path', 'mime_type', 'size_bytes',
         'status', 'extracted', 'error', 'model', 'input_tokens', 'output_tokens',
     ];
 

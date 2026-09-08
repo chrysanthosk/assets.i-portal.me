@@ -18,6 +18,9 @@ class AssetRental extends Model
         'agreement_start_date',
         'agreement_end_date',
         'rent_type',
+        'payment_schedule',
+        'paid_in_arrears',
+        'installments',
         'is_active',
 
         'amount',
@@ -30,8 +33,46 @@ class AssetRental extends Model
         'agreement_start_date' => 'date',
         'agreement_end_date' => 'date',
         'is_active' => 'boolean',
+        'paid_in_arrears' => 'boolean',
+        'installments' => 'array',
         'amount' => 'decimal:2',
     ];
+
+    public const SCHEDULE_MONTHLY = 'monthly';
+
+    public const SCHEDULE_INSTALLMENTS = 'installments';
+
+    public function isInstallments(): bool
+    {
+        return $this->payment_schedule === self::SCHEDULE_INSTALLMENTS;
+    }
+
+    /**
+     * Instalments sorted by date within the year.
+     *
+     * @return array<int, array{month:int, day:int, amount:float, label:string|null}>
+     */
+    public function installmentList(): array
+    {
+        $rows = array_values(array_filter(array_map(function ($i) {
+            $m = (int) ($i['month'] ?? 0);
+            $d = (int) ($i['day'] ?? 0);
+            if ($m < 1 || $m > 12 || $d < 1 || $d > 31) {
+                return null;
+            }
+
+            return ['month' => $m, 'day' => $d, 'amount' => (float) ($i['amount'] ?? 0), 'label' => $i['label'] ?? null];
+        }, $this->installments ?? [])));
+        usort($rows, fn ($a, $b) => [$a['month'], $a['day']] <=> [$b['month'], $b['day']]);
+
+        return $rows;
+    }
+
+    /** What this agreement brings in per month, for dashboards (annual ÷ 12 for instalments). */
+    public function monthlyEquivalent(): float
+    {
+        return $this->isInstallments() ? round((float) $this->amount / 12, 2) : (float) $this->amount;
+    }
 
     public function asset(): BelongsTo
     {

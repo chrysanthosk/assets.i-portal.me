@@ -20,6 +20,7 @@ class RentalPayment extends Model
         'asset_id',
         'due_date',
         'period',
+        'label',
         'amount',
         'currency',
         'paid_date',
@@ -103,11 +104,14 @@ class RentalPayment extends Model
     /** Human label for the covered period, e.g. "September 2026". */
     public function periodLabel(): string
     {
-        $date = $this->period
-            ? Carbon::createFromFormat('Y-m', $this->period)
-            : $this->due_date;
+        if ($this->label) {
+            return $this->label.($this->due_date ? ' · '.$this->due_date->format('d M Y') : '');
+        }
+        if ($this->period && preg_match('/^\d{4}-\d{2}$/', $this->period)) {
+            return Carbon::createFromFormat('Y-m', $this->period)->format('F Y');
+        }
 
-        return $date ? $date->format('F Y') : '';
+        return $this->due_date ? $this->due_date->format('F Y') : '';
     }
 
     public function tenantName(): ?string

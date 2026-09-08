@@ -136,7 +136,7 @@ php artisan serve
 ### Automated provisioning (Docker only)
 - `sudo ./scripts/install.sh` — first install: writes `.env`, builds, starts.
 - `./scripts/new_deploy.sh [--pull]` — update after `git pull` (volumes preserved).
-  Non-interactive: no menu, no prompts.
+  Only prompt: the timezone (default Europe/Athens), skipped when there is no TTY.
 - Both run `scripts/docker-preflight.sh` first. It creates `.env`
   from `.env.docker.example` (random DB passwords), generates `APP_KEY` once and
   keeps it in the host `.env` (passed through `docker-compose.yml` — never rotate
@@ -202,6 +202,9 @@ otherwise redirects drop the port (nginx listens on `:80` inside the container).
 - **Document reading (deeds + manager statements)** goes through
   `App\Support\Deeds\ClaudeDocumentReader` (Anthropic SDK, vision + structured JSON).
   `ClaudeDeedExtractor`/`DeedSchema` cover Cyprus and Dubai (DIFC/DLD) deeds;
+  `Agreements\ClaudeAgreementExtractor`/`AgreementSchema`/`AgreementMapper` read contracts into
+  agreements (monthly or instalment schedules, `AssetRental.installments` JSON, repeated yearly by
+  `RentSchedule::generateDue`; `paid_in_arrears` shifts monthly due dates a month);
   `Statements\ClaudeStatementExtractor`/`StatementSchema` read monthly owner statements
   (gross, fee, net payable) to correct a payment's amount (`payments.statement` →
   session → adjust modal → `payments.adjust`). Schemas must stay union-free.

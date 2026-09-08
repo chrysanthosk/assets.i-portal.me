@@ -7,9 +7,12 @@
         <div class="card">
             <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
-                    <h5 class="mb-0">Rental Agreements</h5>
-                    <small class="text-muted">Store rental agreements once; dashboard calculates monthly income automatically.</small>
+                    <h5 class="mb-0">Agreements</h5>
+                    <small class="text-muted">One per tenancy or management contract; payments are generated from the schedule.</small>
                 </div>
+                @can('manage_asset_rentals')
+                    <a href="{{ route('assets.rentals.import.create') }}" class="btn btn-sm btn-primary"><i class="bi bi-file-earmark-arrow-up me-1"></i> Import contract</a>
+                @endcan
             </div>
 
             <div class="card-body">
@@ -97,12 +100,7 @@
                         @error('is_active') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="col-md-2">
-                        <label class="form-label">Monthly Amount</label>
-                        <input type="number" step="0.01" name="amount" class="form-control @error('amount') is-invalid @enderror"
-                               value="{{ old('amount', 0) }}" min="0" required>
-                        @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
+                    @include('assets._schedule_fields', ['rental' => null])
 
                     <div class="col-md-2">
                         <label class="form-label">Currency</label>
@@ -146,7 +144,7 @@
                             <th>Start</th>
                             <th>End</th>
                             <th>Active</th>
-                            <th class="text-end">Monthly Amount</th>
+                            <th class="text-end">Amount</th>
                             <th>Channel</th>
                             <th class="text-end" style="width: 140px;">Actions</th>
                         </tr>
@@ -166,7 +164,8 @@
                                 <span class="badge text-bg-secondary">No</span>
                                 @endif
                             </td>
-                            <td class="text-end">{{ number_format((float)$r->amount, 2) }} {{ $r->currency }}</td>
+                            <td class="text-end">{{ $r->currency }} {{ number_format((float)$r->amount, 2) }}
+                                <div class="small text-muted">{{ $r->isInstallments() ? count($r->installmentList()).' instalments / year' : ($r->paid_in_arrears ? 'monthly, in arrears' : 'monthly') }}</div></td>
                             <td>{{ $r->channel ?: '—' }}</td>
 
                             <td class="text-end">

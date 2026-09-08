@@ -11,7 +11,8 @@ set -euo pipefail
 #                           (with random DB passwords on first creation)
 #   2) APP_KEY is set     — generated once and persisted in .env so it survives
 #                           image rebuilds (2FA secrets are encrypted with it)
-#   3) Port is free       — WEB_PORT is moved to the next free host port when
+#   3) Timezone           — APP_TIMEZONE confirmed (default Europe/Athens)
+#   4) Port is free       — WEB_PORT is moved to the next free host port when
 #                           another process or stack already listens on it
 #
 # Usage:  scripts/docker-preflight.sh            (from anywhere)
@@ -173,11 +174,34 @@ preflight_port(){ # key default(empty = feature disabled when key blank)
   fi
 }
 
+# Timezone drives the daily reminder times and due dates. Asked (with the current
+# value as default) when running interactively; defaults silently otherwise.
+preflight_timezone(){
+  local current tz
+  current="$(env_get APP_TIMEZONE)"
+  tz="${current:-Europe/Athens}"
+  if [[ -t 0 ]]; then
+    read -r -p "Timezone for due dates and reminders [${tz}]: " answer
+    tz="${answer:-$tz}"
+  fi
+  if command -v php >/dev/null 2>&1; then
+    php -r 'exit(in_array($argv[1], timezone_identifiers_list(), true) ? 0 : 1);' "$tz" 2>/dev/null \
+      || die "Unknown timezone '${tz}'. Use an IANA name such as Europe/Athens or Asia/Dubai."
+  fi
+  if [[ "$tz" != "$current" ]]; then
+    env_set APP_TIMEZONE "$tz"
+    log "APP_TIMEZONE set to ${tz}"
+  else
+    log "APP_TIMEZONE=${tz}"
+  fi
+}
+
 docker_preflight(){
-  log "=== Docker preflight (.env / APP_KEY / ports) ==="
+  log "=== Docker preflight (.env / APP_KEY / timezone / port) ==="
   command -v docker >/dev/null 2>&1 || die "Docker is not installed."
   preflight_env_file
   preflight_app_key
+  preflight_timezone
   preflight_port WEB_PORT 8080
   if [[ -n "$(env_get DB_EXPOSED_PORT)" ]]; then
     warn "DB_EXPOSED_PORT is set but no longer used: MySQL is not published on the host. To reach it with a local tool, add a ports entry for db in docker-compose.override.yml."

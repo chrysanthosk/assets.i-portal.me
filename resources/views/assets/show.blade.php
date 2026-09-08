@@ -36,9 +36,9 @@
 {{-- ===== Key figures ===== --}}
 <div class="row g-3 mb-3">
     <div class="col-6 col-xl-3">
-        <x-stat icon="bi-cash-coin" label="Monthly rent"
-                :value="$currentRental ? $fmt($currentRental->amount, $currentRental->currency) : '—'"
-                :sub="$currentRental ? e($tenantName ?? 'No tenant').($currentRental->agreement_end_date ? ' · until '.$currentRental->agreement_end_date->format('d M Y') : ' · open-ended') : 'No active agreement'"
+        <x-stat icon="bi-cash-coin" :label="$currentRental?->isInstallments() ? 'Rent per month (avg)' : 'Monthly rent'"
+                :value="$currentRental ? $fmt($currentRental->monthlyEquivalent(), $currentRental->currency) : '—'"
+                :sub="$currentRental ? e($tenantName ?? 'No tenant').($currentRental->isInstallments() ? ' · '.$fmt($currentRental->amount, $currentRental->currency).' / year in '.count($currentRental->installmentList()).' instalments' : '').($currentRental->agreement_end_date ? ' · until '.$currentRental->agreement_end_date->format('d M Y') : ' · open-ended') : 'No active agreement'"
                 :tone="$currentRental ? 'success' : ''" />
     </div>
     <div class="col-6 col-xl-3">
@@ -249,12 +249,13 @@
         @can('manage_asset_rentals')
         <div class="tab-pane fade {{ $tab === 'agreements' ? 'show active' : '' }}" id="tab-agreements" role="tabpanel">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-2">
-                    <a href="{{ route('assets.rentals.index', ['asset_id' => $asset->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> New agreement</a>
+                <div class="d-flex justify-content-end gap-2 mb-2">
+                    <a href="{{ route('assets.rentals.import.create') }}" class="btn btn-sm btn-primary"><i class="bi bi-file-earmark-arrow-up"></i> Import contract</a>
+                    <a href="{{ route('assets.rentals.index', ['asset_id' => $asset->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Add manually</a>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th scope="col">Tenant</th><th scope="col">From</th><th scope="col">To</th><th scope="col">Type</th><th scope="col" class="text-end">Rent / month</th><th scope="col" class="text-end"></th></tr></thead>
+                        <thead><tr><th scope="col">Tenant</th><th scope="col">From</th><th scope="col">To</th><th scope="col">Type</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end"></th></tr></thead>
                         <tbody>
                         @forelse($asset->rentals as $r)
                             <tr>
@@ -262,7 +263,7 @@
                                 <td>{{ optional($r->agreement_start_date)->format('d M Y') ?? '—' }}</td>
                                 <td>{{ optional($r->agreement_end_date)->format('d M Y') ?? 'open' }}</td>
                                 <td>{{ $r->rent_type ?: '—' }}</td>
-                                <td class="text-end">{{ $r->currency }} {{ number_format((float) $r->amount, 2) }}</td>
+                                <td class="text-end">{{ $r->currency }} {{ number_format((float) $r->amount, 2) }}<div class="small text-muted">{{ $r->isInstallments() ? 'per year, '.count($r->installmentList()).' instalments' : 'per month' }}</div></td>
                                 <td class="text-end"><a href="{{ route('assets.rentals.edit', $r) }}" class="btn btn-sm btn-outline-secondary" aria-label="Edit"><i class="bi bi-pencil"></i></a></td>
                             </tr>
                         @empty

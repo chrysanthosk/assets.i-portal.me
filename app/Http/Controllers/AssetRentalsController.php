@@ -62,6 +62,11 @@ class AssetRentalsController extends Controller
     }
 
     /** Validate and save an agreement (create or update). */
+    public function persistFromRequest(Request $request, AssetRental $rental): AssetRental
+    {
+        return $this->persist($request, $rental);
+    }
+
     private function persist(Request $request, AssetRental $rental): AssetRental
     {
         $data = $request->validate([
@@ -72,11 +77,33 @@ class AssetRentalsController extends Controller
             'agreement_end_date' => ['nullable', 'date', 'after_or_equal:agreement_start_date'],
             'rent_type' => ['required', 'in:Airbnb,Long-term,Other'],
             'is_active' => ['required', 'in:0,1'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'payment_schedule' => ['nullable', 'in:monthly,installments'],
+            'paid_in_arrears' => ['nullable', 'in:0,1'],
+            'amount' => ['nullable', 'numeric', 'min:0', 'required_if:payment_schedule,monthly'],
+            'installments' => ['nullable', 'array', 'required_if:payment_schedule,installments'],
+            'installments.*.day' => ['required', 'integer', 'min:1', 'max:31'],
+            'installments.*.month' => ['required', 'integer', 'min:1', 'max:12'],
+            'installments.*.amount' => ['required', 'numeric', 'min:0'],
+            'installments.*.label' => ['nullable', 'string', 'max:120'],
             'currency' => ['required', 'string', 'max:10'],
             'channel' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
+        ], [
+            'installments.required_if' => 'Add at least one instalment.',
+            'amount.required_if' => 'Enter the monthly amount.',
         ]);
+
+        $data['payment_schedule'] = $data['payment_schedule'] ?? 'monthly';
+        $data['paid_in_arrears'] = $data['payment_schedule'] === 'monthly' && ($data['paid_in_arrears'] ?? '0') === '1';
+        if ($data['payment_schedule'] === 'installments') {
+            $data['installments'] = array_values(array_map(fn ($i) => [
+                'day' => (int) $i['day'], 'month' => (int) $i['month'], 'amount' => (float) $i['amount'], 'label' => $i['label'] ?? null,
+            ], $data['installments']));
+            $data['amount'] = array_sum(array_column($data['installments'], 'amount')); // annual total
+        } else {
+            $data['installments'] = null;
+            $data['amount'] = $data['amount'] ?? 0;
+        }
 
         // Free-text tenant_name mirrors the linked tenant when one is chosen
         $data['tenant_name'] = ! empty($data['tenant_id'])

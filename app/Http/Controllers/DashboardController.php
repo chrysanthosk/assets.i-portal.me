@@ -53,11 +53,12 @@ class DashboardController extends Controller
                     ->orWhereDate('agreement_end_date', '>=', $periodStart->toDateString());
             });
 
-        $monthlyIncomeByCurrency = (clone $activeAgreementBase)
-            ->selectRaw('currency, SUM(amount) as total')
-            ->groupBy('currency')
-            ->orderBy('currency')
-            ->get();
+        // Per currency, using the monthly equivalent (instalment agreements ÷ 12)
+        $monthlyIncomeByCurrency = (clone $activeAgreementBase)->get()
+            ->groupBy(fn ($r) => $r->currency ?: 'EUR')
+            ->map(fn ($rows, $cur) => (object) ['currency' => $cur, 'total' => $rows->sum(fn ($r) => $r->monthlyEquivalent())])
+            ->sortKeys()
+            ->values();
 
         // Total in the base currency
         $monthlyIncome = 0.0;
