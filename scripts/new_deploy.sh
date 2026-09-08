@@ -2,11 +2,14 @@
 set -euo pipefail
 
 #############################################
-# new_deploy.sh
-# - Updates existing /opt/<project> deployment safely
-# - Supports: git pull OR rsync copy
-# - Runs composer, migrations, cache, npm build (optional)
-# - Fixes permissions for php-fpm (www-data group)
+# new_deploy.sh — update a running Docker deployment
+#
+#   git pull --ff-only && ./scripts/new_deploy.sh [--pull]
+#
+# Runs the preflight (.env, APP_KEY, free port), rebuilds the app image and
+# recreates the containers. The database (db_data) and uploads (app_storage)
+# volumes are preserved; migrations run additively from the entrypoint.
+#   --pull   also pull the latest MySQL base image
 #############################################
 
 log()  { echo -e "\n\033[1;32m[INFO]\033[0m $*"; }
@@ -14,396 +17,39 @@ warn() { echo -e "\n\033[1;33m[WARN]\033[0m $*"; }
 err()  { echo -e "\n\033[1;31m[ERR ]\033[0m $*" >&2; }
 die()  { err "$*"; exit 1; }
 
-require_root(){ [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Run as root: sudo $0"; }
-
-prompt() { # var, msg, default(optional)
-  local var="$1" msg="$2" def="${3:-}" val=""
-  if [[ -n "$def" ]]; then
-    read -r -p "$msg [$def]: " val
-    val="${val:-$def}"
-  else
-    read -r -p "$msg: " val
-  fi
-  printf -v "$var" "%s" "$val"
-}
-
-yesno(){ # msg default(y/n)
-  local msg="$1" def="${2:-y}" ans=""
-  read -r -p "$msg [${def}]: " ans
-  ans="${ans:-$def}"
-  [[ "$ans" =~ ^[Yy]$ ]]
-}
-
-command_exists(){ command -v "$1" >/dev/null 2>&1; }
-
-to_safe_token(){
-  local s="$1"
-  s="$(echo "$s" | tr '[:upper:]' '[:lower:]')"
-  s="$(echo "$s" | sed -E 's/[^a-z0-9_]+/_/g; s/^_+//; s/_+$//; s/__+/_/g')"
-  [[ -n "$s" ]] || s="app"
-  echo "$s"
-}
-
-OS_FAMILY="debian"
-detect_os_family(){
-  if [[ -r /etc/os-release ]]; then
-    # shellcheck disable=SC1091
-    . /etc/os-release
-    if [[ "${ID:-}" =~ (ubuntu|debian) ]] || [[ "${ID_LIKE:-}" =~ (debian|ubuntu) ]]; then
-      OS_FAMILY="debian"
-    else
-      OS_FAMILY="rhel"
-    fi
-  fi
-}
-
-PROJECT_SLUG_RAW=""
-PROJECT_SAFE=""
-APP_DIR=""
-APP_USER=""
-
-DEPLOY_MODE="auto"         # auto|git|copy
-SOURCE_PATH=""             # for copy mode
-GIT_BRANCH="main"          # for git mode
-
-COMPOSER_BIN="/usr/local/bin/composer"
-PHP_BIN="php"
-NPM_BIN="npm"
-
-RUN_NPM="auto"             # auto|yes|no
-RUN_MIGRATE="yes"
-RUN_SEED="no"
-SEED_CLASS="Database\\Seeders\\PortalPermissionsSeeder"
-RESET_PERMISSIONS_CACHE="yes"
-OPTIMIZE="yes"
-RESTART_PHPFPM="yes"
-RELOAD_NGINX="yes"
-
-LOCK_FILE=""
-
-PHP_FPM_SERVICE="php-fpm"
-NGINX_SERVICE="nginx"
-RUNTIME_GROUP="www-data"
-
-detect_php_fpm_service(){
-  if [[ "$OS_FAMILY" == "debian" ]]; then
-    local svc
-    svc="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -E '^php[0-9]+\.[0-9]+-fpm\.service$' | sort -V | tail -n1 || true)"
-    if [[ -n "$svc" ]]; then
-      PHP_FPM_SERVICE="${svc%.service}"
-    else
-      PHP_FPM_SERVICE="php-fpm"
-    fi
-  else
-    PHP_FPM_SERVICE="php-fpm"
-  fi
-}
-
-acquire_lock(){
-  LOCK_FILE="/tmp/deploy_${PROJECT_SAFE}.lock"
-  exec 9>"$LOCK_FILE"
-  if ! flock -n 9; then
-    die "Another deploy appears to be running (lock: $LOCK_FILE)."
-  fi
-}
-
-run_as_app(){
-  sudo -u "$APP_USER" bash -lc "$*"
-}
-
-APP_WENT_DOWN="no"
-cleanup(){
-  if [[ "${APP_WENT_DOWN}" == "yes" ]]; then
-    warn "Cleanup: ensuring app is UP..."
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan up >/dev/null 2>&1 || true"
-  fi
-}
-trap cleanup EXIT
-
-resolve_default_source_path(){
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  echo "$script_dir"
-}
-
-detect_deploy_mode(){
-  if [[ "$DEPLOY_MODE" != "auto" ]]; then
-    return
-  fi
-  if [[ -d "${APP_DIR}/.git" ]]; then
-    DEPLOY_MODE="git"
-  else
-    DEPLOY_MODE="copy"
-  fi
-}
-
-preflight(){
-  [[ -d "$APP_DIR" ]] || die "App directory not found: $APP_DIR"
-  [[ -f "${APP_DIR}/artisan" ]] || die "Not a Laravel app (artisan missing): $APP_DIR"
-  [[ -f "${APP_DIR}/.env" ]] || die ".env not found in ${APP_DIR}."
-
-  if [[ ! -x "$COMPOSER_BIN" ]]; then
-    if command_exists composer; then
-      COMPOSER_BIN="$(command -v composer)"
-    else
-      die "Composer not found."
-    fi
-  fi
-
-  command_exists "$PHP_BIN" || die "PHP not found."
-}
-
-fix_permissions(){
-  log "Fixing permissions (code owner: ${APP_USER}, runtime group: ${RUNTIME_GROUP})..."
-
-  # .env must be readable by php-fpm group
-  chown "${APP_USER}:${RUNTIME_GROUP}" "${APP_DIR}/.env"
-  chmod 640 "${APP_DIR}/.env"
-
-  # Ensure runtime dirs exist
-  mkdir -p "${APP_DIR}/storage/logs" \
-           "${APP_DIR}/storage/framework/cache" \
-           "${APP_DIR}/storage/framework/sessions" \
-           "${APP_DIR}/storage/framework/views" \
-           "${APP_DIR}/bootstrap/cache"
-
-  # storage + cache writable by php-fpm group
-  chown -R "${APP_USER}:${RUNTIME_GROUP}" "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
-  chmod -R ug+rwX "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
-
-  # ensure laravel.log writable
-  touch "${APP_DIR}/storage/logs/laravel.log"
-  chown "${APP_USER}:${RUNTIME_GROUP}" "${APP_DIR}/storage/logs/laravel.log"
-  chmod 664 "${APP_DIR}/storage/logs/laravel.log"
-}
-
-ensure_storage_link(){
-  # optional; safe if already exists
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan storage:link >/dev/null 2>&1 || true"
-}
-
-update_code_git(){
-  log "Updating code via git..."
-  run_as_app "cd '$APP_DIR' && git fetch --all"
-  run_as_app "cd '$APP_DIR' && git checkout '$GIT_BRANCH' >/dev/null 2>&1 || true"
-  run_as_app "cd '$APP_DIR' && git pull --ff-only"
-}
-
-update_code_copy(){
-  [[ -n "$SOURCE_PATH" ]] || SOURCE_PATH="$(resolve_default_source_path)"
-  SOURCE_PATH="$(cd "$SOURCE_PATH" && pwd)"
-  [[ -f "${SOURCE_PATH}/artisan" ]] || die "Source path is not a Laravel project: ${SOURCE_PATH}"
-
-  log "Updating code via rsync from ${SOURCE_PATH} -> ${APP_DIR} ..."
-
-  # Exclusions prevent noisy delete errors + keep server runtime data intact
-  rsync -a --delete \
-    --exclude ".git" \
-    --exclude ".env" \
-    --exclude "storage/***" \
-    --exclude "node_modules/***" \
-    --exclude "vendor/***" \
-    "${SOURCE_PATH}/" "${APP_DIR}/"
-
-  # code owned by app user (group handled by fix_permissions)
-  chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}" || true
-}
-
-laravel_steps(){
-  log "Putting app into maintenance mode..."
-  APP_WENT_DOWN="yes"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan down >/dev/null 2>&1 || true"
-
-  fix_permissions
-
-  log "Composer install (no-dev, optimized)..."
-  run_as_app "cd '$APP_DIR' && '$COMPOSER_BIN' install --no-dev --prefer-dist --optimize-autoloader --no-interaction"
-
-  log "Ensuring storage symlink..."
-  ensure_storage_link
-
-  if [[ "$RUN_NPM" == "auto" ]]; then
-    [[ -f "$APP_DIR/package.json" ]] && RUN_NPM="yes" || RUN_NPM="no"
-  fi
-
-  if [[ "$RUN_NPM" == "yes" ]]; then
-    log "Building frontend assets..."
-    run_as_app "cd '$APP_DIR' && $NPM_BIN ci || $NPM_BIN install"
-    run_as_app "cd '$APP_DIR' && $NPM_BIN run build"
-  else
-    log "Skipping frontend build."
-  fi
-
-  log "Clearing caches..."
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan config:clear || true"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan cache:clear || true"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan route:clear || true"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan view:clear || true"
-
-  if [[ "$RUN_MIGRATE" == "yes" ]]; then
-    log "Running migrations..."
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan migrate --force"
-  else
-    log "Skipping migrations."
-  fi
-
-  if [[ "$RUN_SEED" == "yes" ]]; then
-    log "Running seeder: ${SEED_CLASS}"
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan db:seed --class='${SEED_CLASS}' --force"
-  fi
-
-  if [[ "$RESET_PERMISSIONS_CACHE" == "yes" ]]; then
-    log "Resetting Spatie permissions cache..."
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan permission:cache-reset || true"
-  fi
-
-  if [[ "$OPTIMIZE" == "yes" ]]; then
-    log "Optimizing..."
-    run_as_app "cd '$APP_DIR' && $PHP_BIN artisan optimize"
-  fi
-
-  fix_permissions
-
-  log "Bringing app back up..."
-  APP_WENT_DOWN="no"
-  run_as_app "cd '$APP_DIR' && $PHP_BIN artisan up || true"
-}
-
-restart_services(){
-  detect_php_fpm_service
-
-  if [[ "$RESTART_PHPFPM" == "yes" ]]; then
-    log "Restarting PHP-FPM (${PHP_FPM_SERVICE})..."
-    systemctl restart "$PHP_FPM_SERVICE" >/dev/null 2>&1 || warn "Could not restart ${PHP_FPM_SERVICE}."
-  fi
-
-  if [[ "$RELOAD_NGINX" == "yes" ]]; then
-    log "Reloading Nginx..."
-    nginx -t >/dev/null 2>&1 || warn "nginx -t failed."
-    systemctl reload "$NGINX_SERVICE" >/dev/null 2>&1 || warn "Could not reload nginx."
-  fi
-}
-
-#############################################
-# Docker deploy path
-#############################################
-docker_deploy(){
-  log "=== Docker deploy ==="
-
-  command_exists docker || die "Docker is not installed. See https://docs.docker.com/engine/install/"
-  docker compose version >/dev/null 2>&1 || die "Docker Compose v2 plugin not found."
-
-  local repo_root
-  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  [[ -f "${repo_root}/docker-compose.yml" ]] || die "docker-compose.yml not found at ${repo_root}"
-
-  # Ensure .env exists, APP_KEY is persisted, and host ports don't clash with
-  # other stacks on this machine (see scripts/docker-preflight.sh).
-  # shellcheck disable=SC1091
-  source "${repo_root}/scripts/docker-preflight.sh"
-  docker_preflight
-
-  warn "The MySQL data volume (db_data) is preserved — your database is NOT dropped on deploy."
-
-  if yesno "Pull latest base images (includes latest MySQL)?" "n"; then
-    ( cd "$repo_root" && docker compose pull )
-  fi
-
-  log "Rebuilding the app image and recreating containers (named volumes preserved)..."
-  ( cd "$repo_root" && docker compose up -d --build )
-
-  # Migrations run automatically and additively (migrate --force) from the app
-  # entrypoint on container start — never migrate:fresh, so data is retained.
-  log "Migrations applied automatically via the app entrypoint (additive, --force)."
-
-  log "Pruning dangling images..."
-  docker image prune -f >/dev/null 2>&1 || true
-
-  ( cd "$repo_root" && docker compose ps )
-
-  log "DOCKER DEPLOY DONE."
-  echo "-------------------------------------------"
-  echo "Stack:        $(cd "$repo_root" && docker compose ps --services | tr '\n' ' ')"
-  echo "URL:          $(env_get APP_URL)  (host port $(env_get WEB_PORT))"
-  echo "Database:     preserved (volume: db_data)"
-  echo "Logs:         docker compose logs -f app"
-  echo "-------------------------------------------"
-}
-
-main(){
-  log "=== assets.i-portal.me Deploy ==="
-  echo "Choose deployment type:"
-  echo "  1) Regular   — bare-metal update under /opt/<project>"
-  echo "  2) Docker    — rebuild & restart the docker compose stack"
-  local DEPLOY_TYPE=""
-  prompt DEPLOY_TYPE "Deployment type [1/2]" "1"
-
-  if [[ "$DEPLOY_TYPE" == "2" || "$DEPLOY_TYPE" =~ ^[Dd] ]]; then
-    docker_deploy
-    return
-  fi
-
-  require_root
-  detect_os_family
-
-  log "=== Laravel Deploy (new_deploy.sh) ==="
-
-  prompt PROJECT_SLUG_RAW "Project slug (folder under /opt)" "assets.i-portal.me"
-  PROJECT_SAFE="$(to_safe_token "$PROJECT_SLUG_RAW")"
-  APP_DIR="/opt/${PROJECT_SLUG_RAW}"
-  APP_USER="${PROJECT_SAFE}"
-
-  acquire_lock
-
-  if ! id -u "$APP_USER" >/dev/null 2>&1; then
-    warn "Linux user not found: ${APP_USER}. Using root to run steps (not recommended)."
-    APP_USER="root"
-  fi
-
-  preflight
-
-  prompt DEPLOY_MODE "Deploy mode (auto|git|copy)" "auto"
-  detect_deploy_mode
-
-  if [[ "$DEPLOY_MODE" == "git" ]]; then
-    prompt GIT_BRANCH "Git branch to deploy" "$GIT_BRANCH"
-  elif [[ "$DEPLOY_MODE" == "copy" ]]; then
-    local default_src
-    default_src="$(resolve_default_source_path)"
-    prompt SOURCE_PATH "Local source path (Laravel project folder)" "$default_src"
-  else
-    die "Invalid deploy mode: $DEPLOY_MODE"
-  fi
-
-  if ! yesno "Run migrations?" "y"; then RUN_MIGRATE="no"; fi
-  if yesno "Run PortalPermissionsSeeder?" "n"; then RUN_SEED="yes"; fi
-  if ! yesno "Reset permissions cache (Spatie)?" "y"; then RESET_PERMISSIONS_CACHE="no"; fi
-  if ! yesno "Run optimize (cache config/routes/views)?" "y"; then OPTIMIZE="no"; fi
-  if ! yesno "Restart PHP-FPM?" "y"; then RESTART_PHPFPM="no"; fi
-  if ! yesno "Reload Nginx?" "y"; then RELOAD_NGINX="no"; fi
-
-  log "Deploy target: ${APP_DIR} (user: ${APP_USER})"
-  log "Mode: ${DEPLOY_MODE}"
-
-  if [[ "$DEPLOY_MODE" == "git" ]]; then
-    update_code_git
-  else
-    update_code_copy
-  fi
-
-  laravel_steps
-  restart_services
-
-  log "DEPLOY DONE."
-  echo "-------------------------------------------"
-  echo "Project:     ${PROJECT_SLUG_RAW}"
-  echo "Path:        ${APP_DIR}"
-  echo "Mode:        ${DEPLOY_MODE}"
-  echo "Migrations:  ${RUN_MIGRATE}"
-  echo "Seeder:      ${RUN_SEED}"
-  echo "Perm cache:  ${RESET_PERMISSIONS_CACHE}"
-  echo "Optimize:    ${OPTIMIZE}"
-  echo "-------------------------------------------"
-}
-
-main "$@"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+log "=== assets.i-portal.me — Docker deploy ==="
+command -v docker >/dev/null 2>&1 || die "Docker is not installed."
+docker compose version >/dev/null 2>&1 || die "Docker Compose v2 plugin not found."
+[[ -f docker-compose.yml ]] || die "docker-compose.yml not found at ${REPO_ROOT}"
+
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/scripts/docker-preflight.sh"
+docker_preflight
+
+warn "Volumes db_data (MySQL) and app_storage (uploads) are preserved."
+
+if [[ "${1:-}" == "--pull" ]]; then
+  log "Pulling latest base images..."
+  docker compose pull
+fi
+
+log "Rebuilding the app image and recreating containers..."
+docker compose up -d --build
+
+log "Waiting for the app to answer..."
+for _ in $(seq 1 30); do
+  if docker compose exec -T app php artisan about --only=environment >/dev/null 2>&1; then break; fi
+  sleep 2
+done
+
+docker image prune -f >/dev/null 2>&1 || true
+docker compose ps
+
+log "DEPLOY DONE."
+echo "-------------------------------------------"
+echo "URL:      $(env_get APP_URL)   (host port $(env_get WEB_PORT))"
+echo "Logs:     docker compose logs -f app"
+echo "-------------------------------------------"

@@ -83,11 +83,11 @@ return new class extends Migration
             // dropForeign accepts the constraint name string too
             try {
                 $t->dropForeign($fkAssetType);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
             }
             try {
                 $t->dropForeign($fkOwnerEntity);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
             }
         });
     }

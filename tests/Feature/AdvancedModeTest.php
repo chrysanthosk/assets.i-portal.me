@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AssetType;
 use App\Models\User;
 use App\Support\Portal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -60,7 +61,7 @@ class AdvancedModeTest extends TestCase
     public function test_asset_form_hides_owner_entity_and_tags_in_simple_mode(): void
     {
         $user = $this->adminLike();
-        \App\Models\AssetType::create(['name' => 'Apartment', 'is_active' => true, 'sort_order' => 1]);
+        AssetType::create(['name' => 'Apartment', 'is_active' => true, 'sort_order' => 1]);
 
         $this->actingAs($user)->get('/assets/create')->assertOk()
             ->assertDontSee('Owner entity')->assertDontSee('name="tags[]"', false);

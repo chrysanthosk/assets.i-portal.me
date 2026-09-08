@@ -9,7 +9,7 @@
     $dateVal = fn (string $key) => old($key, $asset?->{$key} ? \Illuminate\Support\Carbon::parse($asset->{$key})->format('Y-m-d') : null);
     $financed = $on('financed') || $errors->hasAny(['lender', 'loan_amount', 'interest_rate', 'loan_start_date', 'loan_end_date', 'monthly_payment']);
     $detailsOpen = $asset !== null || $errors->hasAny(['size_sqm', 'land_sqm', 'bedrooms', 'bathrooms', 'year_built', 'estimated_annual_expenses']);
-    $statuses = ['Vacant', 'Owner-occupied', 'Rented (long-term)', 'Airbnb/Short-term'];
+    $statuses = \App\Http\Requests\AssetRules::STATUSES;
     $currencies = ['EUR', 'USD', 'GBP'];
     $ownershipPct = $v('ownership_percentage', 100);
 @endphp

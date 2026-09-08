@@ -1,8 +1,14 @@
 <?php
 
+use App\Http\Middleware\EnsureTwoFactorIsVerified;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Sentry\Laravel\Integration;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,21 +19,21 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Apply security headers to all web responses.
         $middleware->web(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->alias([
             // Your custom middleware
-            '2fa' => \App\Http\Middleware\EnsureTwoFactorIsVerified::class,
+            '2fa' => EnsureTwoFactorIsVerified::class,
 
             // Spatie Permission middleware (required for routes like permission:view_dashboard)
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role' => RoleMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Report exceptions to Sentry when a DSN is configured (inert otherwise).
-        \Sentry\Laravel\Integration::handles($exceptions);
+        Integration::handles($exceptions);
     })
     ->create();

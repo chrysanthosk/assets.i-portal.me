@@ -13,6 +13,7 @@ use App\Support\Deeds\DeedExtraction;
 use App\Support\Deeds\DeedExtractionException;
 use App\Support\Deeds\DeedExtractor;
 use App\Support\Deeds\DeedMapper;
+use App\Support\Deeds\DeedSchema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
@@ -221,10 +222,10 @@ class TitleDeedImportTest extends TestCase
                 $walk($child);
             }
         };
-        $walk(\App\Support\Deeds\DeedSchema::schema());
+        $walk(DeedSchema::schema());
         $this->assertSame(0, $unions, 'Anthropic allows at most 16 union-typed schema fields');
 
-        $n = \App\Support\Deeds\DeedSchema::normalize([
+        $n = DeedSchema::normalize([
             'registration_number' => ' 0/8443 ', 'district' => '', 'enclosed_area_sqm' => '81',
             'common_property_share_pct' => '2,97 %', 'parking_spaces' => '1', 'plot_area_sqm' => '', 'property_type' => 'unknown',
             'owners' => [['name' => 'X', 'share' => 'ΟΛΟ', 'share_pct' => '100', 'address' => '', 'id_number' => '']],

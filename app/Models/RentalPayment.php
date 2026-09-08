@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,6 +70,23 @@ class RentalPayment extends Model
         });
     }
 
+    /**
+     * Counts for the bell / sidebar badge in one query.
+     *
+     * @return array{unconfirmed:int, overdue:int}
+     */
+    public static function attentionCounts(): array
+    {
+        $today = now()->toDateString();
+        $row = static::query()->selectRaw(
+            'SUM(CASE WHEN status = ? AND due_date <= ? THEN 1 ELSE 0 END) AS unconfirmed, '
+            .'SUM(CASE WHEN status = ? OR (status = ? AND due_date < ?) THEN 1 ELSE 0 END) AS overdue',
+            [self::STATUS_PENDING, $today, self::STATUS_NOT_RECEIVED, self::STATUS_PENDING, $today]
+        )->first();
+
+        return ['unconfirmed' => (int) ($row->unconfirmed ?? 0), 'overdue' => (int) ($row->overdue ?? 0)];
+    }
+
     public function isPaid(): bool
     {
         return $this->status === self::STATUS_PAID;
@@ -84,7 +102,7 @@ class RentalPayment extends Model
     public function periodLabel(): string
     {
         $date = $this->period
-            ? \Carbon\Carbon::createFromFormat('Y-m', $this->period)
+            ? Carbon::createFromFormat('Y-m', $this->period)
             : $this->due_date;
 
         return $date ? $date->format('F Y') : '';

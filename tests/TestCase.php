@@ -11,7 +11,8 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // Static per-request caches must not leak between tests
+        // Static / array caches must not leak between tests
         Portal::flush();
+        \Illuminate\Support\Facades\Cache::flush();
     }
 }

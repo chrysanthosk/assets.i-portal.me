@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\AssetDocument;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -11,7 +12,7 @@ class DocumentExpiryDigestMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /** @param Collection<int, \App\Models\AssetDocument> $documents */
+    /** @param Collection<int, AssetDocument> $documents */
     public function __construct(public Collection $documents, public int $days) {}
 
     public function build()

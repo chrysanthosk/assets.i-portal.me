@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RentConfirmationTest extends TestCase
@@ -226,7 +227,7 @@ class RentConfirmationTest extends TestCase
     public function test_recipients_fall_back_to_admin_users(): void
     {
         PortalSetting::set(RentSchedule::SETTING_EMAIL, '');
-        \Spatie\Permission\Models\Role::findOrCreate('Admin', 'web');
+        Role::findOrCreate('Admin', 'web');
         $admin = User::factory()->create(['email' => 'admin@example.com']);
         $admin->assignRole('Admin');
         User::factory()->create(['email' => 'nobody@example.com']);

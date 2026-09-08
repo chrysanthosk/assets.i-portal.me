@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\EmailChangeOtpMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -48,7 +49,7 @@ class ProfileTest extends TestCase
         $user->refresh();
         $this->assertSame('new@example.com', $user->pending_email);
         $this->assertNotNull($user->email_otp_hash);
-        Mail::assertSent(\App\Mail\EmailChangeOtpMail::class);
+        Mail::assertSent(EmailChangeOtpMail::class);
     }
 
     public function test_password_can_be_updated_with_correct_current_password(): void

@@ -4,11 +4,10 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\SmtpSetting;
+use App\Support\MailConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Symfony\Component\Mailer\Mailer;
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Email;
+use Illuminate\Support\Facades\Mail;
 
 class SmtpSettingsController extends Controller
 {
@@ -103,35 +102,11 @@ class SmtpSettingsController extends Controller
         }
 
         try {
-            $user = $smtp->username ?: '';
-            $pass = $smtp->getPasswordPlain() ?: '';
-
-            $scheme = ($enc === 'ssl') ? 'smtps' : 'smtp';
-
-            $dsn = $scheme.'://';
-            if ($user !== '' || $pass !== '') {
-                $dsn .= rawurlencode($user).':'.rawurlencode($pass).'@';
-            }
-            $dsn .= $host.':'.$port;
-
-            if ($enc === 'tls') {
-                // STARTTLS
-                $dsn .= '?encryption=tls';
-            }
-
-            $transport = Transport::fromDsn($dsn);
-            $mailer = new Mailer($transport);
-
-            $fromAddress = $smtp->from_address ?: config('mail.from.address') ?: 'no-reply@example.com';
-            $fromName = $smtp->from_name ?: config('mail.from.name') ?: 'Portal';
-
-            $email = (new Email)
-                ->from(sprintf('%s <%s>', $fromName, $fromAddress))
-                ->to($data['test_email'])
-                ->subject('SMTP Test Email')
-                ->text("This is a test email from your portal.\n\nTime: ".now()->format('Y-m-d H:i:s'));
-
-            $mailer->send($email);
+            // Same path every reminder/OTP takes: the saved settings applied to the app mailer
+            MailConfig::apply();
+            Mail::raw("This is a test email from your portal.\n\nTime: ".now()->format('Y-m-d H:i:s'), function ($m) use ($data) {
+                $m->to($data['test_email'])->subject('SMTP Test Email');
+            });
 
             $smtp->last_tested_at = Carbon::now();
             $smtp->save();
