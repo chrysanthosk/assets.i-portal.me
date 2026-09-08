@@ -7,6 +7,7 @@ use App\Models\AssetDocument;
 use App\Models\AssetRental;
 use App\Models\AuditLog;
 use App\Models\RentalPayment;
+use App\Support\Fx;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -23,7 +24,11 @@ class DashboardController extends Controller
 
         // Assets widgets
         $totalAssets = Asset::count();
-        $totalAssetsValue = (float) Asset::query()->sum('purchase_price');
+        // Purchase prices converted to the base currency (assets may be in EUR, AED, …)
+        $totalAssetsValue = 0.0;
+        foreach (Asset::query()->whereNotNull('purchase_price')->selectRaw('currency, SUM(purchase_price) as total')->groupBy('currency')->get() as $r) {
+            $totalAssetsValue += Fx::toBase((float) $r->total, $r->currency);
+        }
 
         // Current reporting period (current month)
         $year = (int) now()->year;
@@ -48,13 +53,17 @@ class DashboardController extends Controller
                     ->orWhereDate('agreement_end_date', '>=', $periodStart->toDateString());
             });
 
-        $monthlyIncome = (float) (clone $activeAgreementBase)->sum('amount');
-
         $monthlyIncomeByCurrency = (clone $activeAgreementBase)
             ->selectRaw('currency, SUM(amount) as total')
             ->groupBy('currency')
             ->orderBy('currency')
             ->get();
+
+        // Total in the base currency
+        $monthlyIncome = 0.0;
+        foreach ($monthlyIncomeByCurrency as $r) {
+            $monthlyIncome += Fx::toBase((float) $r->total, $r->currency);
+        }
 
         $activeAgreementsCount = (clone $activeAgreementBase)->count();
 
@@ -112,6 +121,8 @@ class DashboardController extends Controller
             : collect();
 
         return view('dashboard', [
+            'base' => Fx::base(),
+            'unknownCurrencies' => Fx::unknownCurrencies(),
             'rentToConfirm' => $rentToConfirm,
             'overdueRent' => $overdueRent,
             'expiringDocs' => $expiringDocs,

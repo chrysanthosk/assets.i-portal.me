@@ -112,6 +112,48 @@ class PaymentStatementTest extends TestCase
         $this->assertSame('3500.00', $q->fresh()->amount);
     }
 
+    public function test_statement_from_property_page_creates_the_months_payment_when_missing(): void
+    {
+        Storage::fake('local');
+        $this->fake();
+        $p = $this->payment();              // has a 2026-08 payment already
+        $asset = $p->asset;
+        $user = $this->user();
+
+        // Existing month → reuses the row
+        $this->actingAs($user)->post(route('payments.statementForAsset', $asset), ['file' => UploadedFile::fake()->create('aug.pdf', 50, 'application/pdf')])
+            ->assertRedirect(route('assets.show', [$asset, 'tab' => 'payments']))
+            ->assertSessionHas('statement', fn ($s) => $s['payment_id'] === $p->id);
+        $this->assertSame(1, RentalPayment::count());
+
+        // A month with no row yet → created on the agreement with the statement's net amount
+        $sep = $this->figures;
+        $sep['period_start'] = '2026-09-01';
+        $sep['period_end'] = '2026-09-30';
+        $sep['net_payable'] = 3900.10;
+        $this->fake(fn () => $sep);
+        $this->actingAs($user)->post(route('payments.statementForAsset', $asset), ['file' => UploadedFile::fake()->create('sep.pdf', 50, 'application/pdf')])
+            ->assertRedirect()->assertSessionHas('statement');
+        $new = RentalPayment::where('period', '2026-09')->sole();
+        $this->assertSame('3900.10', $new->amount);
+        $this->assertSame('AED', $new->currency);
+        $this->assertSame('2026-10-01', $new->due_date->toDateString());
+        $this->assertSame('pending', $new->status);
+        $this->assertSame(2, AssetDocument::where('doc_type', 'Statement')->count());
+    }
+
+    public function test_statement_needs_an_agreement(): void
+    {
+        Storage::fake('local');
+        $this->fake();
+        $type = AssetType::create(['name' => 'Apartment', 'is_active' => true, 'sort_order' => 1]);
+        $asset = Asset::create(['name' => 'Bare', 'asset_type_id' => $type->id, 'currency' => 'AED', 'status' => 'Vacant', 'ownership_percentage' => 100]);
+
+        $this->actingAs($this->user())->post(route('payments.statementForAsset', $asset), ['file' => UploadedFile::fake()->create('x.pdf', 5, 'application/pdf')])
+            ->assertRedirect(route('assets.show', [$asset, 'tab' => 'agreements']))->assertSessionHas('error');
+        $this->assertSame(0, RentalPayment::count());
+    }
+
     public function test_unreadable_statement_reports_error_and_keeps_no_file(): void
     {
         Storage::fake('local');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Asset;
 use App\Models\AssetDocument;
 use App\Models\AssetRental;
 use App\Models\RentalPayment;
@@ -9,6 +10,8 @@ use App\Support\Audit;
 use App\Support\Deeds\DeedExtractionException;
 use App\Support\RentSchedule;
 use App\Support\Statements\StatementExtractor;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -136,6 +139,59 @@ class RentalPaymentsController extends Controller
      */
     public function statement(Request $request, RentalPayment $payment, StatementExtractor $extractor)
     {
+        $figures = $this->readStatement($request, $extractor, $payment->asset_id, $payment->periodLabel());
+        if (! is_array($figures)) {
+            return $figures; // redirect with error
+        }
+
+        return back()->with('statement', ['payment_id' => $payment->id, 'figures' => $figures]);
+    }
+
+    /**
+     * Statement upload from the property page: no payment row needed. The
+     * month is taken from the statement's period; the payment for that month
+     * is found or created on the property's active agreement, then the same
+     * confirm dialog opens.
+     */
+    public function statementForAsset(Request $request, Asset $asset, StatementExtractor $extractor)
+    {
+        $figures = $this->readStatement($request, $extractor, $asset->id, null);
+        if (! is_array($figures)) {
+            return $figures;
+        }
+
+        $rental = AssetRental::query()->where('asset_id', $asset->id)
+            ->orderByDesc('is_active')->orderByDesc('agreement_start_date')->first();
+        if (! $rental) {
+            return redirect()->route('assets.show', [$asset, 'tab' => 'agreements'])
+                ->with('error', 'Add an agreement for this property first (who manages it and the expected monthly amount), then upload the statement again.');
+        }
+
+        $start = ! empty($figures['period_start']) ? Carbon::parse($figures['period_start']) : now()->subMonth()->startOfMonth();
+        $period = $start->format('Y-m');
+        $payment = RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $period)->first()
+            ?? RentalPayment::create([
+                'asset_rental_id' => $rental->id,
+                'asset_id' => $asset->id,
+                'due_date' => $start->copy()->endOfMonth()->addDay()->toDateString(),
+                'period' => $period,
+                'amount' => $figures['net_payable'] ?? $rental->amount,
+                'currency' => $figures['currency'] ?? $rental->currency ?? 'EUR',
+                'status' => RentalPayment::STATUS_PENDING,
+            ]);
+
+        return redirect()->route('assets.show', [$asset, 'tab' => 'payments'])
+            ->with('statement', ['payment_id' => $payment->id, 'figures' => $figures]);
+    }
+
+    /**
+     * Validate, store, and read a statement file. Returns the figures, or a
+     * redirect response carrying the error.
+     *
+     * @return array<string, mixed>|RedirectResponse
+     */
+    private function readStatement(Request $request, StatementExtractor $extractor, int $assetId, ?string $periodLabel)
+    {
         $request->validate(['file' => ['required', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,webp']]);
 
         if (! $extractor->isConfigured()) {
@@ -143,7 +199,7 @@ class RentalPaymentsController extends Controller
         }
 
         $file = $request->file('file');
-        $path = $file->store("assets/{$payment->asset_id}", 'local');
+        $path = $file->store("assets/{$assetId}", 'local');
         $mime = $file->getMimeType() ?: 'application/octet-stream';
 
         try {
@@ -154,11 +210,13 @@ class RentalPaymentsController extends Controller
             return back()->with('error', 'Could not read the statement: '.$e->getMessage());
         }
 
+        $label = $periodLabel ?: (! empty($figures['period_start']) ? Carbon::parse($figures['period_start'])->format('F Y') : '');
+
         // Keep the statement with the property's documents
         $doc = AssetDocument::create([
-            'asset_id' => $payment->asset_id,
+            'asset_id' => $assetId,
             'uploaded_by' => auth()->id(),
-            'title' => 'Statement '.$payment->periodLabel(),
+            'title' => trim('Statement '.$label),
             'doc_type' => 'Statement',
             'notes' => trim(($figures['management_company'] ?? '').' '.($figures['period_start'] ?? '').' → '.($figures['period_end'] ?? '')),
             'original_name' => mb_substr(basename(str_replace('\\', '/', (string) $file->getClientOriginalName())), 0, 255) ?: 'statement',
@@ -171,7 +229,7 @@ class RentalPaymentsController extends Controller
 
         $figures['document_id'] = $doc->id;
 
-        return back()->with('statement', ['payment_id' => $payment->id, 'figures' => $figures]);
+        return $figures;
     }
 
     public function markNotReceived(RentalPayment $payment)
