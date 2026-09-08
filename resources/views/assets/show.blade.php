@@ -35,22 +35,22 @@
 
 {{-- ===== Key figures ===== --}}
 <div class="row g-3 mb-3">
-    <div class="col-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-cash-coin" :label="$currentRental?->isInstallments() ? 'Rent per month (avg)' : 'Monthly rent'"
                 :value="$currentRental ? $fmt($currentRental->monthlyEquivalent(), $currentRental->currency) : '—'"
                 :sub="$currentRental ? e($tenantName ?? 'No tenant').($currentRental->isInstallments() ? ' · '.$fmt($currentRental->amount, $currentRental->currency).' / year in '.count($currentRental->installmentList()).' instalments' : '').($currentRental->agreement_end_date ? ' · until '.$currentRental->agreement_end_date->format('d M Y') : ' · open-ended') : 'No active agreement'"
                 :tone="$currentRental ? 'success' : ''" />
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-wallet2" label="Outstanding" :value="$ytd['outstanding'] > 0 ? $fmt($ytd['outstanding']) : '—'"
                 :sub="$ytd['outstanding'] > 0 ? 'Unpaid or unconfirmed rent' : 'All rent received'"
                 :tone="$ytd['outstanding'] > 0 ? 'danger' : ''" />
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-graph-up-arrow" label="This year" :value="$fmt($ytd['income'] - $ytd['expenses'])"
                 :sub="'in '.$fmt($ytd['income']).' · out '.$fmt($ytd['expenses'])" tone="info" />
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-tag" label="Purchase" :value="$asset->purchase_price !== null ? $fmt($asset->purchase_price) : '—'"
                 :sub="$asset->purchase_date ? \Illuminate\Support\Carbon::parse($asset->purchase_date)->format('d M Y') : 'No purchase price recorded'" />
     </div>
