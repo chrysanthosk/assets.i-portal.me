@@ -58,7 +58,7 @@
                                 <td>{{ $p->tenantName() ?? '—' }}</td>
                                 <td>{{ $p->periodLabel() }}</td>
                                 <td>{{ optional($p->due_date)->format('Y-m-d') }}
-                                    @if($p->isOverdue())<span class="badge text-bg-danger ms-1">{{ $p->due_date->diffInDays(now()) }}d late</span>@endif
+                                    @if($p->isOverdue())<span class="badge text-bg-danger ms-1">{{ $p->daysLate() }}d late</span>@endif
                                 </td>
                                 <td class="text-end">{{ $p->currency }} {{ number_format((float) $p->amount, 2) }}</td>
                                 <td class="small text-muted">
