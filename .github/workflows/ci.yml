@@ -20,12 +20,14 @@ jobs:
           extensions: mbstring, bcmath, intl, gd, zip, pdo_sqlite, exif, pcntl
           coverage: none
 
-      - name: Cache Composer packages
+      # Cache Composer's download cache, never vendor/: a vendor dir restored
+      # from an older lock file breaks Laravel's package uninstall hooks.
+      - name: Cache Composer downloads
         uses: actions/cache@v4
         with:
-          path: vendor
-          key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
+          path: ~/.cache/composer/files
+          key: composer-files-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-files-
 
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
