@@ -90,6 +90,16 @@ class RentalPayment extends Model
         return ['unconfirmed' => (int) ($row->unconfirmed ?? 0), 'overdue' => (int) ($row->overdue ?? 0)];
     }
 
+    /** Whole days past the due date (0 when not yet due). */
+    public function daysLate(): int
+    {
+        if (! $this->due_date) {
+            return 0;
+        }
+
+        return max(0, (int) floor($this->due_date->startOfDay()->diffInDays(now()->startOfDay(), false)));
+    }
+
     public function isPaid(): bool
     {
         return $this->status === self::STATUS_PAID;

@@ -103,7 +103,7 @@
                         </div>
                         <div class="text-end text-nowrap">
                             <div class="fw-semibold text-danger">{{ $p->currency }} {{ number_format((float) $p->amount, 2) }}</div>
-                            <span class="badge text-bg-danger">{{ $p->due_date->diffInDays(now()) }}d late</span>
+                            <span class="badge text-bg-danger">{{ $p->daysLate() }}d late</span>
                         </div>
                     </div>
                 @empty
