@@ -11,6 +11,7 @@ use App\Support\Agreements\AgreementExtractor;
 use App\Support\Agreements\AgreementMapper;
 use App\Support\Audit;
 use App\Support\Deeds\DeedExtractionException;
+use App\Support\RentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -110,9 +111,10 @@ class AgreementImportController extends Controller
         Audit::log('asset_document.uploaded', $doc, null, $doc->toArray());
 
         $import->update(['status' => DeedImport::STATUS_COMPLETED, 'asset_id' => $rental->asset_id, 'path' => $newPath]);
+        $n = RentSchedule::backfill($rental);
 
-        return redirect()->route('assets.show', [$rental->asset_id, 'tab' => 'agreements'])
-            ->with('success', 'Agreement created from the contract. Payments will be generated from its schedule.');
+        return redirect()->route('assets.show', [$rental->asset_id, 'tab' => 'payments'])
+            ->with('success', 'Agreement created from the contract.'.($n ? " {$n} payment(s) already due this year were added — confirm the ones you have received." : ' Payments will be generated from its schedule.'));
     }
 
     public function destroy(DeedImport $import)

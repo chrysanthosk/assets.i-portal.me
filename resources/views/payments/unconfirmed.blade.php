@@ -12,8 +12,8 @@
                 <div class="d-flex gap-2 flex-wrap">
                     <form method="POST" action="{{ route('payments.generate') }}">
                         @csrf
-                        <button class="btn btn-sm btn-outline-secondary" title="Create this month's expected payments now">
-                            <i class="bi bi-calendar-plus me-1"></i> Generate {{ now()->format('M Y') }}
+                        <button class="btn btn-sm btn-outline-secondary" title="Create every payment due so far this year that is missing">
+                            <i class="bi bi-calendar-plus me-1"></i> Generate due payments
                         </button>
                     </form>
                     <form method="POST" action="{{ route('payments.sendReminders') }}"

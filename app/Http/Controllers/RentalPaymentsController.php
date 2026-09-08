@@ -78,11 +78,12 @@ class RentalPaymentsController extends Controller
     /** Create this month's expected payments now instead of waiting for the scheduler. */
     public function generate()
     {
-        $created = RentSchedule::generateDue();
+        // This month's payments plus anything due earlier this year that is missing
+        $created = RentSchedule::generateDue() + RentSchedule::backfillAll();
 
         return back()->with('success', $created
-            ? "{$created} payment(s) generated for ".now()->format('F Y').'.'
-            : 'Nothing to generate — this month\'s payments already exist.');
+            ? "{$created} payment(s) added for ".now()->format('Y').'.'
+            : 'Nothing to generate — everything due so far already exists.');
     }
 
     /** Send the confirmation email for every unconfirmed payment right now. */

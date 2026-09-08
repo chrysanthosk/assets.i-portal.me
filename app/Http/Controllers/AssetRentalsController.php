@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\AssetRental;
 use App\Models\Tenant;
 use App\Support\Audit;
+use App\Support\RentSchedule;
 use Illuminate\Http\Request;
 
 class AssetRentalsController extends Controller
@@ -36,8 +37,9 @@ class AssetRentalsController extends Controller
     {
         $rental = $this->persist($request, new AssetRental);
         Audit::log('asset_rental.created', $rental, null, $rental->toArray());
+        $n = RentSchedule::backfill($rental);
 
-        return back()->with('success', 'Agreement saved.');
+        return back()->with('success', 'Agreement saved.'.($n ? " {$n} payment(s) due this year were added to the rent check." : ''));
     }
 
     public function edit(AssetRental $rental)
@@ -57,8 +59,9 @@ class AssetRentalsController extends Controller
         $old = $rental->toArray();
         $this->persist($request, $rental);
         Audit::log('asset_rental.updated', $rental, $old, $rental->fresh()->toArray());
+        $n = RentSchedule::backfill($rental->fresh());
 
-        return redirect()->route('assets.rentals.index')->with('success', 'Agreement updated.');
+        return redirect()->route('assets.rentals.index')->with('success', 'Agreement updated.'.($n ? " {$n} payment(s) due this year were added to the rent check." : ''));
     }
 
     /** Validate and save an agreement (create or update). */
