@@ -246,3 +246,9 @@ body { overflow-x: hidden; }
   .card-header .hdr-actions .btn { flex: 1 1 0; }
   .card-header form.d-flex .form-select { min-width: 0; flex: 1 1 auto; }
 }
+
+/* Tabs on cards */
+.card > .card-header .nav-tabs { border-bottom: 1px solid var(--line); }
+.nav-tabs { --bs-nav-tabs-border-color: var(--line); --bs-nav-tabs-link-active-bg: var(--surface); --bs-nav-tabs-link-active-color: var(--ink); --bs-nav-tabs-link-active-border-color: var(--line) var(--line) var(--surface); --bs-nav-link-color: var(--ink-2); --bs-nav-link-hover-color: var(--ink); }
+.nav-tabs .nav-link { font-size: .85rem; font-weight: 500; }
+@media (max-width: 575.98px) { .nav-tabs { flex-wrap: nowrap; overflow-x: auto; } .nav-tabs .nav-link { white-space: nowrap; } }

@@ -65,7 +65,8 @@ app/
                                        #   AssetRental, Tenant, RentalPayment, AssetExpense, FxRate,
                                        #   PortalSetting, SmtpSetting, AuditLog
   Support/                             # Audit (audit-log helper), Fx (currency conversion),
-                                       #   RentSchedule (monthly payments + reminders), MailConfig,
+                                       #   RentSchedule (monthly payments + reminders), DocumentReminders
+                                       #   (weekly expiry digest), MailConfig, Portal (advanced switch),
                                        #   Deeds/ (DeedExtractor interface, ClaudeDeedExtractor, DeedSchema, DeedMapper)
   Listeners/ Mail/ Providers/ View/
 config/

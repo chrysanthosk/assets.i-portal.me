@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\AssetExpense;
 use App\Models\AssetTag;
 use App\Models\AssetType;
 use App\Models\OwnerEntity;
+use App\Models\RentalPayment;
 use App\Support\Audit;
 use Illuminate\Http\Request;
 
@@ -122,7 +124,29 @@ class AssetsController extends Controller
             },
         ]);
 
-        return view('assets.show', compact('asset'));
+        $today = now()->toDateString();
+        $currentRental = $asset->rentals
+            ->first(fn ($r) => $r->is_active
+                && (! $r->agreement_start_date || $r->agreement_start_date->toDateString() <= $today)
+                && (! $r->agreement_end_date || $r->agreement_end_date->toDateString() >= $today))
+            ?? $asset->rentals->firstWhere('is_active', true);
+
+        $payments = RentalPayment::query()->with('rental.tenant')
+            ->where('asset_id', $asset->id)->orderByDesc('due_date')->limit(24)->get();
+        $expenses = AssetExpense::query()
+            ->where('asset_id', $asset->id)->orderByDesc('spent_on')->limit(24)->get();
+
+        $yearStart = now()->startOfYear()->toDateString();
+        $ytd = [
+            'income' => (float) RentalPayment::query()->where('asset_id', $asset->id)
+                ->where('status', RentalPayment::STATUS_PAID)->whereDate('paid_date', '>=', $yearStart)->sum('amount'),
+            'expenses' => (float) AssetExpense::query()->where('asset_id', $asset->id)
+                ->whereDate('spent_on', '>=', $yearStart)->sum('amount'),
+            'outstanding' => (float) RentalPayment::query()->where('asset_id', $asset->id)
+                ->where('status', '!=', RentalPayment::STATUS_PAID)->sum('amount'),
+        ];
+
+        return view('assets.show', compact('asset', 'currentRental', 'payments', 'expenses', 'ytd'));
     }
 
     public function edit(Asset $asset)

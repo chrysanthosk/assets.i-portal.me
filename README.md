@@ -32,7 +32,8 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
   asks "did the rent arrive?" with one-click Yes/No links and repeats until answered
 - **Expenses** — categorised property costs (maintenance, tax, insurance, …)
 - **Reports** — per-asset & portfolio **P&L** with **CSV export**, consolidated to a base currency via **FX rates**
-- **Document lifecycle** — type classification + **expiry reminders** (insurance/certs)
+- **Document lifecycle** — type classification + **expiry reminders** (dashboard, bell, and a
+  Monday email digest of expired / soon-expiring documents)
 - **Dashboard** — totals, monthly income, occupancy, outstanding payments, document-expiry reminders
 
 ---

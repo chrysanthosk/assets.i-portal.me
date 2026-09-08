@@ -25,7 +25,7 @@
         <div class="form-text">Off keeps the portal to what a single owner needs. Nothing is deleted; the pages are just hidden.</div>
       </div>
 
-      <div class="col-12"><h6 class="mt-3 mb-0">Rent reminders</h6><hr class="mt-1"></div>
+      <div class="col-12"><h6 class="mt-3 mb-0">Reminders</h6><hr class="mt-1"></div>
 
       <div class="col-12">
         <input type="hidden" name="rent_reminders_enabled" value="0">
@@ -33,7 +33,8 @@
           <input class="form-check-input" type="checkbox" role="switch" id="rent_reminders_enabled"
                  name="rent_reminders_enabled" value="1" @checked(old('rent_reminders_enabled', $rentRemindersEnabled ? '1' : '0') === '1')>
           <label class="form-check-label" for="rent_reminders_enabled">
-            Email me on each rent due date asking whether the money arrived, and keep asking until I answer
+            Email me on each rent due date asking whether the money arrived (repeating until I answer),
+            plus a weekly digest of expired or expiring documents
           </label>
         </div>
       </div>
@@ -63,6 +64,14 @@
                name="rent_reminder_repeat_days" value="{{ old('rent_reminder_repeat_days', $rentRepeatDays) }}" required>
         @error('rent_reminder_repeat_days') <div class="invalid-feedback">{{ $message }}</div> @enderror
         <div class="form-text">Until the payment is confirmed either way.</div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Document warning (days)</label>
+        <input type="number" min="1" max="365" class="form-control @error('doc_reminder_days') is-invalid @enderror"
+               name="doc_reminder_days" value="{{ old('doc_reminder_days', $docReminderDays) }}">
+        @error('doc_reminder_days') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        <div class="form-text">Documents expiring within this window appear in the Monday digest.</div>
       </div>
 
       <div class="col-12 form-text">

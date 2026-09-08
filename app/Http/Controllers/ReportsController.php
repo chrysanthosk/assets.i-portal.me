@@ -16,9 +16,14 @@ class ReportsController extends Controller
         $year = $request->integer('year') ?: (int) now()->year;
         $report = $this->buildReport($year);
 
+        $years = RentalPayment::query()->selectRaw('MIN(due_date) as first')->value('first');
+        $firstYear = $years ? (int) substr((string) $years, 0, 4) : (int) now()->year;
+
         return view('reports.index', array_merge($report, [
             'year' => $year,
+            'years' => range(max($firstYear, (int) now()->year - 10), (int) now()->year + 1),
             'base' => Fx::base(),
+            'multiCurrency' => $this->usesMultipleCurrencies(),
         ]));
     }
 
@@ -52,6 +57,15 @@ class ReportsController extends Controller
 
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    /** Whether any money in the system is in a currency other than the base. */
+    private function usesMultipleCurrencies(): bool
+    {
+        $base = Fx::base();
+
+        return RentalPayment::query()->where('currency', '!=', $base)->exists()
+            || AssetExpense::query()->where('currency', '!=', $base)->exists();
     }
 
     /**
@@ -94,6 +108,30 @@ class ReportsController extends Controller
             }
         }
 
+        // Month-by-month (base currency) for the year table
+        $months = array_fill(1, 12, ['income' => 0.0, 'expenses' => 0.0]);
+        foreach (RentalPayment::query()->where('status', 'paid')->whereYear('paid_date', $year)
+            ->selectRaw('paid_date, currency, amount')->get() as $r) {
+            $m = (int) $r->paid_date->format('n');
+            $months[$m]['income'] += Fx::toBase((float) $r->amount, $r->currency);
+        }
+        foreach (AssetExpense::query()->whereYear('spent_on', $year)->selectRaw('spent_on, currency, amount')->get() as $r) {
+            $m = (int) $r->spent_on->format('n');
+            $months[$m]['expenses'] += Fx::toBase((float) $r->amount, $r->currency);
+        }
+
+        // Rent collection: what was due this year vs what actually came in
+        $expected = 0.0;
+        foreach (RentalPayment::query()->whereYear('due_date', $year)->selectRaw('currency, SUM(amount) as total')
+            ->groupBy('currency')->get() as $r) {
+            $expected += Fx::toBase((float) $r->total, $r->currency);
+        }
+        $collected = 0.0;
+        foreach (RentalPayment::query()->where('status', 'paid')->whereYear('due_date', $year)
+            ->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get() as $r) {
+            $collected += Fx::toBase((float) $r->total, $r->currency);
+        }
+
         $totals = ['income' => 0.0, 'expenses' => 0.0, 'net' => 0.0];
         foreach ($rows as &$row) {
             $row['net'] = $row['income'] - $row['expenses'];
@@ -106,6 +144,12 @@ class ReportsController extends Controller
         return [
             'rows' => array_values($rows),
             'totals' => $totals,
+            'months' => $months,
+            'collection' => [
+                'expected' => $expected,
+                'collected' => $collected,
+                'rate' => $expected > 0 ? round($collected / $expected * 100) : null,
+            ],
             'unknownCurrencies' => Fx::unknownCurrencies(),
         ];
     }

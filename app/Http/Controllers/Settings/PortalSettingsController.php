@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\PortalSetting;
 use App\Support\Deeds\ClaudeDeedExtractor;
+use App\Support\DocumentReminders;
 use App\Support\Portal;
 use App\Support\RentSchedule;
 use Illuminate\Http\Request;
@@ -25,6 +26,7 @@ class PortalSettingsController extends Controller
             'rentReminderEmail' => PortalSetting::get(RentSchedule::SETTING_EMAIL, ''),
             'rentDueDay' => RentSchedule::dueDay(),
             'rentRepeatDays' => RentSchedule::repeatDays(),
+            'docReminderDays' => DocumentReminders::days(),
             'fallbackRecipients' => PortalSetting::get(RentSchedule::SETTING_EMAIL) ? [] : RentSchedule::recipients(),
             'anthropicKeySet' => (bool) PortalSetting::get(ClaudeDeedExtractor::SETTING_API_KEY),
             'anthropicKeyFromEnv' => ! PortalSetting::get(ClaudeDeedExtractor::SETTING_API_KEY) && (bool) config('services.anthropic.key'),
@@ -41,6 +43,7 @@ class PortalSettingsController extends Controller
             'rent_reminder_email' => ['nullable', 'string', 'max:500'],
             'rent_due_day' => ['required', 'integer', 'min:1', 'max:28'],
             'rent_reminder_repeat_days' => ['required', 'integer', 'min:1', 'max:30'],
+            'doc_reminder_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'anthropic_api_key' => ['nullable', 'string', 'max:300'],
             'anthropic_api_key_clear' => ['nullable', 'in:0,1'],
             'advanced_mode' => ['nullable', 'in:0,1'],
@@ -61,6 +64,7 @@ class PortalSettingsController extends Controller
         PortalSetting::set(RentSchedule::SETTING_EMAIL, $emails->implode(', '));
         PortalSetting::set(RentSchedule::SETTING_DUE_DAY, (string) $data['rent_due_day']);
         PortalSetting::set(RentSchedule::SETTING_REPEAT_DAYS, (string) $data['rent_reminder_repeat_days']);
+        PortalSetting::set(DocumentReminders::SETTING_DAYS, (string) ($data['doc_reminder_days'] ?? 30));
 
         // API key: only overwrite when a new value is typed; encrypted at rest.
         if (($data['anthropic_api_key_clear'] ?? '0') === '1') {
