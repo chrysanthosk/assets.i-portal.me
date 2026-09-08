@@ -17,7 +17,8 @@ Two shapes are common:
    A "commission terms" row (e.g. "31/12/2024 100 % COMMISSION TERMS") is an instalment with amount "0" and label
    "Year-end commission"; put the revenue-share clause in commission_terms.
 - Dates: DD/MM/YYYY → YYYY-MM-DD. Amounts as digits ("2700"). If amounts are stated "+ VAT", amounts_exclude_vat = "yes".
-- The counterparty is the OTHER party, not the owner/supplier.
+- The counterparty is the OTHER party, not the owner/supplier. If two tenants sign jointly, put both names in counterparty
+  ("A & B") and the first person's email/phone/ID in the contact fields.
 - auto_renews = "yes" if the period spans several years or renewal is stated; "unknown" otherwise.
 - Empty string for anything not present. List anything unclear in warnings.
 TXT;

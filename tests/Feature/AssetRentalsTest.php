@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Asset;
 use App\Models\AssetRental;
 use App\Models\AssetType;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -70,6 +71,22 @@ class AssetRentalsTest extends TestCase
             'currency' => 'EUR',
         ])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(2, AssetRental::count());
+    }
+
+    public function test_a_typed_tenant_name_creates_the_tenant_once(): void
+    {
+        $user = $this->userWith('manage_asset_rentals');
+        $asset = $this->makeAsset();
+        $post = ['asset_id' => $asset->id, 'tenant_name' => 'Jan-Lucca Klaas', 'agreement_start_date' => '2026-02-01',
+            'rent_type' => 'Long-term', 'is_active' => 1, 'amount' => 1200, 'currency' => 'EUR'];
+
+        $this->actingAs($user)->post(route('assets.rentals.storeOrUpdate'), $post)->assertRedirect();
+        $this->actingAs($user)->post(route('assets.rentals.storeOrUpdate'), $post + ['agreement_start_date' => '2027-02-01'])->assertRedirect();
+
+        $this->assertSame(1, Tenant::count());
+        $tenant = Tenant::sole();
+        $this->assertSame('Jan-Lucca Klaas', $tenant->name);
+        $this->assertSame([$tenant->id, $tenant->id], AssetRental::pluck('tenant_id')->all());
     }
 
     public function test_an_agreement_can_be_deleted(): void

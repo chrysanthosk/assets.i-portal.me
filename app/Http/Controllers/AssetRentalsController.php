@@ -76,6 +76,9 @@ class AssetRentalsController extends Controller
             'asset_id' => ['required', 'integer', 'exists:assets,id'],
             'tenant_id' => ['nullable', 'integer', 'exists:tenants,id'],
             'tenant_name' => ['nullable', 'string', 'max:120'],
+            'tenant_email' => ['nullable', 'email', 'max:255'],
+            'tenant_phone' => ['nullable', 'string', 'max:60'],
+            'tenant_id_number' => ['nullable', 'string', 'max:120'],
             'agreement_start_date' => ['required', 'date'],
             'agreement_end_date' => ['nullable', 'date', 'after_or_equal:agreement_start_date'],
             'rent_type' => ['required', 'in:Airbnb,Long-term,Other'],
@@ -108,14 +111,25 @@ class AssetRentalsController extends Controller
             $data['amount'] = $data['amount'] ?? 0;
         }
 
-        // Free-text tenant_name mirrors the linked tenant when one is chosen
-        $data['tenant_name'] = ! empty($data['tenant_id'])
-            ? (Tenant::find($data['tenant_id'])?->name ?? ($data['tenant_name'] ?? null))
-            : ($data['tenant_name'] ?? null);
-        $data['tenant_id'] = $data['tenant_id'] ?? null;
+        // Linked tenant wins; a typed name finds or creates a tenant record so the
+        // person exists once and shows up under Tenants.
+        if (! empty($data['tenant_id'])) {
+            $data['tenant_name'] = Tenant::find($data['tenant_id'])?->name ?? ($data['tenant_name'] ?? null);
+        } elseif (! empty(trim((string) ($data['tenant_name'] ?? '')))) {
+            $name = trim($data['tenant_name']);
+            $tenant = Tenant::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first()
+                ?? Tenant::create(['name' => $name, 'email' => $data['tenant_email'] ?? null,
+                    'phone' => $data['tenant_phone'] ?? null, 'id_number' => $data['tenant_id_number'] ?? null]);
+            $data['tenant_id'] = $tenant->id;
+            $data['tenant_name'] = $tenant->name;
+        } else {
+            $data['tenant_id'] = null;
+            $data['tenant_name'] = null;
+        }
         $data['agreement_end_date'] = $data['agreement_end_date'] ?? null;
         $data['is_active'] = (int) $data['is_active'] === 1;
 
+        unset($data['tenant_email'], $data['tenant_phone'], $data['tenant_id_number']);
         $rental->fill($data)->save();
 
         return $rental;

@@ -28,6 +28,7 @@ class InstallmentAgreementTest extends TestCase
     /** Terms as read from the Prengos Villa 24 contract (first contract year). */
     private array $terms = [
         'counterparty' => 'Z&X Holiday Villas', 'counterparty_type' => 'management_company',
+        'counterparty_email' => 'info@zx.example', 'counterparty_phone' => '+357 99 000000', 'counterparty_id_number' => 'HE97675',
         'property_reference' => 'Prengos Villa 24', 'property_address' => 'KALITHEAS 24 ESPRIT VILLAS No24',
         'contract_start' => '2024-04-01', 'contract_end' => '2027-03-31', 'signed_on' => '2023-12-07', 'auto_renews' => 'yes',
         'currency' => 'EUR', 'schedule_type' => 'installments', 'monthly_amount' => null, 'annual_amount' => 18000.0, 'amounts_exclude_vat' => 'yes',

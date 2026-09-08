@@ -43,6 +43,10 @@
                     <div class="col-md-3">
                         <label class="form-label">…or name</label>
                         <input name="tenant_name" class="form-control" value="{{ $v('tenant_name') }}">
+                        @if(! $v('tenant_id') && $v('tenant_name'))<div class="form-text">Will be created as a new tenant{{ $v('tenant_email') ? ' with '.$v('tenant_email') : '' }}.</div>@endif
+                        <input type="hidden" name="tenant_email" value="{{ $v('tenant_email') }}">
+                        <input type="hidden" name="tenant_phone" value="{{ $v('tenant_phone') }}">
+                        <input type="hidden" name="tenant_id_number" value="{{ $v('tenant_id_number') }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Start *</label>

@@ -17,12 +17,15 @@ class AgreementSchema
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'required' => ['counterparty', 'counterparty_type', 'property_reference', 'property_address', 'contract_start', 'contract_end',
+            'required' => ['counterparty', 'counterparty_type', 'counterparty_email', 'counterparty_phone', 'counterparty_id_number', 'property_reference', 'property_address', 'contract_start', 'contract_end',
                 'signed_on', 'auto_renews', 'currency', 'schedule_type', 'monthly_amount', 'annual_amount', 'amounts_exclude_vat',
                 'installments', 'commission_terms', 'obligations', 'notes', 'warnings'],
             'properties' => [
                 'counterparty' => $str('The other party: tenant name, or the management / holiday-lettings company.'),
                 'counterparty_type' => ['type' => 'string', 'enum' => ['tenant', 'management_company', 'unknown']],
+                'counterparty_email' => $str('Email of the counterparty (first one if several).'),
+                'counterparty_phone' => $str('Phone of the counterparty (first one if several).'),
+                'counterparty_id_number' => $str('ID / passport / company registration number of the counterparty.'),
                 'property_reference' => $str('Property / unit name as written, e.g. "Prengos Villa 24".'),
                 'property_address' => $str(),
                 'contract_start' => $str('First day of the agreement period, YYYY-MM-DD.'),
