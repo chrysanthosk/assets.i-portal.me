@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\AssetDocument;
 use App\Models\AssetRental;
+use App\Models\AuditLog;
 use App\Models\RentalPayment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -107,7 +108,7 @@ class DashboardController extends Controller
             ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
             ->orderBy('expires_at')->limit(6)->get();
         $recentActivity = $user->can('manage_audit_logs')
-            ? \App\Models\AuditLog::query()->with('user')->latest()->limit(8)->get()
+            ? AuditLog::query()->with('user')->latest()->limit(8)->get()
             : collect();
 
         return view('dashboard', [

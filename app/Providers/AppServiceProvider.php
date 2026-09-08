@@ -13,6 +13,7 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -36,10 +37,10 @@ class AppServiceProvider extends ServiceProvider
         // publishes :8080 -> container :80), force generated URLs to use
         // APP_URL as their root so the public scheme/host/port are preserved.
         if (config('app.force_root_url') && config('app.url')) {
-            \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
+            URL::forceRootUrl(config('app.url'));
 
             if (str_starts_with((string) config('app.url'), 'https://')) {
-                \Illuminate\Support\Facades\URL::forceScheme('https');
+                URL::forceScheme('https');
             }
         }
 

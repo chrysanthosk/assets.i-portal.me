@@ -6,6 +6,7 @@ use App\Http\Controllers\AssetImportController;
 use App\Http\Controllers\AssetRentalsController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetTagsController;
+use App\Http\Controllers\AuditLogsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
@@ -64,7 +65,7 @@ Route::middleware(['auth', '2fa'])->group(function () {
     // --------------------
     // Audit logs
     // --------------------
-    Route::get('/audit-logs', [\App\Http\Controllers\AuditLogsController::class, 'index'])
+    Route::get('/audit-logs', [AuditLogsController::class, 'index'])
         ->name('audit.index')
         ->middleware('permission:manage_audit_logs');
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -84,7 +85,7 @@ class RentalPayment extends Model
     public function periodLabel(): string
     {
         $date = $this->period
-            ? \Carbon\Carbon::createFromFormat('Y-m', $this->period)
+            ? Carbon::createFromFormat('Y-m', $this->period)
             : $this->due_date;
 
         return $date ? $date->format('F Y') : '';
