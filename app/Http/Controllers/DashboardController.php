@@ -94,6 +94,8 @@ class DashboardController extends Controller
             ->orderBy('currency')
             ->get();
 
+        $outstandingTotal = $outstandingByCurrency->sum(fn ($r) => Fx::toBase((float) $r->total, $r->currency));
+
         $overduePaymentsCount = RentalPayment::query()->overdue()->count();
         $unconfirmedPaymentsCount = RentalPayment::query()->awaitingConfirmation()->count();
 
@@ -166,6 +168,7 @@ class DashboardController extends Controller
             'otherStatusCount' => $otherStatusCount,
 
             'outstandingByCurrency' => $outstandingByCurrency,
+            'outstandingTotal' => $outstandingTotal,
             'overduePaymentsCount' => $overduePaymentsCount,
             'unconfirmedPaymentsCount' => $unconfirmedPaymentsCount,
 

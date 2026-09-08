@@ -32,10 +32,10 @@
 @endif
 
 <div class="row g-3 mb-3">
-    <div class="col-6 col-xl-3"><x-stat icon="bi-arrow-down-left-circle" label="Income" :value="$m($totals['income'])" tone="success" /></div>
-    <div class="col-6 col-xl-3"><x-stat icon="bi-arrow-up-right-circle" label="Expenses" :value="$m($totals['expenses'])" tone="danger" /></div>
-    <div class="col-6 col-xl-3"><x-stat icon="bi-piggy-bank" label="Net" :value="$m($totals['net'])" :tone="$totals['net'] < 0 ? 'danger' : 'info'" /></div>
-    <div class="col-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3"><x-stat icon="bi-arrow-down-left-circle" label="Income" :value="$m($totals['income'])" tone="success" /></div>
+    <div class="col-12 col-sm-6 col-xl-3"><x-stat icon="bi-arrow-up-right-circle" label="Expenses" :value="$m($totals['expenses'])" tone="danger" /></div>
+    <div class="col-12 col-sm-6 col-xl-3"><x-stat icon="bi-piggy-bank" label="Net" :value="$m($totals['net'])" :tone="$totals['net'] < 0 ? 'danger' : 'info'" /></div>
+    <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-percent" label="Rent collected"
                 :value="$collection['rate'] !== null ? $collection['rate'].' %' : '—'"
                 :sub="$collection['expected'] > 0 ? $m($collection['collected']).' of '.$m($collection['expected']).' due' : 'No rent due this year'"

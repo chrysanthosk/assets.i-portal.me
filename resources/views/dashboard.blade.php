@@ -24,32 +24,32 @@
 {{-- Stat tiles --}}
 @php $y = now()->year; $reportUrl = auth()->user()->can('view_reports') ? route('reports.index', ['year' => $y]) : null; @endphp
 <div class="row g-3 mb-3">
-    <div class="col-6 col-xl-4">
+    <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-buildings" label="Properties" :value="number_format($totalAssets)"
                 :sub="number_format($occupiedCount ?? 0).' occupied · '.number_format($vacantCount ?? 0).' vacant'"
                 :href="auth()->user()->can('manage_assets') ? route('assets.index') : null" />
     </div>
-    <div class="col-6 col-xl-4">
+    <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-cash-stack" label="Portfolio value" :value="$money($totalAssetsValue)"
                 :sub="'Purchase prices'.(count($unknownCurrencies) ? ' · <span class=\'text-warning-emphasis\'>no FX rate for '.e(implode(', ', $unknownCurrencies)).'</span>' : ' in '.$base)" tone="info" />
     </div>
-    <div class="col-6 col-xl-4">
+    <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-graph-up-arrow" label="Contracted rent / month" :value="$money($monthlyIncome)"
                 :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's').' · '.$money($year['contracted']).' / year'.($monthlyIncomeByCurrency->count() > 1 ? ' · '.e($byCur($monthlyIncomeByCurrency)) : '')" tone="success" />
     </div>
-    <div class="col-6 col-xl-4">
+    <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-piggy-bank" :label="'Rent received in '.$y" :value="$money($year['income'])"
                 :sub="$year['rate'] !== null ? $year['rate'].' % of the '.$money($year['due']).' due so far' : 'Nothing due yet this year'"
                 :tone="$year['rate'] !== null && $year['rate'] < 90 ? 'warning' : 'success'" :href="$reportUrl" />
     </div>
-    <div class="col-6 col-xl-4">
+    <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-wallet2" label="Outstanding"
-                :value="$outstandingByCurrency->isNotEmpty() ? $byCur($outstandingByCurrency) : '—'"
-                :sub="($overduePaymentsCount ?? 0).' overdue · '.($unconfirmedPaymentsCount ?? 0).' to confirm'"
+                :value="$outstandingByCurrency->isNotEmpty() ? $money($outstandingTotal) : '—'"
+                :sub="($overduePaymentsCount ?? 0).' overdue · '.($unconfirmedPaymentsCount ?? 0).' to confirm'.($outstandingByCurrency->count() > 1 ? ' · '.e($byCur($outstandingByCurrency)) : '')"
                 :tone="($overduePaymentsCount ?? 0) ? 'danger' : (($unconfirmedPaymentsCount ?? 0) ? 'warning' : '')"
                 :href="auth()->user()->can('manage_rental_payments') ? route('payments.unconfirmed') : null" />
     </div>
-    <div class="col-6 col-xl-4">
+    <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-calculator" :label="'Net '.$y" :value="$money($year['income'] - $year['expenses'])"
                 :sub="'received '.$money($year['income']).' · expenses '.$money($year['expenses'])"
                 :tone="($year['income'] - $year['expenses']) < 0 ? 'danger' : 'info'" :href="$reportUrl" />

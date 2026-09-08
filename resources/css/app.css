@@ -220,7 +220,7 @@ body { overflow-x: hidden; }
 @media (max-width: 575.98px) {
   .stat { gap: .6rem; }
   .stat .stat-icon { width: 32px; height: 32px; font-size: .95rem; border-radius: .5rem; }
-  .stat .stat-value { font-size: 1.05rem; }
+  .stat .stat-value { font-size: 1.15rem; }
   .stat .stat-label, .stat .stat-sub { font-size: .7rem; }
   .content { padding: 1rem .75rem 2rem; }
   .card-header { padding: .65rem .8rem; }
