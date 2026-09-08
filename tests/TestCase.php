@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Support\Portal;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Cache;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -13,6 +14,6 @@ abstract class TestCase extends BaseTestCase
 
         // Static / array caches must not leak between tests
         Portal::flush();
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
     }
 }
