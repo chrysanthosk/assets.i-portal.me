@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AssetDocument;
 use App\Models\AssetRental;
 use App\Models\RentalPayment;
 use App\Support\Audit;
+use App\Support\Deeds\DeedExtractionException;
 use App\Support\RentSchedule;
+use App\Support\Statements\StatementExtractor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class RentalPaymentsController extends Controller
 {
@@ -88,6 +92,86 @@ class RentalPaymentsController extends Controller
         $sent = RentSchedule::sendReminders(null, true);
 
         return back()->with('success', $sent ? "{$sent} reminder(s) sent." : 'Nothing awaiting confirmation.');
+    }
+
+    /**
+     * Correct the amount (variable rent, e.g. a short-let operator's monthly
+     * payout) and optionally mark it received in the same step.
+     */
+    public function adjust(Request $request, RentalPayment $payment)
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+            'currency' => ['nullable', 'string', 'max:10'],
+            'paid_date' => ['nullable', 'date'],
+            'received' => ['nullable', 'in:0,1'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'statement' => ['nullable', 'json'],
+        ]);
+
+        $old = $payment->toArray();
+        $payment->forceFill([
+            'amount' => $data['amount'],
+            'currency' => ($data['currency'] ?? null) ?: $payment->currency,
+            'notes' => $data['notes'] ?? $payment->notes,
+            'statement' => isset($data['statement']) ? json_decode($data['statement'], true) : $payment->statement,
+        ])->save();
+
+        if (($data['received'] ?? '0') === '1') {
+            $payment->markReceived();
+            if (! empty($data['paid_date'])) {
+                $payment->forceFill(['paid_date' => $data['paid_date']])->save();
+            }
+        }
+
+        Audit::log('rental_payment.adjusted', $payment, $old, $payment->fresh()->toArray());
+
+        return back()->with('success', 'Payment updated'.((($data['received'] ?? '0') === '1') ? ' and marked as received.' : '.'));
+    }
+
+    /**
+     * Read a manager's statement (PDF/image) and propose the net payout as the
+     * payment amount. The figures are handed to the page via the session, where
+     * a modal lets the user confirm or correct before anything is saved.
+     */
+    public function statement(Request $request, RentalPayment $payment, StatementExtractor $extractor)
+    {
+        $request->validate(['file' => ['required', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,webp']]);
+
+        if (! $extractor->isConfigured()) {
+            return back()->with('error', 'No Anthropic API key configured. Add one under Settings → Portal.');
+        }
+
+        $file = $request->file('file');
+        $path = $file->store("assets/{$payment->asset_id}", 'local');
+        $mime = $file->getMimeType() ?: 'application/octet-stream';
+
+        try {
+            $figures = $extractor->extract(Storage::disk('local')->path($path), $mime);
+        } catch (DeedExtractionException $e) {
+            Storage::disk('local')->delete($path);
+
+            return back()->with('error', 'Could not read the statement: '.$e->getMessage());
+        }
+
+        // Keep the statement with the property's documents
+        $doc = AssetDocument::create([
+            'asset_id' => $payment->asset_id,
+            'uploaded_by' => auth()->id(),
+            'title' => 'Statement '.$payment->periodLabel(),
+            'doc_type' => 'Statement',
+            'notes' => trim(($figures['management_company'] ?? '').' '.($figures['period_start'] ?? '').' → '.($figures['period_end'] ?? '')),
+            'original_name' => mb_substr(basename(str_replace('\\', '/', (string) $file->getClientOriginalName())), 0, 255) ?: 'statement',
+            'disk' => 'local',
+            'path' => $path,
+            'mime_type' => $mime,
+            'size_bytes' => (int) $file->getSize(),
+        ]);
+        Audit::log('asset_document.uploaded', $doc, null, $doc->toArray());
+
+        $figures['document_id'] = $doc->id;
+
+        return back()->with('statement', ['payment_id' => $payment->id, 'figures' => $figures]);
     }
 
     public function markNotReceived(RentalPayment $payment)

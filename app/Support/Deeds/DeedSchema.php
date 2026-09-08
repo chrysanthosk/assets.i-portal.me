@@ -33,7 +33,7 @@ class DeedSchema
             'type' => 'object',
             'additionalProperties' => false,
             'required' => [
-                'document_type', 'registration_number', 'district', 'municipality_community', 'parish',
+                'document_type', 'registry', 'country', 'registration_number', 'district', 'municipality_community', 'parish',
                 'locality', 'street_address', 'building_name', 'unit_number', 'floor',
                 'sheet', 'plan', 'section', 'plot', 'registration_date', 'file_number', 'issue_date',
                 'owners', 'property_type', 'property_description', 'parking_spaces', 'storage_rooms',
@@ -43,6 +43,8 @@ class DeedSchema
             ],
             'properties' => [
                 'document_type' => $str('e.g. "Unit sheet (Κτηματική Σελίδα Μονάδας)", "Title deed", "Plot sheet".'),
+                'registry' => $str('Issuing registry, e.g. "Cyprus Department of Lands and Surveys", "DIFC Real Property Register", "Dubai Land Department".'),
+                'country' => $str('Country the property is in, in English, e.g. "Cyprus", "United Arab Emirates".'),
                 'registration_number' => $str('Registration number (Αριθμός Εγγραφής), e.g. "0/8443".'),
                 'district' => $str('District name in English, e.g. "Paphos".'),
                 'municipality_community' => $str('Municipality / community name in English or transliterated.'),

@@ -2,8 +2,12 @@
 
 namespace App\Support;
 
+use App\Models\AssetExpense;
+use App\Models\AssetRental;
 use App\Models\FxRate;
 use App\Models\PortalSetting;
+use App\Models\RentalPayment;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Lightweight currency conversion to a configurable base currency.
@@ -23,10 +27,26 @@ class Fx
     public static function base(): string
     {
         if (self::$base === null) {
-            self::$base = strtoupper((string) (PortalSetting::where('key', 'base_currency')->value('value') ?: 'EUR'));
+            self::$base = strtoupper((string) (PortalSetting::get('base_currency') ?: 'EUR'));
         }
 
         return self::$base;
+    }
+
+    /**
+     * True when any money in the system is in a currency other than the base,
+     * so the Currencies & FX page is worth showing even in simple mode. Cached
+     * briefly; the FX settings page clears it on save.
+     */
+    public static function multiCurrencyInUse(): bool
+    {
+        return (bool) Cache::remember('fx.multi_currency', 300, function () {
+            $base = self::base();
+
+            return RentalPayment::query()->where('currency', '!=', $base)->exists()
+                || AssetExpense::query()->where('currency', '!=', $base)->exists()
+                || AssetRental::query()->where('currency', '!=', $base)->exists();
+        });
     }
 
     private static function rates(): array
@@ -75,5 +95,6 @@ class Fx
         self::$base = null;
         self::$rates = null;
         self::$unknown = [];
+        Cache::forget('fx.multi_currency');
     }
 }

@@ -88,6 +88,8 @@ Route::middleware(['auth', '2fa'])->group(function () {
         Route::post('/payments/generate', [RentalPaymentsController::class, 'generate'])->name('payments.generate');
         Route::post('/payments/send-reminders', [RentalPaymentsController::class, 'sendReminders'])->name('payments.sendReminders');
         Route::post('/payments/{payment}/not-received', [RentalPaymentsController::class, 'markNotReceived'])->name('payments.markNotReceived');
+        Route::post('/payments/{payment}/adjust', [RentalPaymentsController::class, 'adjust'])->name('payments.adjust');
+        Route::post('/payments/{payment}/statement', [RentalPaymentsController::class, 'statement'])->name('payments.statement');
         Route::post('/payments', [RentalPaymentsController::class, 'store'])->name('payments.store');
         Route::post('/payments/{payment}/paid', [RentalPaymentsController::class, 'markPaid'])->name('payments.markPaid');
         Route::delete('/payments/{payment}', [RentalPaymentsController::class, 'destroy'])->name('payments.destroy');

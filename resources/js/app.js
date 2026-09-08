@@ -1,4 +1,5 @@
-import 'bootstrap';
+import * as bootstrap from 'bootstrap';
+window.bootstrap = bootstrap;
 
 // zxcvbn (≈800 kB of dictionaries) is loaded on demand by initPasswordMeters()
 // only on pages that actually have a password meter.

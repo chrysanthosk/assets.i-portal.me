@@ -17,6 +17,7 @@ class AssetDocument extends Model
         'Mortgage',
         'Certificate',
         'Invoice',
+        'Statement',
         'Other',
     ];
 

@@ -10,6 +10,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 
 /**
  * Monthly rent loop:
@@ -61,8 +62,12 @@ class RentSchedule
                 ->unique()->values()->all();
         }
 
-        return User::role(config('portal.admin_role', 'Admin'))
-            ->pluck('email')->filter()->unique()->values()->all();
+        $role = (string) config('portal.admin_role', 'Admin');
+        if (! Role::query()->where('name', $role)->exists()) {
+            return [];
+        }
+
+        return User::role($role)->pluck('email')->filter()->unique()->values()->all();
     }
 
     /**
