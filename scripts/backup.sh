@@ -65,7 +65,7 @@ NEW_FILES=()
 DB_OUT="${BACKUP_DIR}/${DB_NAME}-${STAMP}.sql.gz"
 log "Dumping database '${DB_NAME}' -> ${DB_OUT}"
 docker compose exec -T -e MYSQL_PWD="${DB_ROOT_PASS}" db \
-  mysqldump --single-transaction --quick --no-tablespaces --routines --triggers \
+  mysqldump --single-transaction --quick --no-tablespaces --routines --triggers --set-gtid-purged=OFF \
   -uroot "${DB_NAME}" | gzip > "${DB_OUT}"
 gzip -t "${DB_OUT}"
 NEW_FILES+=("${DB_OUT}")
