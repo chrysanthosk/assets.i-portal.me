@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\Agreements\AgreementExtractor;
+use App\Support\Agreements\ClaudeAgreementExtractor;
 use App\Support\Audit;
 use App\Support\Deeds\ClaudeDeedExtractor;
 use App\Support\Deeds\DeedExtractor;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         // Title deed OCR/extraction backend (tests bind a fake)
         $this->app->bind(DeedExtractor::class, ClaudeDeedExtractor::class);
         $this->app->bind(StatementExtractor::class, ClaudeStatementExtractor::class);
+        $this->app->bind(AgreementExtractor::class, ClaudeAgreementExtractor::class);
     }
 
     /**

@@ -40,7 +40,7 @@ APP_URL="http://localhost:${WEB_PORT}"
 if yesno "Serve on a custom domain/URL (behind a reverse proxy)?" "n"; then
   prompt APP_URL "Public application URL (e.g. https://assets.example.com)" "$APP_URL"
 fi
-prompt APP_TIMEZONE "Timezone" "Europe/Nicosia"
+prompt APP_TIMEZONE "Timezone" "Europe/Athens"
 
 prompt DB_NAME_RAW "Database name" "assets"; DB_NAME="$(to_safe_token "$DB_NAME_RAW")"
 prompt DB_USER_RAW "Database user" "assets"; DB_USER="$(to_safe_token "$DB_USER_RAW")"

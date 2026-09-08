@@ -26,7 +26,10 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
   prefilled form and the property is created with the scan attached as its title-deed document
   (needs an Anthropic API key under Settings → Portal, or `ANTHROPIC_API_KEY`)
 - **Tenants** — first-class tenant records linked to rental agreements
-- **Rental income** — agreements per asset (currency, period, active status)
+- **Agreements** — per tenancy or management contract: monthly rent (in advance or in arrears) or a
+  set of dated instalments that repeats every contract year (e.g. an annual guarantee paid 15 % on
+  15 Apr, 15 % on 31 May …). **Import a contract PDF** and the parties, period and schedule are read
+  for you; the contract is filed with the property's documents
 - **Rental payments** — record/schedule payments, track **arrears & overdue**
 - **Rent check** — expected payments are generated monthly from active agreements; a reminder email
   asks "did the rent arrive?" with one-click Yes/No links and repeats until answered. For variable

@@ -88,12 +88,7 @@
                         @error('channel') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Monthly Amount</label>
-                        <input type="number" step="0.01" name="amount" class="form-control @error('amount') is-invalid @enderror"
-                               value="{{ old('amount', $rental->amount) }}" min="0" required>
-                        @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
+                    @include('assets._schedule_fields', ['rental' => $rental])
 
                     <div class="col-md-4">
                         <label class="form-label">Currency</label>
