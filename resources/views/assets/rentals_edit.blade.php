@@ -93,7 +93,7 @@
                     <div class="col-md-4">
                         <label class="form-label">Currency</label>
                         <select name="currency" class="form-select @error('currency') is-invalid @enderror" required>
-                            @foreach(['EUR','USD','GBP'] as $c)
+                            @foreach(\App\Support\Fx::currencies() as $c)
                             <option value="{{ $c }}" @selected(old('currency', $rental->currency) === $c)>{{ $c }}</option>
                             @endforeach
                         </select>
