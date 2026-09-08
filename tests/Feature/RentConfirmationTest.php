@@ -199,11 +199,13 @@ class RentConfirmationTest extends TestCase
 
         $this->actingAs($user)->from('/payments/unconfirmed')->post('/payments/generate')
             ->assertRedirect('/payments/unconfirmed')->assertSessionHas('success');
-        $this->assertSame(1, RentalPayment::count());
+        // This month plus every earlier month of the year the agreement covers
+        $this->assertSame((int) now()->format('n'), RentalPayment::count());
+        $this->assertTrue(RentalPayment::where('period', now()->format('Y-m'))->exists());
 
         RentalPayment::query()->update(['due_date' => now()->subDay()]);
         $this->actingAs($user)->post('/payments/send-reminders')->assertRedirect();
-        Mail::assertSent(RentConfirmationRequestMail::class, 1);
+        Mail::assertSent(RentConfirmationRequestMail::class, RentalPayment::count()); // one per unconfirmed payment
     }
 
     public function test_portal_settings_store_reminder_options(): void

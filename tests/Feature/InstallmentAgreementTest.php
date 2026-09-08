@@ -164,9 +164,13 @@ class InstallmentAgreementTest extends TestCase
 
         $post = $prefill;
         $post['agreement_end_date'] = ''; // auto-renews: user clears the end date
-        $this->actingAs($user)->post(route('assets.rentals.import.confirm', $import), $post)->assertRedirect()->assertSessionHasNoErrors();
+        Carbon::setTestNow('2026-09-08');
+        $this->actingAs($user)->post(route('assets.rentals.import.confirm', $import), $post)
+            ->assertRedirect(route('assets.show', [$asset->id, 'tab' => 'payments']))->assertSessionHasNoErrors();
+        Carbon::setTestNow();
 
         $rental = AssetRental::sole();
+        $this->assertSame(5, RentalPayment::count()); // instalments already due in 2026
         $this->assertSame('Z&X Holiday Villas', $rental->tenant_name);
         $this->assertNull($rental->agreement_end_date);
         $this->assertTrue($rental->isInstallments());
@@ -177,6 +181,31 @@ class InstallmentAgreementTest extends TestCase
         $this->assertSame('Contract', $doc->doc_type);
         Storage::disk('local')->assertExists($doc->path);
         $this->assertSame('completed', $import->fresh()->status);
+    }
+
+    public function test_new_agreement_backfills_payments_already_due_this_year(): void
+    {
+        Carbon::setTestNow('2026-09-08');
+        $asset = $this->asset();
+        $rental = AssetRental::create([
+            'asset_id' => $asset->id, 'tenant_name' => 'Z&X', 'agreement_start_date' => '2024-04-01', 'agreement_end_date' => null,
+            'rent_type' => 'Other', 'is_active' => true, 'currency' => 'EUR', 'payment_schedule' => 'installments', 'amount' => 18000,
+            'installments' => AgreementMapper::toRentalAttributes($this->terms)['installments'],
+        ]);
+
+        // Mar 31, Apr 15, May 31, Jun 30, Aug 30 have passed; Oct 31 and Dec 31 have not
+        $this->assertSame(5, RentSchedule::backfill($rental));
+        $this->assertSame(['2026-03-31', '2026-04-15', '2026-05-31', '2026-06-30', '2026-08-30'],
+            RentalPayment::orderBy('due_date')->pluck('due_date')->map->toDateString()->all());
+        $this->assertSame(5, RentalPayment::query()->awaitingConfirmation()->count());
+        $this->assertSame(0, RentSchedule::backfill($rental)); // idempotent
+
+        // Monthly, paid in arrears, started in July: July and August (due in Aug/Sep) plus September
+        $dubai = AssetRental::create(['asset_id' => $this->asset('Dubai')->id, 'tenant_name' => 'HiGuests', 'agreement_start_date' => '2026-07-01',
+            'rent_type' => 'Airbnb', 'is_active' => true, 'currency' => 'AED', 'amount' => 4000, 'paid_in_arrears' => true]);
+        $this->assertSame(3, RentSchedule::backfill($dubai));
+        $this->assertSame(['2026-07', '2026-08', '2026-09'], RentalPayment::where('asset_rental_id', $dubai->id)->orderBy('due_date')->pluck('period')->all());
+        Carbon::setTestNow();
     }
 
     public function test_agreement_schema_normalizes(): void

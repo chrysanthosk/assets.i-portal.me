@@ -93,41 +93,101 @@ class RentSchedule
 
         $created = 0;
         foreach ($rentals as $rental) {
-            // Instalment schedule: every instalment whose month is this month
-            if ($rental->isInstallments()) {
-                foreach ($rental->installmentList() as $i => $inst) {
-                    if ($inst['month'] !== (int) $asOf->format('n')) {
-                        continue;
-                    }
-                    $key = $period.'#'.($i + 1);
-                    if (RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $key)->exists()) {
-                        continue;
-                    }
-                    $due = $monthStart->copy()->day(min($inst['day'], $monthEnd->day));
-                    if (($rental->agreement_start_date && $due->lt($rental->agreement_start_date))
-                        || ($rental->agreement_end_date && $due->gt($rental->agreement_end_date))) {
-                        continue;
-                    }
-                    $created += self::createPayment($rental, $due, $key, $inst['amount'],
-                        $inst['label'] ?: sprintf('Instalment %d of %d', $i + 1, count($rental->installmentList())));
-                }
-
-                continue;
-            }
-
-            // Monthly rent: one row per month, due on the due day (next month when paid in arrears)
-            if ((float) $rental->amount <= 0) {
-                continue;
-            }
-            if (RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $period)->exists()) {
-                continue;
-            }
-            $dueMonth = $rental->paid_in_arrears ? $monthStart->copy()->addMonth() : $monthStart->copy();
-            $due = $dueMonth->day(min(self::dueDay(), $dueMonth->copy()->endOfMonth()->day));
-            $created += self::createPayment($rental, $due, $period, (float) $rental->amount, null);
+            $created += self::generateDueFor($rental, $asOf);
         }
 
         return $created;
+    }
+
+    /**
+     * When an agreement is created part-way through a year, create the payments
+     * that were already due since the start of the year (or the agreement start,
+     * whichever is later) so they show up on the rent check. Idempotent.
+     *
+     * @return int number of payments created
+     */
+    public static function backfill(AssetRental $rental, ?CarbonInterface $until = null): int
+    {
+        if (! $rental->is_active) {
+            return 0;
+        }
+        $until = Carbon::instance($until ?? now())->startOfDay();
+        $from = $until->copy()->startOfYear();
+        if ($rental->agreement_start_date && $rental->agreement_start_date->gt($from)) {
+            $from = $rental->agreement_start_date->copy()->startOfMonth();
+        }
+        if ($rental->agreement_end_date && $rental->agreement_end_date->lt($from)) {
+            return 0;
+        }
+
+        $created = 0;
+        $cursor = $from->copy()->startOfMonth();
+        // Walk month by month up to the current month and let the normal generator do the work
+        while ($cursor->lte($until)) {
+            $created += self::generateDueFor($rental, $cursor);
+            $cursor->addMonth();
+        }
+
+        return $created;
+    }
+
+    /** Backfill every active agreement (used by the Rent check "Generate" button). */
+    public static function backfillAll(?CarbonInterface $until = null): int
+    {
+        $n = 0;
+        foreach (AssetRental::query()->where('is_active', true)->get() as $rental) {
+            $n += self::backfill($rental, $until);
+        }
+
+        return $n;
+    }
+
+    /** generateDue() restricted to one agreement and one month. */
+    private static function generateDueFor(AssetRental $rental, CarbonInterface $asOf): int
+    {
+        $asOf = Carbon::instance($asOf)->startOfDay();
+        $period = $asOf->format('Y-m');
+        $monthStart = $asOf->copy()->startOfMonth();
+        $monthEnd = $asOf->copy()->endOfMonth();
+
+        if (($rental->agreement_start_date && $rental->agreement_start_date->gt($monthEnd))
+            || ($rental->agreement_end_date && $rental->agreement_end_date->lt($monthStart))) {
+            return 0;
+        }
+
+        $created = 0;
+        if ($rental->isInstallments()) {
+            $list = $rental->installmentList();
+            foreach ($list as $i => $inst) {
+                if ($inst['month'] !== (int) $asOf->format('n')) {
+                    continue;
+                }
+                $key = $period.'#'.($i + 1);
+                if (RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $key)->exists()) {
+                    continue;
+                }
+                $due = $monthStart->copy()->day(min($inst['day'], $monthEnd->day));
+                if (($rental->agreement_start_date && $due->lt($rental->agreement_start_date))
+                    || ($rental->agreement_end_date && $due->gt($rental->agreement_end_date))) {
+                    continue;
+                }
+                $created += self::createPayment($rental, $due, $key, $inst['amount'],
+                    $inst['label'] ?: sprintf('Instalment %d of %d', $i + 1, count($list)));
+            }
+
+            return $created;
+        }
+
+        if ((float) $rental->amount <= 0) {
+            return 0;
+        }
+        if (RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $period)->exists()) {
+            return 0;
+        }
+        $dueMonth = $rental->paid_in_arrears ? $monthStart->copy()->addMonth() : $monthStart->copy();
+        $due = $dueMonth->day(min(self::dueDay(), $dueMonth->copy()->endOfMonth()->day));
+
+        return self::createPayment($rental, $due, $period, (float) $rental->amount, null);
     }
 
     private static function createPayment(AssetRental $rental, CarbonInterface $due, string $period, float $amount, ?string $label): int
