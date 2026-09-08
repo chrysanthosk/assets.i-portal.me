@@ -118,7 +118,7 @@ class AssetsController extends Controller
                 $q->orderBy('id', 'desc');
             },
             'rentals' => function ($q) {
-                $q->orderBy('year', 'desc')->orderBy('month', 'desc')->limit(24);
+                $q->with('tenant')->orderByDesc('agreement_start_date')->orderByDesc('id')->limit(24);
             },
         ]);
 

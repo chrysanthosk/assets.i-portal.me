@@ -47,7 +47,7 @@ class RentConfirmationTest extends TestCase
         ]);
 
         return AssetRental::create(array_merge([
-            'asset_id' => $asset->id, 'year' => 2026, 'month' => 1, 'tenant_name' => 'Maria',
+            'asset_id' => $asset->id, 'tenant_name' => 'Maria',
             'agreement_start_date' => '2026-01-01', 'rent_type' => 'Long-term',
             'is_active' => true, 'amount' => 850, 'currency' => 'EUR',
         ], $overrides));

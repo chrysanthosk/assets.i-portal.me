@@ -13,10 +13,6 @@ class AssetRental extends Model
         'asset_id',
         'tenant_id',
 
-        // IMPORTANT (legacy NOT NULL columns)
-        'year',
-        'month',
-
         'tenant_name',
         'agreement_start_date',
         'agreement_end_date',
@@ -34,8 +30,6 @@ class AssetRental extends Model
         'agreement_end_date' => 'date',
         'is_active' => 'boolean',
         'amount' => 'decimal:2',
-        'year' => 'integer',
-        'month' => 'integer',
     ];
 
     public function asset(): BelongsTo

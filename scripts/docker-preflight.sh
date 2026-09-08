@@ -11,9 +11,8 @@ set -euo pipefail
 #                           (with random DB passwords on first creation)
 #   2) APP_KEY is set     — generated once and persisted in .env so it survives
 #                           image rebuilds (2FA secrets are encrypted with it)
-#   3) Ports are free     — WEB_PORT / DB_EXPOSED_PORT are moved to the next
-#                           free host port when another process or stack
-#                           already listens on them
+#   3) Port is free       — WEB_PORT is moved to the next free host port when
+#                           another process or stack already listens on it
 #
 # Usage:  scripts/docker-preflight.sh            (from anywhere)
 #         sourced by install.sh / new_deploy.sh  (calls docker_preflight)
@@ -180,8 +179,10 @@ docker_preflight(){
   preflight_env_file
   preflight_app_key
   preflight_port WEB_PORT 8080
-  preflight_port DB_EXPOSED_PORT 3306
-  log "Preflight OK: WEB_PORT=$(env_get WEB_PORT) DB_EXPOSED_PORT='$(env_get DB_EXPOSED_PORT)' APP_URL=$(env_get APP_URL)"
+  if [[ -n "$(env_get DB_EXPOSED_PORT)" ]]; then
+    warn "DB_EXPOSED_PORT is set but no longer used: MySQL is not published on the host. To reach it with a local tool, add a ports entry for db in docker-compose.override.yml."
+  fi
+  log "Preflight OK: WEB_PORT=$(env_get WEB_PORT) APP_URL=$(env_get APP_URL)"
 }
 
 # Run directly (not sourced)

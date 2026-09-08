@@ -7,7 +7,6 @@ use App\Models\AssetRental;
 use App\Models\Tenant;
 use App\Support\Audit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class AssetRentalsController extends Controller
 {
@@ -21,8 +20,8 @@ class AssetRentalsController extends Controller
         $rentals = AssetRental::query()
             ->with(['asset', 'tenant'])
             ->when($assetId, fn ($q) => $q->where('asset_id', $assetId))
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
+            ->orderByDesc('agreement_start_date')
+            ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
 
@@ -53,17 +52,9 @@ class AssetRentalsController extends Controller
 
         $tenantName = $this->resolveTenantName($data);
 
-        $start = Carbon::parse($data['agreement_start_date']);
-        $year = (int) $start->format('Y');
-        $month = (int) $start->format('m');
-
         $rental = AssetRental::create([
             'asset_id' => $data['asset_id'],
             'tenant_id' => $data['tenant_id'] ?? null,
-
-            // legacy required columns
-            'year' => $year,
-            'month' => $month,
 
             'tenant_name' => $tenantName,
             'agreement_start_date' => $data['agreement_start_date'],
@@ -116,17 +107,11 @@ class AssetRentalsController extends Controller
 
         $tenantName = $this->resolveTenantName($data);
 
-        $start = Carbon::parse($data['agreement_start_date']);
-        $year = (int) $start->format('Y');
-        $month = (int) $start->format('m');
-
         $rental->update([
             'asset_id' => $data['asset_id'],
             'tenant_id' => $data['tenant_id'] ?? null,
 
             // keep legacy required columns consistent
-            'year' => $year,
-            'month' => $month,
 
             'tenant_name' => $tenantName,
             'agreement_start_date' => $data['agreement_start_date'],

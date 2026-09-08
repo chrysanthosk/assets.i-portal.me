@@ -32,7 +32,8 @@
         <x-stat icon="bi-cash-stack" label="Portfolio value" :value="$money($totalAssetsValue)" sub="Sum of purchase prices" tone="info" />
     </div>
     <div class="col-6 col-xl-3">
-        <x-stat icon="bi-graph-up-arrow" label="Monthly rent" :value="$money($monthlyIncomeActiveOnly ?? 0)"
+        <x-stat icon="bi-graph-up-arrow" label="Monthly rent"
+                :value="$monthlyIncomeByCurrency->count() > 1 ? $byCur($monthlyIncomeByCurrency) : $money($monthlyIncome)"
                 :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's')" tone="success" />
     </div>
     <div class="col-6 col-xl-3">

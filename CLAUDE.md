@@ -86,7 +86,7 @@ scripts/
   install.sh       # interactive installer — asks: 1) Regular (bare-metal)  2) Docker
   new_deploy.sh    # interactive deploy/update — asks: 1) Regular  2) Docker
   docker-preflight.sh  # Docker .env guard: creates .env, persists APP_KEY, resolves port clashes
-  backup-db.sh     # gzip mysqldump of the Dockerised DB with retention
+  backup.sh        # DB dump + storage archive with retention; --install-cron writes /etc/cron.d
   uninstall.sh
 docker/
   entrypoint.sh                 # app container bootstrap (key, wait-for-db, migrate, seed, optimize)
@@ -145,10 +145,11 @@ php artisan serve
 - Both Docker paths run `scripts/docker-preflight.sh` first. It creates `.env`
   from `.env.docker.example` (random DB passwords), generates `APP_KEY` once and
   keeps it in the host `.env` (passed through `docker-compose.yml` — never rotate
-  it, 2FA secrets are encrypted with it), and moves `WEB_PORT` /
-  `DB_EXPOSED_PORT` to the next free host port when another stack already
-  listens there (a localhost `APP_URL` follows the port; a custom one is left
-  alone with a warning).
+  it, 2FA secrets are encrypted with it), and moves `WEB_PORT` to the next free
+  host port when another stack already listens there (a localhost `APP_URL`
+  follows the port; a custom one is left alone with a warning). MySQL is not
+  published on the host; add a `db: ports:` entry to a local
+  `docker-compose.override.yml` only when a DB tool needs it.
 
 ---
 
