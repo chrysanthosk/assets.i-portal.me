@@ -93,14 +93,7 @@
       </table>
     </div>
 
-    <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <small class="text-muted">
-        @if($assets->total())
-          Showing {{ $assets->firstItem() }}–{{ $assets->lastItem() }} of {{ $assets->total() }}
-        @else
-          0 results
-        @endif
-      </small>
+    <div class="mt-3">
       {{ $assets->links() }}
     </div>
   </div>
