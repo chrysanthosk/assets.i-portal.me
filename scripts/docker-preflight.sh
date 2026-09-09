@@ -70,7 +70,7 @@ port_listening(){ # port -> 0 when something on the host listens on it
   elif command -v lsof >/dev/null 2>&1; then
     lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
   else
-    (exec 3<>"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1
+    (exec 3<>"/dev/tcp/127.0.0.1/${port}" && exec 3>&-) >/dev/null 2>&1
   fi
 }
 

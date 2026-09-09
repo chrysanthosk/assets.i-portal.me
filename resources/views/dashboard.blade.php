@@ -6,7 +6,6 @@
     $periodLabel = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->format('F Y');
     $money = fn ($n) => $base.' '.number_format((float) $n, 2);
     $byCur = fn ($rows) => collect($rows)->map(fn ($r) => $r->currency.' '.number_format((float) $r->total, 2))->implode(' · ');
-    $attentionCount = ($unconfirmedPaymentsCount ?? 0) + ($overduePaymentsCount ?? 0) + ($expiredDocsCount ?? 0) + ($expiringDocsCount ?? 0);
 @endphp
 
 <div class="page-head">
@@ -31,11 +30,11 @@
     </div>
     <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-cash-stack" label="Portfolio value" :value="$money($totalAssetsValue)"
-                :sub="'Purchase prices'.(count($unknownCurrencies) ? ' · <span class=\'text-warning-emphasis\'>no FX rate for '.e(implode(', ', $unknownCurrencies)).'</span>' : ' in '.$base)" tone="info" />
+                :sub-html="'Purchase prices'.(count($unknownCurrencies) ? ' · <span class=\'text-warning-emphasis\'>no FX rate for '.e(implode(', ', $unknownCurrencies)).'</span>' : ' in '.$base)" tone="info" />
     </div>
     <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-graph-up-arrow" label="Contracted rent / month" :value="$money($monthlyIncome)"
-                :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's').' · '.$money($year['contracted']).' / year'.($monthlyIncomeByCurrency->count() > 1 ? ' · '.e($byCur($monthlyIncomeByCurrency)) : '')" tone="success" />
+                :sub="number_format($activeAgreementsCount ?? 0).' active agreement'.(($activeAgreementsCount ?? 0) === 1 ? '' : 's').' · '.$money($year['contracted']).' / year'.($monthlyIncomeByCurrency->count() > 1 ? ' · '.$byCur($monthlyIncomeByCurrency) : '')" tone="success" />
     </div>
     <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-piggy-bank" :label="'Rent received in '.$y" :value="$money($year['income'])"
@@ -45,7 +44,7 @@
     <div class="col-12 col-sm-6 col-xl-4">
         <x-stat icon="bi-wallet2" label="Outstanding"
                 :value="$outstandingByCurrency->isNotEmpty() ? $money($outstandingTotal) : '—'"
-                :sub="($overduePaymentsCount ?? 0).' overdue · '.($unconfirmedPaymentsCount ?? 0).' to confirm'.($outstandingByCurrency->count() > 1 ? ' · '.e($byCur($outstandingByCurrency)) : '')"
+                :sub="($overduePaymentsCount ?? 0).' overdue · '.($unconfirmedPaymentsCount ?? 0).' to confirm'.($outstandingByCurrency->count() > 1 ? ' · '.$byCur($outstandingByCurrency) : '')"
                 :tone="($overduePaymentsCount ?? 0) ? 'danger' : (($unconfirmedPaymentsCount ?? 0) ? 'warning' : '')"
                 :href="auth()->user()->can('manage_rental_payments') ? route('payments.unconfirmed') : null" />
     </div>
@@ -129,7 +128,7 @@
                         <span class="badge {{ $expired ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $expired ? 'expired' : 'expires' }} {{ \Carbon\Carbon::parse($d->expires_at)->format('d M') }}</span>
                     </a>
                 @empty
-                    <div class="text-center text-muted small py-4">Nothing expiring in the next 30 days</div>
+                    <div class="text-center text-muted small py-4">Nothing expiring in the next {{ \App\Support\DocumentReminders::days() }} days</div>
                 @endforelse
             </div>
         </div>

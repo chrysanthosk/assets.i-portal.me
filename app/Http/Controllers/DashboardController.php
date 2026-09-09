@@ -8,6 +8,7 @@ use App\Models\AssetExpense;
 use App\Models\AssetRental;
 use App\Models\AuditLog;
 use App\Models\RentalPayment;
+use App\Support\DocumentReminders;
 use App\Support\Fx;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -108,7 +109,7 @@ class DashboardController extends Controller
         $expiringDocsCount = AssetDocument::query()
             ->whereNotNull('expires_at')
             ->whereDate('expires_at', '>=', now()->toDateString())
-            ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
+            ->whereDate('expires_at', '<=', now()->addDays(DocumentReminders::days())->toDateString())
             ->count();
 
         // This year: received rent, what was due, expenses (all in base currency)
@@ -132,7 +133,7 @@ class DashboardController extends Controller
             ->overdue()->orderBy('due_date')->limit(6)->get();
         $expiringDocs = AssetDocument::query()->with('asset')
             ->whereNotNull('expires_at')
-            ->whereDate('expires_at', '<=', now()->addDays(30)->toDateString())
+            ->whereDate('expires_at', '<=', now()->addDays(DocumentReminders::days())->toDateString())
             ->orderBy('expires_at')->limit(6)->get();
         $recentActivity = $user->can('manage_audit_logs')
             ? AuditLog::query()->with('user')->latest()->limit(8)->get()

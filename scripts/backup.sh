@@ -5,7 +5,7 @@ set -euo pipefail
 # backup.sh — full backup of the Dockerised stack
 #
 #   1) MySQL dump (compose service "db")        -> backups/<db>-<stamp>.sql.gz
-#   2) Uploaded files + logs (storage volume)    -> backups/storage-<stamp>.tar.gz
+#   2) Uploaded files (storage/app: deeds, contracts, statements) -> backups/storage-<stamp>.tar.gz
 #   3) Prune both older than RETENTION_DAYS
 #   4) Optional off-server copy of the new files (rsync/scp target)
 #
@@ -23,7 +23,7 @@ set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(pwd)"
 
-env_val() { { grep -E "^${1}=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed 's/^"//; s/"$//'; } || true; }
+env_val() { { grep -E "^${1}=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed "s/^[\"']//; s/[\"']\$//"; } || true; }
 
 BACKUP_DIR="${BACKUP_DIR:-$(env_val BACKUP_DIR)}"; BACKUP_DIR="${BACKUP_DIR:-backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-$(env_val RETENTION_DAYS)}"; RETENTION_DAYS="${RETENTION_DAYS:-14}"
@@ -36,7 +36,7 @@ log() { echo "[$(date '+%F %T')] $*"; }
 if [[ "${1:-}" == "--install-cron" ]]; then
   [[ "${EUID:-$(id -u)}" -eq 0 ]] || { echo "Run as root: sudo $0 --install-cron [HH:MM]" >&2; exit 1; }
   at="${2:-02:30}"; hh="${at%%:*}"; mm="${at##*:}"
-  [[ "$hh" =~ ^[0-9]{1,2}$ && "$mm" =~ ^[0-9]{2}$ ]] || { echo "Time must be HH:MM" >&2; exit 1; }
+  [[ "$hh" =~ ^[0-9]{1,2}$ && "$mm" =~ ^[0-9]{2}$ && "${hh#0}" -le 23 && "${mm#0}" -le 59 ]] || { echo "Time must be HH:MM (00:00–23:59)" >&2; exit 1; }
   cat > /etc/cron.d/assets-backup <<CRON
 # Nightly backup of assets.i-portal.me (DB + uploads). Log: ${REPO_ROOT}/${BACKUP_DIR}/backup.log
 SHELL=/bin/bash
@@ -51,7 +51,7 @@ fi
 
 # --- preflight ---------------------------------------------------------------
 command -v docker >/dev/null 2>&1 || { echo "docker not found" >&2; exit 1; }
-docker compose ps db >/dev/null 2>&1 || { echo "compose service 'db' is not running" >&2; exit 1; }
+[[ -n "$(docker compose ps -q db 2>/dev/null)" ]] || { echo "compose service 'db' is not running" >&2; exit 1; }
 
 DB_NAME="$(env_val DB_DATABASE)"; DB_NAME="${DB_NAME:-assets}"
 # Dump as root: the consistent-snapshot FLUSH needs RELOAD, which the app user lacks.
@@ -83,7 +83,7 @@ if [[ "${BACKUP_SKIP_STORAGE}" != "1" ]]; then
 fi
 
 # --- 3) prune ----------------------------------------------------------------
-find "${BACKUP_DIR}" \( -name '*.sql.gz' -o -name 'storage-*.tar.gz' \) -type f -mtime +"${RETENTION_DAYS}" -print -delete \
+find "${BACKUP_DIR}" \( -name "${DB_NAME}-*.sql.gz" -o -name 'storage-*.tar.gz' \) -type f -mtime +"${RETENTION_DAYS}" -print -delete \
   | sed 's/^/Pruned: /' || true
 
 # --- 4) off-server copy --------------------------------------------------------

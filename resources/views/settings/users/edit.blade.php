@@ -3,7 +3,7 @@
 @section('content')
 <div class="container-fluid">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0">Edit User</h1>
     <a href="{{ route('settings.users.index') }}" class="btn btn-outline-secondary">
       <i class="bi bi-arrow-left me-2"></i> Back

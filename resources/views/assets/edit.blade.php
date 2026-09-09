@@ -4,7 +4,7 @@
 <div class="row justify-content-center">
     <div class="col-12 col-xxl-10">
 
-        <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <div>
                 <h4 class="mb-0">Edit property</h4>
                 <div class="text-muted small">{{ $asset->name }}</div>
@@ -17,7 +17,7 @@
             @method('PUT')
             @include('assets._form')
 
-            <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 gap-2 mb-4">
                 <div class="text-muted small">Documents are managed on the property page.</div>
                 <div class="d-flex gap-2">
                     <a href="{{ route('assets.show', $asset) }}" class="btn btn-outline-secondary">Cancel</a>

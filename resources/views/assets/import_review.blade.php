@@ -181,20 +181,23 @@
                 </dl>
 
                 <h6 class="mt-3">Owners</h6>
+                <div class="table-responsive">
                 <table class="table table-sm small mb-2">
                     <tbody>
                     @forelse($owners as $o)
                         <tr>
                             <td>{{ $o['name'] ?? '—' }}<div class="text-muted">{{ $o['address'] ?? '' }}</div></td>
-                            <td class="text-end text-nowrap">{{ $o['share'] ?? '—' }}@if(isset($o['share_pct'])) ({{ $o['share_pct'] }}%)@endif</td>
+                            <td class="text-end">{{ $o['share'] ?? '—' }}@if(isset($o['share_pct'])) ({{ $o['share_pct'] }}%)@endif</td>
                         </tr>
                     @empty
                         <tr><td class="text-muted">None found</td></tr>
                     @endforelse
                     </tbody>
                 </table>
+                </div>
 
                 <h6 class="mt-3">General valuations</h6>
+                <div class="table-responsive">
                 <table class="table table-sm small mb-2">
                     <tbody>
                     @forelse($valuations as $val)
@@ -204,6 +207,7 @@
                     @endforelse
                     </tbody>
                 </table>
+                </div>
 
                 @if(! empty($deed['rights_and_encumbrances']))
                     <h6 class="mt-3">Rights / encumbrances</h6>

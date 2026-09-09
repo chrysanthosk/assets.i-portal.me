@@ -237,7 +237,9 @@ Route::middleware(['auth', '2fa'])->group(function () {
     Route::post('/profile/email/request', [ProfileController::class, 'requestEmailChange'])
         ->middleware('throttle:5,15')
         ->name('profile.requestEmailChange');
-    Route::post('/profile/email/confirm', [ProfileController::class, 'confirmEmailChange'])->name('profile.confirmEmailChange');
+    Route::post('/profile/email/confirm', [ProfileController::class, 'confirmEmailChange'])
+        ->middleware('throttle:5,15')
+        ->name('profile.confirmEmailChange');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
 
     // 2FA (setup/disable while logged in)

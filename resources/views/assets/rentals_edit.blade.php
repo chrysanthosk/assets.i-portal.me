@@ -7,7 +7,7 @@
         <div class="card">
             <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <div>
-                    <h5 class="mb-0">Edit Rental Agreement</h5>
+                    <h5 class="mb-0">Edit agreement</h5>
                     <small class="text-muted">Monthly amount applies to every month overlapped by this agreement.</small>
                 </div>
                 <a href="{{ route('assets.rentals.index') }}" class="btn btn-sm btn-outline-secondary">
@@ -21,7 +21,7 @@
                     @method('PUT')
 
                     <div class="col-md-6">
-                        <label class="form-label">Asset</label>
+                        <label class="form-label">Property</label>
                         <select name="asset_id" class="form-select @error('asset_id') is-invalid @enderror" required>
                             @foreach($assets as $a)
                             <option value="{{ $a->id }}" @selected((int)old('asset_id', $rental->asset_id) === (int)$a->id)>{{ $a->name }}</option>

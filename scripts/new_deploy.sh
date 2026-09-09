@@ -32,20 +32,26 @@ docker_preflight
 warn "Volumes db_data (MySQL) and app_storage (uploads) are preserved."
 
 if [[ "${1:-}" == "--pull" ]]; then
-  log "Pulling latest base images..."
-  docker compose pull
+  log "Pulling the latest MySQL image..."
+  docker compose pull db
 fi
 
 log "Rebuilding the app image and recreating containers..."
 docker compose up -d --build
 
 log "Waiting for the app to answer..."
-for _ in $(seq 1 30); do
-  if docker compose exec -T app php artisan about --only=environment >/dev/null 2>&1; then break; fi
+ready=0
+for _ in $(seq 1 45); do
+  if docker compose exec -T app php artisan about --only=environment >/dev/null 2>&1; then ready=1; break; fi
   sleep 2
 done
+if [[ "$ready" -ne 1 ]]; then
+  err "The app container did not become ready in 90s. Last log lines:"
+  docker compose logs --tail=40 app || true
+  exit 1
+fi
 
-docker image prune -f >/dev/null 2>&1 || true
+docker image prune -f --filter "label=com.docker.compose.project=assets" >/dev/null 2>&1 || true
 docker compose ps
 
 log "DEPLOY DONE."

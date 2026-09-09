@@ -40,7 +40,6 @@ APP_URL="http://localhost:${WEB_PORT}"
 if yesno "Serve on a custom domain/URL (behind a reverse proxy)?" "n"; then
   prompt APP_URL "Public application URL (e.g. https://assets.example.com)" "$APP_URL"
 fi
-prompt APP_TIMEZONE "Timezone" "Europe/Athens"
 
 prompt DB_NAME_RAW "Database name" "assets"; DB_NAME="$(to_safe_token "$DB_NAME_RAW")"
 prompt DB_USER_RAW "Database user" "assets"; DB_USER="$(to_safe_token "$DB_USER_RAW")"
@@ -52,7 +51,13 @@ if yesno "Create the first admin user on first boot?" "y"; then
   prompt ADMIN_NAME "Admin full name" "Admin"
   prompt ADMIN_USERNAME "Admin username (you log in with this)" "admin"
   prompt ADMIN_EMAIL "Admin email"
+  [[ "$ADMIN_EMAIL" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || die "Admin email does not look valid."
   prompt_secret ADMIN_PASS "Admin password (min 10 chars)"; ensure_min_len "$ADMIN_PASS" 10 "Admin password must be at least 10 characters."
+fi
+
+ANTHROPIC_KEY=""
+if yesno "Enter an Anthropic API key now for deed/contract/statement reading? (can be added later in Settings → Portal)" "n"; then
+  prompt_secret ANTHROPIC_KEY "Anthropic API key"
 fi
 
 if [[ -f "$ENVFILE" ]]; then
@@ -68,7 +73,7 @@ APP_NAME=${APP_NAME}
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=${APP_URL}
-APP_TIMEZONE=${APP_TIMEZONE}
+APP_TIMEZONE=
 APP_KEY=
 
 WEB_PORT=${WEB_PORT}
@@ -88,7 +93,7 @@ ADMIN_EMAIL=${ADMIN_EMAIL}
 ADMIN_PASSWORD=${ADMIN_PASS}
 
 # Title deed import (optional — can also be pasted in Settings → Portal)
-ANTHROPIC_API_KEY=
+ANTHROPIC_API_KEY=${ANTHROPIC_KEY}
 ANTHROPIC_MODEL=claude-opus-5
 ENV
 chmod 600 "$ENVFILE"

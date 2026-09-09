@@ -6,7 +6,7 @@
 
     <div class="card">
       <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-        <h5 class="mb-0">Permission Sets</h5>
+        <h5 class="mb-0">Permission sets</h5>
 
         <form method="POST" action="{{ route('settings.permissionSets.storeRole') }}" class="d-flex gap-2">
           @csrf
@@ -19,7 +19,7 @@
 
         @foreach ($roles as $role)
           <div class="border rounded p-3 mb-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
               <div>
                 <h6 class="mb-0">{{ $role->name }}</h6>
                 <small class="text-muted">Tick permissions to allow access</small>

@@ -1,8 +1,8 @@
 @extends('layouts.guest')
 
 @section('content')
-<div class="card card-outline card-primary">
-    <div class="card-header text-center"><b>assets.i-portal.me</b></div>
+<div class="card">
+    <div class="card-header text-center"><b>{{ \App\Models\PortalSetting::name() }}</b></div>
     <div class="card-body">
         <p class="text-muted small">
             Forgot your password? Enter your email and we'll send you a reset link.
@@ -22,7 +22,7 @@
                 @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <a class="small" href="{{ route('login') }}">Back to login</a>
                 <button type="submit" class="btn btn-primary">Email Reset Link</button>
             </div>

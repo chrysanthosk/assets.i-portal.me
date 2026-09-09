@@ -4,7 +4,7 @@
 <div class="row g-3">
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Base Currency</h5></div>
+            <div class="card-header"><h5 class="mb-0">Base currency</h5></div>
             <div class="card-body">
                 <p class="text-muted small">Reports and consolidated totals are expressed in this currency.</p>
                 <form method="POST" action="{{ route('settings.currencies.updateBase') }}" class="row g-2">
@@ -24,7 +24,7 @@
 
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">FX Rates</h5></div>
+            <div class="card-header"><h5 class="mb-0">FX rates</h5></div>
             <div class="card-body">
                 <p class="text-muted small">
                     1 unit of the currency equals this many <strong>{{ $baseCurrency }}</strong>.
@@ -52,7 +52,7 @@
 
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
                             <th scope="col">Currency</th>
                             <th scope="col" class="text-end">Rate → {{ $baseCurrency }}</th>

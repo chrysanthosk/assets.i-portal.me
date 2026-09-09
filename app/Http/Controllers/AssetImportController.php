@@ -81,6 +81,7 @@ class AssetImportController extends Controller
 
     public function review(DeedImport $import)
     {
+        abort_unless($import->kind === 'deed', 404);
         if ($import->status === DeedImport::STATUS_COMPLETED && $import->asset) {
             return redirect()->route('assets.show', $import->asset)->with('success', 'This deed was already imported.');
         }
@@ -100,6 +101,7 @@ class AssetImportController extends Controller
 
     public function confirm(Request $request, DeedImport $import)
     {
+        abort_unless($import->kind === 'deed', 404);
         if ($import->status !== DeedImport::STATUS_EXTRACTED) {
             return redirect()->route('assets.import.create')->with('error', 'This import cannot be confirmed.');
         }
@@ -137,6 +139,7 @@ class AssetImportController extends Controller
 
     public function destroy(DeedImport $import)
     {
+        abort_unless($import->kind === 'deed', 404);
         if ($import->status !== DeedImport::STATUS_COMPLETED && $import->path && Storage::disk($import->disk)->exists($import->path)) {
             Storage::disk($import->disk)->delete($import->path);
         }

@@ -16,7 +16,7 @@
             <div class="mb-3">
                 <input
                     type="text"
-                    name="code"
+                    name="code" aria-label="Authentication code"
                     class="form-control"
                     placeholder="123456 or RECOVERYCODE"
                     required

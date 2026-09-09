@@ -48,7 +48,7 @@ class AssetExpensesController extends Controller
             'spent_on' => ['required', 'date'],
             'category' => ['required', 'string', 'in:'.implode(',', AssetExpense::CATEGORIES)],
             'amount' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
+            'currency' => ['required', 'string', 'size:3', 'alpha'],
             'vendor' => ['nullable', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);

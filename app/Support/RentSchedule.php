@@ -79,7 +79,6 @@ class RentSchedule
     public static function generateDue(?CarbonInterface $asOf = null): int
     {
         $asOf = Carbon::instance($asOf ?? now())->startOfDay();
-        $period = $asOf->format('Y-m');
         $monthStart = $asOf->copy()->startOfMonth();
         $monthEnd = $asOf->copy()->endOfMonth();
 
@@ -129,6 +128,40 @@ class RentSchedule
         }
 
         return $created;
+    }
+
+    /**
+     * After an agreement is edited: pending generated payments that no longer
+     * match it are removed (schedule type changed) or re-priced (monthly amount
+     * changed). Rows that were confirmed, reported not received, adjusted from
+     * a statement, or already reminded about are left alone.
+     *
+     * @param  array<string, mixed>  $old  attributes before the edit
+     * @return array{removed:int, repriced:int}
+     */
+    public static function reconcile(AssetRental $rental, array $old): array
+    {
+        $untouched = fn () => RentalPayment::query()
+            ->where('asset_rental_id', $rental->id)
+            ->where('status', RentalPayment::STATUS_PENDING)
+            ->whereNotNull('period')
+            ->whereNull('statement')
+            ->where('reminder_count', 0);
+
+        $removed = 0;
+        $repriced = 0;
+
+        $scheduleChanged = ($old['payment_schedule'] ?? 'monthly') !== $rental->payment_schedule
+            || (bool) ($old['paid_in_arrears'] ?? false) !== (bool) $rental->paid_in_arrears
+            || (int) ($old['due_day'] ?? 0) !== (int) $rental->due_day
+            || ($rental->isInstallments() && ($old['installments'] ?? null) !== $rental->installments);
+        if ($scheduleChanged) {
+            $removed = $untouched()->delete();   // backfill() recreates them from the new schedule
+        } elseif (! $rental->isInstallments() && (float) ($old['amount'] ?? 0) !== (float) $rental->amount) {
+            $repriced = $untouched()->update(['amount' => $rental->amount, 'currency' => $rental->currency ?: 'EUR']);
+        }
+
+        return ['removed' => $removed, 'repriced' => $repriced];
     }
 
     /** Backfill every active agreement (used by the Rent check "Generate" button). */
@@ -196,16 +229,21 @@ class RentSchedule
 
     private static function createPayment(AssetRental $rental, CarbonInterface $due, string $period, float $amount, ?string $label): int
     {
-        $payment = RentalPayment::create([
-            'asset_rental_id' => $rental->id,
-            'asset_id' => $rental->asset_id,
-            'due_date' => $due->toDateString(),
-            'period' => $period,
-            'label' => $label,
-            'amount' => $amount,
-            'currency' => $rental->currency ?: 'EUR',
-            'status' => RentalPayment::STATUS_PENDING,
-        ]);
+        // Keyed on (agreement, period): safe if the scheduler and the UI button run at once
+        $payment = RentalPayment::firstOrCreate(
+            ['asset_rental_id' => $rental->id, 'period' => $period],
+            [
+                'asset_id' => $rental->asset_id,
+                'due_date' => $due->toDateString(),
+                'label' => $label,
+                'amount' => $amount,
+                'currency' => $rental->currency ?: 'EUR',
+                'status' => RentalPayment::STATUS_PENDING,
+            ]
+        );
+        if (! $payment->wasRecentlyCreated) {
+            return 0;
+        }
         Audit::log('rental_payment.generated', $payment, null, $payment->toArray());
 
         return 1;

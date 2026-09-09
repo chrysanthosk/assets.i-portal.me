@@ -34,6 +34,9 @@ services:
       APP_KEY: "${APP_KEY:-}"
       # Local timezone for due dates and reminder times (e.g. Europe/Athens)
       APP_TIMEZONE: "${APP_TIMEZONE:-UTC}"
+      # Optional security toggles (see README)
+      REQUIRE_2FA_FOR_ADMINS: "${REQUIRE_2FA_FOR_ADMINS:-false}"
+      PORTAL_ADMIN_ROLE: "${PORTAL_ADMIN_ROLE:-Admin}"
       # Optional: title deed import key/model (can also be set in Settings → Portal)
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       ANTHROPIC_MODEL: "${ANTHROPIC_MODEL:-claude-opus-5}"

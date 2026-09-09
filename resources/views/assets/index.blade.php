@@ -4,8 +4,8 @@
 <div class="card">
   <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h5 class="mb-0">Assets</h5>
-      <small class="text-muted">Manage your purchased assets</small>
+      <h5 class="mb-0">Properties</h5>
+      <small class="text-muted">Your properties</small>
     </div>
 
     <div class="d-flex flex-wrap gap-2 ms-auto align-items-center hdr-tools">
@@ -16,7 +16,7 @@
           value="{{ request('q') }}"
           class="form-control form-control-sm"
           placeholder="Search..."
-          aria-label="Search assets"
+          aria-label="Search properties"
         >
         <button class="btn btn-sm btn-outline-secondary" title="Search" aria-label="Search">
           <i class="bi bi-search"></i>
@@ -39,13 +39,13 @@
   <div class="card-body">
     <div class="table-responsive">
       <table class="table table-sm align-middle">
-        <thead>
+        <th scope="col"ead>
           <tr>
             <th scope="col">Name</th>
             <th scope="col">Type</th>
             <th scope="col">City</th>
-            <th scope="col" class="text-end">Purchase Price</th>
-            <th scope="col">Title Deed</th>
+            <th scope="col" class="text-end">Purchase price</th>
+            <th scope="col">Title deed</th>
             <th scope="col" class="text-end">Actions</th>
           </tr>
         </thead>
@@ -76,13 +76,13 @@
             <tr>
               <td colspan="6" class="text-center text-muted py-5">
                 @if(request('q'))
-                  No assets match “{{ request('q') }}”.
+                  No properties match “{{ request('q') }}”.
                   <a href="{{ route('assets.index') }}">Clear search</a>.
                 @else
-                  <div class="mb-2">No assets yet.</div>
+                  <div class="mb-2">No properties yet.</div>
                   @can('manage_assets')
                     <a href="{{ route('assets.create') }}" class="btn btn-sm btn-primary">
-                      <i class="bi bi-plus-lg"></i> Add your first asset
+                      <i class="bi bi-plus-lg"></i> Add your first property
                     </a>
                   @endcan
                 @endif

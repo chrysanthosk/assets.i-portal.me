@@ -78,8 +78,8 @@ class RentalPaymentsController extends Controller
     /** Create this month's expected payments now instead of waiting for the scheduler. */
     public function generate()
     {
-        // This month's payments plus anything due earlier this year that is missing
-        $created = RentSchedule::generateDue() + RentSchedule::backfillAll();
+        // Everything due so far this year that is missing (includes this month)
+        $created = RentSchedule::backfillAll();
 
         return back()->with('success', $created
             ? "{$created} payment(s) added for ".now()->format('Y').'.'
@@ -170,16 +170,23 @@ class RentalPaymentsController extends Controller
 
         $start = ! empty($figures['period_start']) ? Carbon::parse($figures['period_start']) : now()->subMonth()->startOfMonth();
         $period = $start->format('Y-m');
-        $payment = RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $period)->first()
-            ?? RentalPayment::create([
-                'asset_rental_id' => $rental->id,
-                'asset_id' => $asset->id,
-                'due_date' => $start->copy()->endOfMonth()->addDay()->toDateString(),
-                'period' => $period,
-                'amount' => $figures['net_payable'] ?? $rental->amount,
-                'currency' => $figures['currency'] ?? $rental->currency ?? 'EUR',
-                'status' => RentalPayment::STATUS_PENDING,
-            ]);
+        $payment = RentalPayment::query()->where('asset_rental_id', $rental->id)->where('period', $period)->first();
+        if (! $payment && $rental->isInstallments()) {
+            // Instalment keys are "YYYY-MM#n": take the pending instalment due in or just after the statement period
+            $payment = RentalPayment::query()->where('asset_rental_id', $rental->id)
+                ->where('status', RentalPayment::STATUS_PENDING)
+                ->whereBetween('due_date', [$start->copy()->startOfMonth()->toDateString(), $start->copy()->endOfMonth()->addMonth()->toDateString()])
+                ->orderBy('due_date')->first();
+        }
+        $payment ??= RentalPayment::create([
+            'asset_rental_id' => $rental->id,
+            'asset_id' => $asset->id,
+            'due_date' => $start->copy()->endOfMonth()->addDay()->toDateString(),
+            'period' => $period,
+            'amount' => $figures['net_payable'] ?? $rental->amount,
+            'currency' => $figures['currency'] ?? $rental->currency ?? 'EUR',
+            'status' => RentalPayment::STATUS_PENDING,
+        ]);
 
         return redirect()->route('assets.show', [$asset, 'tab' => 'payments'])
             ->with('statement', ['payment_id' => $payment->id, 'figures' => $figures]);

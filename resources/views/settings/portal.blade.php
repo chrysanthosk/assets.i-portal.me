@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="card">
-  <div class="card-header"><h5 class="mb-0">Portal Settings</h5></div>
+  <div class="card-header"><h5 class="mb-0">Portal settings</h5></div>
   <div class="card-body">
     <form method="POST" action="{{ route('settings.portal.update') }}" class="row g-3">
       @csrf
@@ -76,7 +76,7 @@
 
       <div class="col-12 form-text">
         Expected payments are created automatically each month from active rental agreements. Emails use the SMTP
-        server under Settings → SMTP; make sure it is enabled and tested.
+        server under Settings → Email (SMTP); make sure it is enabled and tested.
       </div>
 
       <div class="col-12"><h6 class="mt-3 mb-0">Title deed import (AI)</h6><hr class="mt-1"></div>

@@ -2,11 +2,11 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "chrysanthosk/assets.i-portal.me",
     "type": "project",
-    "description": "assets.i-portal.me — Laravel 12 assets & rentals management portal.",
+    "description": "assets.i-portal.me — Laravel 13 property portfolio manager (assets, tenants, agreements, rent check, expenses, reports).",
     "keywords": ["laravel", "assets", "rentals", "portal"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "anthropic-ai/sdk": "^0.47.0",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",

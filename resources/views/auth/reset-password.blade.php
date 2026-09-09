@@ -1,8 +1,8 @@
 @extends('layouts.guest')
 
 @section('content')
-<div class="card card-outline card-primary">
-    <div class="card-header text-center"><b>assets.i-portal.me</b></div>
+<div class="card">
+    <div class="card-header text-center"><b>{{ \App\Models\PortalSetting::name() }}</b></div>
     <div class="card-body">
         <form method="POST" action="{{ route('password.store') }}">
             @csrf

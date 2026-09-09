@@ -3,6 +3,7 @@
     Posts: payment_schedule, paid_in_arrears, amount, installments[n][month|day|amount|label]
 --}}
 @php
+    $defaultDueDay = \App\Support\RentSchedule::dueDay();
     $schedule = old('payment_schedule', $rental?->payment_schedule ?? 'monthly');
     $arrears = (int) old('paid_in_arrears', $rental?->paid_in_arrears ? 1 : 0) === 1;
     $rows = old('installments', $rental?->installmentList() ?? []);
@@ -28,8 +29,8 @@
 <div class="col-md-2" data-schedule-monthly="{{ $uid }}">
     <label class="form-label" for="{{ $uid }}_due_day">Due on day</label>
     <input id="{{ $uid }}_due_day" type="number" min="1" max="28" name="due_day" class="form-control @error('due_day') is-invalid @enderror"
-           value="{{ old('due_day', $rental?->due_day) }}" placeholder="{{ \App\Support\RentSchedule::dueDay() }}">
-    <div class="form-text">Blank = portal default ({{ \App\Support\RentSchedule::dueDay() }}).</div>
+           value="{{ old('due_day', $rental?->due_day) }}" placeholder="{{ $defaultDueDay }}">
+    <div class="form-text">Blank = portal default ({{ $defaultDueDay }}).</div>
 </div>
 
 <div class="col-md-6 d-flex align-items-end" data-schedule-monthly="{{ $uid }}">
@@ -49,8 +50,9 @@
             </div>
             <button type="button" class="btn btn-sm btn-outline-primary" data-add-installment="{{ $uid }}"><i class="bi bi-plus-lg"></i> Add row</button>
         </div>
+        <div class="table-responsive">
         <table class="table table-sm align-middle mb-1" id="{{ $uid }}_table">
-            <thead><tr><th style="width:110px">Day</th><th style="width:140px">Month</th><th style="width:170px">Amount</th><th>Label</th><th style="width:40px"></th></tr></thead>
+            <th scope="col"ead><tr><th scope="col" style="width:14%">Day</th><th scope="col" style="width:18%">Month</th><th scope="col" style="width:22%">Amount</th><th scope="col">Label</th><th scope="col" style="width:44px"></th></tr></thead>
             <tbody>
             @foreach($rows as $i => $r)
                 <tr>
@@ -65,6 +67,7 @@
             @endforeach
             </tbody>
         </table>
+        </div>
         <div class="small text-muted">Total per year: <strong data-installment-total="{{ $uid }}">0.00</strong></div>
         @error('installments') <div class="text-danger small">{{ $message }}</div> @enderror
     </div>
@@ -86,7 +89,7 @@
         document.querySelectorAll('[data-schedule-installments="' + uid + '"]').forEach((el) => { el.hidden = !inst; });
         // the monthly amount is not required when instalments drive the schedule
         if (amountInput) amountInput.required = !inst;
-        table.querySelectorAll('input, select').forEach((el) => { el.required = inst; });
+        table.querySelectorAll('input[name$="[day]"], input[name$="[amount]"], select').forEach((el) => { el.required = inst; });
         recalc();
     }
     function recalc() {

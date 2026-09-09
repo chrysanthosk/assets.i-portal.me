@@ -28,6 +28,8 @@ class DocumentReminders
         return AssetDocument::query()->with('asset')
             ->whereNotNull('expires_at')
             ->whereDate('expires_at', '<=', now()->addDays(self::days())->toDateString())
+            // Long-expired documents drop out after 90 days instead of being re-listed forever
+            ->whereDate('expires_at', '>=', now()->subDays(90)->toDateString())
             ->orderBy('expires_at')
             ->get();
     }

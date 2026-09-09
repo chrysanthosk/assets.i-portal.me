@@ -144,6 +144,7 @@ class RentalPayment extends Model
     {
         $this->forceFill([
             'status' => self::STATUS_NOT_RECEIVED,
+            'paid_date' => null,
             'not_received_at' => now(),
             'confirmed_at' => now(),
         ])->save();

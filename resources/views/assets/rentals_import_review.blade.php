@@ -112,6 +112,7 @@
                 </dl>
                 @if(! empty($terms['installments']))
                     <h6 class="mt-2">First-year payments</h6>
+                    <div class="table-responsive">
                     <table class="table table-sm mb-2"><tbody>
                         @foreach($terms['installments'] as $i)
                             <tr><td>{{ $i['date'] ?? '—' }}</td><td>{{ $i['label'] ?? '' }}@if(! empty($i['percent'])) <span class="text-muted">{{ $i['percent'] }} %</span>@endif</td><td class="text-end">{{ $i['amount'] !== null ? number_format($i['amount'], 2) : '—' }}</td></tr>

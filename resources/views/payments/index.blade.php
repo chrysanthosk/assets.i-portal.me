@@ -40,12 +40,13 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <h5 class="mb-0">Rental Payments</h5>
+                <h5 class="mb-0">Payments</h5>
+                <div class="d-flex flex-wrap gap-2 ms-auto hdr-tools">
                 <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#oneOffPayment" aria-expanded="false" aria-controls="oneOffPayment">
                     <i class="bi bi-plus-lg me-1"></i> One-off payment
                 </button>
                 <form method="GET" action="{{ route('payments.index') }}" class="d-flex gap-2 align-items-center">
-                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter by status">
                         <option value="">All statuses</option>
                         <option value="pending" @selected($status === 'pending')>Pending</option>
                         <option value="overdue" @selected($status === 'overdue')>Overdue</option>
@@ -53,6 +54,7 @@
                         <option value="paid" @selected($status === 'paid')>Paid</option>
                     </select>
                 </form>
+                </div>
             </div>
 
             <div class="card-body">
@@ -69,7 +71,7 @@
                             <option value="">— Select agreement —</option>
                             @foreach($rentals as $r)
                                 <option value="{{ $r->id }}" @selected((string) old('asset_rental_id') === (string) $r->id)>
-                                    {{ $r->asset?->name ?? 'Asset #'.$r->asset_id }}
+                                    {{ $r->asset?->name ?? 'Property #'.$r->asset_id }}
                                     — {{ $r->tenant?->name ?? $r->tenant_name ?? 'No tenant' }}
                                     ({{ $r->currency }} {{ number_format((float) $r->amount, 0) }})
                                 </option>
@@ -115,9 +117,9 @@
                 {{-- List --}}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
-                            <th scope="col">Asset</th>
+                            <th scope="col">Property</th>
                             <th scope="col">Tenant</th>
                             <th scope="col">Due</th>
                             <th scope="col" class="text-end">Amount</th>

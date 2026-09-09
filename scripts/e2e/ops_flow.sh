@@ -9,7 +9,7 @@ H=$(curl -s -w "\n%{http_code}" "$BASE_URL/health")
 
 echo "== DB backup script =="
 BACKUP_DIR="$(mktemp -d)"
-if BACKUP_DIR="$BACKUP_DIR" RETENTION_DAYS=14 bash scripts/backup-db.sh >/tmp/e2e-bk.log 2>&1; then
+if BACKUP_DIR="$BACKUP_DIR" RETENTION_DAYS=14 bash scripts/backup.sh >/tmp/e2e-bk.log 2>&1; then
   f=$(ls "$BACKUP_DIR"/*.sql.gz 2>/dev/null | head -1)
   if [ -n "$f" ] && gzip -t "$f" 2>/dev/null; then
     ok "backup produced valid gzip ($(gzip -dc "$f" | grep -c 'CREATE TABLE') tables)"
