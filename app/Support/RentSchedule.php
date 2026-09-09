@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Mail\RentConfirmationRequestMail;
+use App\Mail\RentCheckDigestMail;
 use App\Models\AssetRental;
 use App\Models\PortalSetting;
 use App\Models\RentalPayment;
@@ -212,10 +212,10 @@ class RentSchedule
     }
 
     /**
-     * Email a confirmation request for every payment that is due and still
-     * unconfirmed, unless one went out less than repeatDays() ago.
+     * Email one digest listing every payment that is due and still unconfirmed,
+     * unless every such payment was already listed less than repeatDays() ago.
      *
-     * @return int number of reminder emails sent
+     * @return int number of payments included (0 when nothing was sent)
      */
     public static function sendReminders(?CarbonInterface $now = null, bool $force = false): int
     {
@@ -231,26 +231,28 @@ class RentSchedule
         $now = Carbon::instance($now ?? now());
         $cutoff = $now->copy()->subDays(self::repeatDays());
 
-        $payments = RentalPayment::query()
+        $due = RentalPayment::query()
             ->with(['asset', 'rental.tenant'])
             ->where('status', RentalPayment::STATUS_PENDING)
             ->whereDate('due_date', '<=', $now->toDateString())
-            ->when(! $force, fn ($q) => $q->where(fn ($w) => $w->whereNull('last_reminded_at')
-                ->orWhere('last_reminded_at', '<=', $cutoff)))
             ->orderBy('due_date')
             ->get();
 
-        $sent = 0;
-        foreach ($payments as $payment) {
-            Mail::to($recipients)->send(new RentConfirmationRequestMail($payment));
+        // Send when something is new or the repeat interval has passed for at least one item
+        $fresh = $force ? $due : $due->filter(fn ($p) => $p->last_reminded_at === null || $p->last_reminded_at->lte($cutoff));
+        if ($due->isEmpty() || $fresh->isEmpty()) {
+            return 0;
+        }
 
+        Mail::to($recipients)->send(new RentCheckDigestMail($due));
+
+        foreach ($due as $payment) {
             $payment->forceFill([
                 'reminder_count' => $payment->reminder_count + 1,
                 'last_reminded_at' => $now,
             ])->save();
-            $sent++;
         }
 
-        return $sent;
+        return $due->count();
     }
 }

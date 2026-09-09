@@ -95,7 +95,7 @@ class RentalPaymentsController extends Controller
 
         $sent = RentSchedule::sendReminders(null, true);
 
-        return back()->with('success', $sent ? "{$sent} reminder(s) sent." : 'Nothing awaiting confirmation.');
+        return back()->with('success', $sent ? "Digest sent listing {$sent} payment(s)." : 'Nothing awaiting confirmation.');
     }
 
     /**

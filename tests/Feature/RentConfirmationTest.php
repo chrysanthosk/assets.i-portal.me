@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mail\RentConfirmationRequestMail;
+use App\Mail\RentCheckDigestMail;
 use App\Models\Asset;
 use App\Models\AssetRental;
 use App\Models\AssetType;
@@ -75,37 +75,42 @@ class RentConfirmationTest extends TestCase
         $this->assertSame(1, RentSchedule::generateDue(Carbon::parse('2026-10-01')));
     }
 
-    public function test_reminders_go_out_for_due_unconfirmed_payments_and_respect_the_repeat_interval(): void
+    public function test_one_digest_lists_all_due_unconfirmed_payments_and_respects_the_repeat_interval(): void
     {
         Mail::fake();
         PortalSetting::set(RentSchedule::SETTING_REPEAT_DAYS, '3');
         $rental = $this->makeRental();
 
-        $due = RentalPayment::create(['asset_rental_id' => $rental->id, 'asset_id' => $rental->asset_id,
+        $due1 = RentalPayment::create(['asset_rental_id' => $rental->id, 'asset_id' => $rental->asset_id,
             'due_date' => now()->subDay(), 'period' => now()->format('Y-m'), 'amount' => 850, 'currency' => 'EUR']);
+        $due2 = RentalPayment::create(['asset_rental_id' => $rental->id, 'asset_id' => $rental->asset_id,
+            'due_date' => now()->subDays(20), 'period' => now()->subMonth()->format('Y-m'), 'amount' => 850, 'currency' => 'EUR']);
         RentalPayment::create(['asset_rental_id' => $rental->id, 'asset_id' => $rental->asset_id,
             'due_date' => now()->addDays(10), 'amount' => 850, 'currency' => 'EUR']);            // not due yet
         RentalPayment::create(['asset_rental_id' => $rental->id, 'asset_id' => $rental->asset_id,
             'due_date' => now()->subDays(40), 'amount' => 850, 'currency' => 'EUR', 'status' => 'paid']); // done
 
-        $this->assertSame(1, RentSchedule::sendReminders());
-        Mail::assertSent(RentConfirmationRequestMail::class, fn ($m) => $m->hasTo('owner@example.com') && $m->payment->is($due));
+        // One email listing both due payments
+        $this->assertSame(2, RentSchedule::sendReminders());
+        Mail::assertSent(RentCheckDigestMail::class, 1);
+        Mail::assertSent(RentCheckDigestMail::class, fn ($m) => $m->hasTo('owner@example.com')
+            && $m->payments->pluck('id')->sort()->values()->all() === [$due1->id, $due2->id]
+            && str_contains($m->render(), '2 payments waiting'));
+        $this->assertSame(1, $due1->fresh()->reminder_count);
+        $this->assertSame(1, $due2->fresh()->reminder_count);
 
-        $due->refresh();
-        $this->assertSame(1, $due->reminder_count);
-        $this->assertNotNull($due->last_reminded_at);
-
-        // Same day again: nothing (interval not elapsed)
+        // Same day again: nothing (interval not elapsed for anything)
         $this->assertSame(0, RentSchedule::sendReminders());
 
-        // Four days later: repeat
-        $this->assertSame(1, RentSchedule::sendReminders(now()->addDays(4)));
-        $this->assertSame(2, $due->fresh()->reminder_count);
+        // Four days later: one digest again, both still listed
+        $this->assertSame(2, RentSchedule::sendReminders(now()->addDays(4)));
+        Mail::assertSent(RentCheckDigestMail::class, 2);
+        $this->assertSame(2, $due1->fresh()->reminder_count);
 
         // Disabled: nothing, unless forced
         PortalSetting::set(RentSchedule::SETTING_ENABLED, '0');
         $this->assertSame(0, RentSchedule::sendReminders(now()->addDays(8)));
-        $this->assertSame(1, RentSchedule::sendReminders(now()->addDays(8), true));
+        $this->assertSame(2, RentSchedule::sendReminders(now()->addDays(8), true));
     }
 
     public function test_reminder_email_contains_signed_links_and_they_confirm_without_login(): void
@@ -114,25 +119,27 @@ class RentConfirmationTest extends TestCase
         $payment = RentalPayment::create(['asset_rental_id' => $rental->id, 'asset_id' => $rental->asset_id,
             'due_date' => now()->subDay(), 'period' => now()->format('Y-m'), 'amount' => 850, 'currency' => 'EUR']);
 
-        $mail = new RentConfirmationRequestMail($payment);
+        $mail = new RentCheckDigestMail(collect([$payment]));
         $html = $mail->render();
-        $this->assertStringContainsString(e($mail->receivedUrl), $html);
-        $this->assertStringContainsString(e($mail->notReceivedUrl), $html);
-        $this->assertStringContainsString('Yes, received', $html);
+        $receivedUrl = $mail->links[$payment->id]['received'];
+        $notReceivedUrl = $mail->links[$payment->id]['not_received'];
+        $this->assertStringContainsString(e($receivedUrl), $html);
+        $this->assertStringContainsString(e($notReceivedUrl), $html);
+        $this->assertStringContainsString('1 payment waiting', $html);
 
         // GET shows the page but does not change anything (mail scanners prefetch links)
-        $this->get($mail->receivedUrl)->assertOk()->assertSee('Yes, I received');
+        $this->get($receivedUrl)->assertOk()->assertSee('Yes, I received');
         $this->assertSame('pending', $payment->fresh()->status);
 
         // POST records it
-        $this->post($mail->receivedUrl)->assertOk()->assertSee('received');
+        $this->post($receivedUrl)->assertOk()->assertSee('received');
         $payment->refresh();
         $this->assertSame('paid', $payment->status);
         $this->assertSame(now()->toDateString(), $payment->paid_date->toDateString());
         $this->assertNotNull($payment->confirmed_at);
 
         // Answering again is a no-op
-        $this->post($mail->notReceivedUrl)->assertOk()->assertSee('already answered');
+        $this->post($notReceivedUrl)->assertOk()->assertSee('already answered');
         $this->assertSame('paid', $payment->fresh()->status);
     }
 
@@ -205,7 +212,7 @@ class RentConfirmationTest extends TestCase
 
         RentalPayment::query()->update(['due_date' => now()->subDay()]);
         $this->actingAs($user)->post('/payments/send-reminders')->assertRedirect();
-        Mail::assertSent(RentConfirmationRequestMail::class, RentalPayment::count()); // one per unconfirmed payment
+        Mail::assertSent(RentCheckDigestMail::class, 1); // one digest for all unconfirmed payments
     }
 
     public function test_portal_settings_store_reminder_options(): void

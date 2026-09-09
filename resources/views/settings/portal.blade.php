@@ -33,7 +33,7 @@
           <input class="form-check-input" type="checkbox" role="switch" id="rent_reminders_enabled"
                  name="rent_reminders_enabled" value="1" @checked(old('rent_reminders_enabled', $rentRemindersEnabled ? '1' : '0') === '1')>
           <label class="form-check-label" for="rent_reminders_enabled">
-            Email me on each rent due date asking whether the money arrived (repeating until I answer),
+            Email me one daily list of rent waiting for my answer (only when something is new or due a repeat),
             plus a weekly digest of expired or expiring documents
           </label>
         </div>
