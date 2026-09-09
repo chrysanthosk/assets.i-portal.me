@@ -11,20 +11,20 @@
                     <small class="text-muted">Maintenance, tax, insurance and other property costs</small>
                 </div>
                 <form method="GET" action="{{ route('expenses.index') }}" class="d-flex gap-2 align-items-center ms-auto">
-                    <select name="asset_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All assets</option>
+                    <select name="asset_id" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter by property">
+                        <option value="">All properties</option>
                         @foreach($assets as $a)
                             <option value="{{ $a->id }}" @selected((int) $assetId === $a->id)>{{ $a->name }}</option>
                         @endforeach
                     </select>
-                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter by category">
                         <option value="">All categories</option>
                         @foreach($categories as $c)
                             <option value="{{ $c }}" @selected($category === $c)>{{ $c }}</option>
                         @endforeach
                     </select>
                     <input type="number" name="year" value="{{ $year }}" placeholder="Year"
-                           class="form-control form-control-sm" style="width: 90px;" onchange="this.form.submit()">
+                           class="form-control form-control-sm" style="width: 6.5rem;" aria-label="Year" onchange="this.form.submit()">
                 </form>
             </div>
 
@@ -46,9 +46,9 @@
                     <div class="col-12"><h6 class="mb-0">Record an expense</h6><hr class="mt-1"></div>
 
                     <div class="col-md-4">
-                        <label class="form-label">Asset *</label>
+                        <label class="form-label">Property *</label>
                         <select name="asset_id" class="form-select @error('asset_id') is-invalid @enderror" required>
-                            <option value="">— Select asset —</option>
+                            <option value="">— Select property —</option>
                             @foreach($assets as $a)
                                 <option value="{{ $a->id }}" @selected((string) old('asset_id') === (string) $a->id)>{{ $a->name }}</option>
                             @endforeach
@@ -112,10 +112,10 @@
                 {{-- List --}}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
                             <th scope="col">Date</th>
-                            <th scope="col">Asset</th>
+                            <th scope="col">Property</th>
                             <th scope="col">Category</th>
                             <th scope="col">Vendor</th>
                             <th scope="col" class="text-end">Amount</th>

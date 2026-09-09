@@ -65,19 +65,25 @@ class AgreementMapper
     /** @param array<string, mixed> $c */
     public static function guessAssetId(array $c): ?int
     {
-        $needles = array_filter([$c['property_reference'] ?? null, $c['property_address'] ?? null]);
-        foreach ($needles as $n) {
-            foreach (preg_split('/[\s,\/-]+/', (string) $n) as $word) {
-                if (mb_strlen($word) < 3 || is_numeric($word)) {
+        $assets = Asset::query()->get(['id', 'name', 'address']);
+        if ($assets->isEmpty()) {
+            return null;
+        }
+        $hay = fn ($a) => mb_strtolower($a->name.' '.$a->address);
+
+        foreach (array_filter([$c['property_reference'] ?? null, $c['property_address'] ?? null]) as $n) {
+            foreach (preg_split('/[\s,\/()-]+/', (string) $n) as $word) {
+                $w = mb_strtolower(trim($word));
+                if (mb_strlen($w) < 3 || is_numeric($w)) {
                     continue;
                 }
-                $hit = Asset::query()->where('name', 'like', '%'.$word.'%')->orWhere('address', 'like', '%'.$word.'%')->first();
+                $hit = $assets->first(fn ($a) => str_contains($hay($a), $w));
                 if ($hit) {
                     return $hit->id;
                 }
             }
             if (preg_match('/\b(\d{1,4})\b/', (string) $n, $m)) {
-                $hit = Asset::query()->where('name', 'like', '%'.$m[1].'%')->first();
+                $hit = $assets->first(fn ($a) => str_contains($a->name, $m[1]));
                 if ($hit) {
                     return $hit->id;
                 }

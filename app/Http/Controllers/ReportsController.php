@@ -90,10 +90,15 @@ class ReportsController extends Controller
             ->groupBy('asset_id', 'currency')
             ->get();
 
-        foreach ($income as $r) {
-            if (isset($rows[$r->asset_id])) {
-                $rows[$r->asset_id]['income'] += Fx::toBase((float) $r->total, $r->currency);
+        $bucket = function (int $assetId) use (&$rows) {
+            if (! isset($rows[$assetId])) {
+                $rows[$assetId] = ['asset' => 'Deleted property #'.$assetId, 'income' => 0.0, 'expenses' => 0.0, 'net' => 0.0];
             }
+
+            return $assetId;
+        };
+        foreach ($income as $r) {
+            $rows[$bucket((int) $r->asset_id)]['income'] += Fx::toBase((float) $r->total, $r->currency);
         }
 
         $expenses = AssetExpense::query()
@@ -103,9 +108,7 @@ class ReportsController extends Controller
             ->get();
 
         foreach ($expenses as $r) {
-            if (isset($rows[$r->asset_id])) {
-                $rows[$r->asset_id]['expenses'] += Fx::toBase((float) $r->total, $r->currency);
-            }
+            $rows[$bucket((int) $r->asset_id)]['expenses'] += Fx::toBase((float) $r->total, $r->currency);
         }
 
         // Month-by-month (base currency) for the year table

@@ -80,6 +80,11 @@ class UsersController extends Controller
             $user->two_factor_secret = null;
         }
 
+        $admin = (string) config('portal.admin_role', 'Admin');
+        if ($user->hasRole($admin) && $data['role'] !== $admin && User::role($admin)->count() <= 1) {
+            return back()->withInput()->with('error', 'This is the only '.$admin.' account; give another user the '.$admin.' role first.');
+        }
+
         $user->save();
         $user->syncRoles([$data['role']]);
 
@@ -90,6 +95,10 @@ class UsersController extends Controller
     {
         if ($request->user()->id === $user->id) {
             return back()->with('error', 'You cannot delete your own user.');
+        }
+        $admin = (string) config('portal.admin_role', 'Admin');
+        if ($user->hasRole($admin) && User::role($admin)->count() <= 1) {
+            return back()->with('error', 'This is the only '.$admin.' account; it cannot be deleted.');
         }
 
         $user->delete();

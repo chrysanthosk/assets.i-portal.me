@@ -139,30 +139,6 @@
                     <button class="btn btn-outline-primary"><i class="bi bi-shield-check me-2"></i>Enable 2FA</button>
                 </form>
 
-                @if (session('2fa_qr_url'))
-                <div class="mt-3">
-                    <p class="mb-1">Scan this QR code in Google Authenticator:</p>
-                    <div class="p-2 d-inline-block rounded border bg-body text-body">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ urlencode(session('2fa_qr_url')) }}"
-                             alt="2FA QR Code">
-                    </div>
-
-                    <p class="mt-2 mb-1"><small class="text-muted">Or enter secret manually:</small></p>
-                    <code>{{ session('2fa_secret') }}</code>
-
-                    <form method="POST" action="{{ route('profile.2fa.confirm') }}" class="row g-3 mt-2">
-                        @csrf
-                        <div class="col-md-4">
-                            <label class="form-label">Code</label>
-                            <input class="form-control @error('code') is-invalid @enderror" name="code" maxlength="6" placeholder="123456" value="{{ old('code') }}" required>
-                            @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="col-12">
-                            <button class="btn btn-primary"><i class="bi bi-check2-circle me-2"></i>Confirm & Enable</button>
-                        </div>
-                    </form>
-                </div>
-                @endif
                 @else
                 <div class="alert alert-success">2FA is enabled.</div>
 
@@ -177,9 +153,7 @@
 
                     <pre id="backupCodesBox"
                      class="p-3 border rounded bg-body text-body"
-                     style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
-                    {{ implode("\n", session('2fa_backup_codes')) }}
-                    </pre>
+                     style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{{ implode("\n", session('2fa_backup_codes')) }}</pre>
                 @endif
 
                 <form method="POST" action="{{ route('profile.2fa.disable') }}" class="row g-3" onsubmit="return confirm('Disable 2FA for your account?');">
@@ -208,62 +182,6 @@
 
 {{-- Scripts --}}
 <script>
-    // Password strength meter (no external libs)
-    (function () {
-        const input = document.getElementById('profile-password');
-        const bar   = document.getElementById('profile-password-bar');
-        const text  = document.getElementById('profile-password-text');
-
-        if (!input || !bar || !text) return;
-
-        function scorePassword(pwd) {
-            let score = 0;
-            if (!pwd) return 0;
-
-            // length
-            if (pwd.length >= 8) score++;
-            if (pwd.length >= 12) score++;
-
-            // character variety
-            if (/[a-z]/.test(pwd)) score++;
-            if (/[A-Z]/.test(pwd)) score++;
-            if (/[0-9]/.test(pwd)) score++;
-            if (/[^A-Za-z0-9]/.test(pwd)) score++;
-
-            return Math.min(score, 6);
-        }
-
-        function render() {
-            const pwd = input.value || '';
-            const s = scorePassword(pwd);
-            const pct = Math.round((s / 6) * 100);
-
-            bar.style.width = pct + '%';
-
-            let label = '-';
-            let cls = 'bg-secondary';
-
-            if (!pwd.length) {
-                label = '-';
-                cls = 'bg-secondary';
-            } else if (s <= 2) {
-                label = 'Weak';
-                cls = 'bg-danger';
-            } else if (s <= 4) {
-                label = 'Medium';
-                cls = 'bg-warning';
-            } else {
-                label = 'Strong';
-                cls = 'bg-success';
-            }
-
-            bar.className = 'progress-bar ' + cls;
-            text.textContent = label;
-        }
-
-        input.addEventListener('input', render);
-        render();
-    })();
 
     function copyBackupCodes() {
         const el = document.getElementById('backupCodesBox');

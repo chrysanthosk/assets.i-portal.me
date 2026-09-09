@@ -3,7 +3,7 @@
 @section('content')
 <div class="container-fluid">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0">Users</h1>
     <a href="{{ route('settings.users.create') }}" class="btn btn-primary">
       <i class="bi bi-person-plus me-2"></i> Add User
@@ -18,15 +18,15 @@
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-striped table-hover mb-0 align-middle">
-          <thead>
+          <th scope="col"ead>
             <tr>
-              <th style="width:70px;">#</th>
-              <th>First Name</th>
-              <th>Last Name</th>
-              <th>Email</th>
-              <th style="width:140px;">Role</th>
-              <th style="width:190px;">Created</th>
-              <th style="width:160px;" class="text-end">Actions</th>
+              <th scope="col" style="width:70px;">#</th>
+              <th scope="col">First Name</th>
+              <th scope="col">Last Name</th>
+              <th scope="col">Email</th>
+              <th scope="col" style="width:140px;">Role</th>
+              <th scope="col" style="width:190px;">Created</th>
+              <th scope="col" style="width:160px;" class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -45,12 +45,12 @@
                 <td>{{ optional($u->created_at)->format('Y-m-d H:i') }}</td>
                 <td class="text-end">
 
-                  <a href="{{ route('settings.users.edit', $u) }}" class="btn btn-sm btn-outline-primary">
+                  <a href="{{ route('settings.users.edit', $u) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit user">
                     <i class="bi bi-pencil-square"></i>
                   </a>
 
                   <button type="button"
-                          class="btn btn-sm btn-outline-danger"
+                          class="btn btn-sm btn-outline-danger" aria-label="Delete user"
                           data-bs-toggle="modal"
                           data-bs-target="#deleteUserModal"
                           data-user-id="{{ $u->id }}"

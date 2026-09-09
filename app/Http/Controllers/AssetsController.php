@@ -10,7 +10,9 @@ use App\Models\AssetType;
 use App\Models\OwnerEntity;
 use App\Models\RentalPayment;
 use App\Support\Audit;
+use App\Support\Fx;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AssetsController extends Controller
 {
@@ -90,13 +92,15 @@ class AssetsController extends Controller
             ->where('asset_id', $asset->id)->orderByDesc('spent_on')->limit(24)->get();
 
         $yearStart = now()->startOfYear()->toDateString();
+        $sumBase = fn ($q) => collect($q->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->get())
+            ->sum(fn ($r) => Fx::toBase((float) $r->total, $r->currency));
         $ytd = [
-            'income' => (float) RentalPayment::query()->where('asset_id', $asset->id)
-                ->where('status', RentalPayment::STATUS_PAID)->whereDate('paid_date', '>=', $yearStart)->sum('amount'),
-            'expenses' => (float) AssetExpense::query()->where('asset_id', $asset->id)
-                ->whereDate('spent_on', '>=', $yearStart)->sum('amount'),
-            'outstanding' => (float) RentalPayment::query()->where('asset_id', $asset->id)
-                ->where('status', '!=', RentalPayment::STATUS_PAID)->sum('amount'),
+            'income' => $sumBase(RentalPayment::query()->where('asset_id', $asset->id)
+                ->where('status', RentalPayment::STATUS_PAID)->whereDate('paid_date', '>=', $yearStart)),
+            'expenses' => $sumBase(AssetExpense::query()->where('asset_id', $asset->id)->whereDate('spent_on', '>=', $yearStart)),
+            'outstanding' => $sumBase(RentalPayment::query()->where('asset_id', $asset->id)
+                ->where('status', '!=', RentalPayment::STATUS_PAID)),
+            'currency' => Fx::base(),
         ];
 
         return view('assets.show', compact('asset', 'currentRental', 'payments', 'expenses', 'ytd'));
@@ -133,11 +137,16 @@ class AssetsController extends Controller
 
         $asset->tags()->detach();
 
-        // documents deletion will cascade via FK if asset_documents.asset_id has cascadeOnDelete
+        // Rows cascade via FK; the uploaded files do not, so remove them first
+        foreach ($asset->documents()->get(['id', 'disk', 'path']) as $doc) {
+            if ($doc->path && Storage::disk($doc->disk ?: 'local')->exists($doc->path)) {
+                Storage::disk($doc->disk ?: 'local')->delete($doc->path);
+            }
+        }
         $asset->delete();
 
         Audit::log('asset.deleted', $asset, $old, null);
 
-        return redirect()->route('assets.index')->with('success', 'Asset deleted.');
+        return redirect()->route('assets.index')->with('success', 'Property deleted.');
     }
 }

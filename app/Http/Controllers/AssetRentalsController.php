@@ -59,9 +59,21 @@ class AssetRentalsController extends Controller
         $old = $rental->toArray();
         $this->persist($request, $rental);
         Audit::log('asset_rental.updated', $rental, $old, $rental->fresh()->toArray());
+        $reconciled = RentSchedule::reconcile($rental->fresh(), $old);
         $n = RentSchedule::backfill($rental->fresh());
 
-        return redirect()->route('assets.rentals.index')->with('success', 'Agreement updated.'.($n ? " {$n} payment(s) due this year were added to the rent check." : ''));
+        $msg = 'Agreement updated.';
+        if ($reconciled['removed']) {
+            $msg .= " {$reconciled['removed']} pending payment(s) from the old schedule were removed.";
+        }
+        if ($reconciled['repriced']) {
+            $msg .= " {$reconciled['repriced']} pending payment(s) updated to the new amount.";
+        }
+        if ($n) {
+            $msg .= " {$n} payment(s) due this year were added to the rent check.";
+        }
+
+        return redirect()->route('assets.rentals.index')->with('success', $msg);
     }
 
     /** Validate and save an agreement (create or update). */

@@ -14,12 +14,12 @@
         </p>
 
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:14px; border-collapse:collapse;">
-            <thead>
+            <th scope="col"ead>
                 <tr style="text-align:left; color:#6b7280; font-size:12px; text-transform:uppercase;">
-                    <th style="padding:6px 8px 6px 0; border-bottom:1px solid #e5e7eb;">Property · tenant</th>
-                    <th style="padding:6px 8px; border-bottom:1px solid #e5e7eb;">Period</th>
-                    <th style="padding:6px 8px; border-bottom:1px solid #e5e7eb; text-align:right;">Amount</th>
-                    <th style="padding:6px 0 6px 8px; border-bottom:1px solid #e5e7eb; text-align:right;">Answer</th>
+                    <th scope="col" style="padding:6px 8px 6px 0; border-bottom:1px solid #e5e7eb;">Property · tenant</th>
+                    <th scope="col" style="padding:6px 8px; border-bottom:1px solid #e5e7eb;">Period</th>
+                    <th scope="col" style="padding:6px 8px; border-bottom:1px solid #e5e7eb; text-align:right;">Amount</th>
+                    <th scope="col" style="padding:6px 0 6px 8px; border-bottom:1px solid #e5e7eb; text-align:right;">Answer</th>
                 </tr>
             </thead>
             <tbody>

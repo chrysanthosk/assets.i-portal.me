@@ -54,7 +54,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td class="text-muted text-center py-3">No imports yet.</td></tr>
+                    <tr><td colspan="3" class="text-muted text-center py-3">No imports yet.</td></tr>
                 @endforelse
                 </tbody></table>
             </div>

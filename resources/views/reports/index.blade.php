@@ -49,7 +49,7 @@
             <div class="card-header"><i class="bi bi-buildings me-1"></i> Per property</div>
             <div class="card-body p-0 table-responsive">
                 <table class="table table-sm align-middle mb-0">
-                    <thead><tr>
+                    <th scope="col"ead><tr>
                         <th scope="col">Property</th>
                         <th scope="col" class="text-end">Income</th>
                         <th scope="col" class="text-end">Expenses</th>
@@ -83,7 +83,7 @@
             <div class="card-header"><i class="bi bi-calendar3 me-1"></i> By month</div>
             <div class="card-body p-0 table-responsive">
                 <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th scope="col">Month</th><th scope="col" class="text-end">Income</th><th scope="col" class="text-end">Expenses</th><th scope="col" class="text-end">Net</th></tr></thead>
+                    <th scope="col"ead><tr><th scope="col">Month</th><th scope="col" class="text-end">Income</th><th scope="col" class="text-end">Expenses</th><th scope="col" class="text-end">Net</th></tr></thead>
                     <tbody>
                     @foreach($months as $i => $mo)
                         @php $net = $mo['income'] - $mo['expenses']; $empty = $mo['income'] == 0 && $mo['expenses'] == 0; @endphp

@@ -18,9 +18,9 @@
             <div class="card-body">
                 <form method="GET" action="{{ route('assets.rentals.index') }}" class="row g-2 align-items-end mb-3">
                     <div class="col-md-6">
-                        <label class="form-label">Filter by Asset</label>
+                        <label class="form-label">Filter by property</label>
                         <select name="asset_id" class="form-select">
-                            <option value="">All assets</option>
+                            <option value="">All properties</option>
                             @foreach($assets as $a)
                             <option value="{{ $a->id }}" @selected((int)$assetId === (int)$a->id)>{{ $a->name }}</option>
                             @endforeach
@@ -33,15 +33,15 @@
 
                 <hr>
 
-                <h6 class="mb-2">Add Agreement</h6>
+                <h6 class="mb-2">Add agreement</h6>
 
                 <form method="POST" action="{{ route('assets.rentals.storeOrUpdate') }}" class="row g-2">
                     @csrf
 
                     <div class="col-md-5">
-                        <label class="form-label">Asset</label>
+                        <label class="form-label">Property</label>
                         <select name="asset_id" class="form-select @error('asset_id') is-invalid @enderror" required>
-                            <option value="">Select asset</option>
+                            <option value="">Select property</option>
                             @foreach($assets as $a)
                             <option value="{{ $a->id }}" @selected((int)old('asset_id', $assetId) === (int)$a->id)>{{ $a->name }}</option>
                             @endforeach
@@ -136,17 +136,17 @@
 
                 <div class="table-responsive">
                     <table class="table table-sm table-striped align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
-                            <th>Asset</th>
-                            <th>Tenant</th>
-                            <th>Type</th>
-                            <th>Start</th>
-                            <th>End</th>
-                            <th>Active</th>
-                            <th class="text-end">Amount</th>
-                            <th>Channel</th>
-                            <th class="text-end" style="width: 140px;">Actions</th>
+                            <th scope="col">Property</th>
+                            <th scope="col">Tenant</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Start</th>
+                            <th scope="col">End</th>
+                            <th scope="col">Active</th>
+                            <th scope="col" class="text-end">Amount</th>
+                            <th scope="col">Channel</th>
+                            <th scope="col" class="text-end" style="width: 140px;">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -170,7 +170,7 @@
 
                             <td class="text-end">
                                 @can('manage_asset_rentals')
-                                <a href="{{ route('assets.rentals.edit', $r) }}" class="btn btn-sm btn-outline-primary me-1">
+                                <a href="{{ route('assets.rentals.edit', $r) }}" class="btn btn-sm btn-outline-primary me-1" aria-label="Edit agreement">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 @endcan
@@ -178,7 +178,7 @@
                                 @can('manage_asset_rentals')
                                 <button
                                     type="button"
-                                    class="btn btn-sm btn-outline-danger"
+                                    class="btn btn-sm btn-outline-danger" aria-label="Delete agreement"
                                     data-bs-toggle="modal"
                                     data-bs-target="#deleteRentalModal"
                                     data-delete-url="{{ route('assets.rentals.destroy', $r) }}"
@@ -213,7 +213,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Delete Agreement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="deleteRentalBody">Are you sure?</div>
             <div class="modal-footer">

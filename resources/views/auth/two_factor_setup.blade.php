@@ -89,9 +89,7 @@
 
                                 <pre id="recoveryCodesBox"
                                     class="p-3 border rounded bg-body text-body"
-                                    style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
-                                    {{ implode("\n", $recoveryCodes ?? []) }}
-                                </pre>
+                                    style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{{ implode("\n", $recoveryCodes ?? []) }}</pre>
 
                             <small class="text-muted d-block mt-2">
                                 Tip: store them in a password manager.

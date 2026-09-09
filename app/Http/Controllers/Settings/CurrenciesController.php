@@ -25,10 +25,7 @@ class CurrenciesController extends Controller
             'base_currency' => ['required', 'string', 'size:3', 'alpha'],
         ]);
 
-        PortalSetting::updateOrCreate(
-            ['key' => 'base_currency'],
-            ['value' => strtoupper($data['base_currency'])]
-        );
+        PortalSetting::set('base_currency', strtoupper($data['base_currency']));
 
         Audit::log('settings.base_currency_updated', null, null, ['base_currency' => strtoupper($data['base_currency'])]);
 
@@ -52,6 +49,7 @@ class CurrenciesController extends Controller
         );
 
         Audit::log('fx_rate.saved', $rate, null, $rate->toArray());
+        Fx::flush();
 
         return back()->with('success', "Rate for {$currency} saved.");
     }
@@ -62,6 +60,7 @@ class CurrenciesController extends Controller
         $rate->delete();
 
         Audit::log('fx_rate.deleted', $rate, $old, null);
+        Fx::flush();
 
         return back()->with('success', 'Rate deleted.');
     }

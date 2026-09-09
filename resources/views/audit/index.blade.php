@@ -20,9 +20,9 @@
 <div class="row">
     <div class="col-12">
 
-        <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <div>
-                <h4 class="mb-0">Audit Logs</h4>
+                <h4 class="mb-0">Audit log</h4>
                 <div class="text-muted">Filter by user, entity, action and date range. Click a row to expand details.</div>
             </div>
         </div>
@@ -101,16 +101,16 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-sm table-striped align-middle mb-0">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
-                            <th style="width: 90px;">ID</th>
-                            <th style="width: 170px;">Time</th>
-                            <th style="width: 220px;">User</th>
-                            <th style="width: 220px;">Action</th>
-                            <th style="width: 160px;">Entity</th>
-                            <th style="width: 90px;" class="text-end">Entity ID</th>
-                            <th>IP</th>
-                            <th class="text-end" style="width: 80px;">View</th>
+                            <th scope="col" style="width: 90px;">ID</th>
+                            <th scope="col" style="width: 170px;">Time</th>
+                            <th scope="col" style="width: 220px;">User</th>
+                            <th scope="col" style="width: 220px;">Action</th>
+                            <th scope="col" style="width: 160px;">Entity</th>
+                            <th scope="col" style="width: 90px;" class="text-end">Entity ID</th>
+                            <th scope="col">IP</th>
+                            <th scope="col" class="text-end" style="width: 80px;">View</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -140,14 +140,15 @@
                             <td class="text-end">
                                 <button class="btn btn-sm btn-outline-secondary" type="button"
                                         data-bs-toggle="collapse" data-bs-target="#{{ $rowId }}"
-                                        aria-expanded="false" aria-controls="{{ $rowId }}">
+                                        aria-expanded="false" aria-controls="{{ $rowId }}" aria-label="Show details">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </td>
                         </tr>
 
-                        <tr class="collapse" id="{{ $rowId }}">
-                            <td colspan="8" class="audit-expanded-cell">
+                        <tr class="audit-expanded-row">
+                            <td colspan="8" class="audit-expanded-cell p-0">
+                                <div class="collapse" id="{{ $rowId }}">
                                 <div class="p-3">
                                     <div class="row g-3">
 
@@ -180,6 +181,7 @@
                                         </div>
 
                                     </div>
+                                </div>
                                 </div>
                             </td>
                         </tr>

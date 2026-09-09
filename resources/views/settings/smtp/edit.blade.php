@@ -3,8 +3,8 @@
 @section('content')
 <div class="container-fluid">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h3 mb-0">Settings / SMTP</h1>
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0">Email (SMTP)</h1>
   </div>
 
   <div class="card">

@@ -8,7 +8,7 @@
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <h5 class="mb-0">Tenants</h5>
-                    <small class="text-muted">People renting your assets</small>
+                    <small class="text-muted">People renting your properties</small>
                 </div>
                 <form method="POST" action="{{ route('tenants.sync') }}" class="ms-auto"
                       onsubmit="return confirm('Link agreements to tenants and read missing contact details from the filed contracts?');">
@@ -19,7 +19,7 @@
                 </form>
                 <form method="GET" action="{{ route('tenants.index') }}" class="d-flex gap-2 align-items-center">
                     <input type="text" name="q" value="{{ $q }}" class="form-control form-control-sm"
-                           placeholder="Search name / email / phone">
+                           placeholder="Search name / email / phone" aria-label="Search tenants">
                     <button class="btn btn-sm btn-outline-secondary" aria-label="Search"><i class="bi bi-search"></i></button>
                 </form>
             </div>
@@ -70,29 +70,30 @@
                 {{-- Existing --}}
                 <div class="table-responsive">
                     <table class="table table-striped align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
                             <th scope="col">Name</th>
                             <th scope="col">Email</th>
                             <th scope="col">Phone</th>
                             <th scope="col">ID No.</th>
-                            <th scope="col">Rentals</th>
+                            <th scope="col">Agreements</th>
                             <th scope="col" class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         @forelse($tenants as $t)
                         <tr>
-                            <form method="POST" action="{{ route('tenants.update', $t) }}">
-                                @csrf @method('PUT')
-                                <td><input type="text" name="name" value="{{ $t->name }}" class="form-control form-control-sm" required></td>
-                                <td><input type="email" name="email" value="{{ $t->email }}" class="form-control form-control-sm"></td>
-                                <td><input type="text" name="phone" value="{{ $t->phone }}" class="form-control form-control-sm"></td>
-                                <td><input type="text" name="id_number" value="{{ $t->id_number }}" class="form-control form-control-sm"></td>
-                                <td><span class="badge text-bg-secondary">{{ $t->rentals_count }}</span></td>
-                                <td class="text-end text-nowrap">
+                            @php $fid = 'tenant-'.$t->id; @endphp
+                            <td><input type="text" name="name" form="{{ $fid }}" value="{{ $t->name }}" class="form-control form-control-sm" aria-label="Name" required></td>
+                            <td><input type="email" name="email" form="{{ $fid }}" value="{{ $t->email }}" class="form-control form-control-sm" aria-label="Email"></td>
+                            <td><input type="text" name="phone" form="{{ $fid }}" value="{{ $t->phone }}" class="form-control form-control-sm" aria-label="Phone"></td>
+                            <td><input type="text" name="id_number" form="{{ $fid }}" value="{{ $t->id_number }}" class="form-control form-control-sm" aria-label="ID number"></td>
+                            <td><span class="badge text-bg-secondary">{{ $t->rentals_count }}</span></td>
+                            <td class="text-end text-nowrap">
+                                <form method="POST" action="{{ route('tenants.update', $t) }}" id="{{ $fid }}" class="d-inline">
+                                    @csrf @method('PUT')
                                     <button class="btn btn-sm btn-outline-primary" aria-label="Save tenant"><i class="bi bi-save"></i></button>
-                            </form>
+                                </form>
                                     <form method="POST" action="{{ route('tenants.destroy', $t) }}" class="d-inline"
                                           onsubmit="return confirm('Delete tenant {{ addslashes($t->name) }}? Their rentals keep the recorded name.');">
                                         @csrf @method('DELETE')

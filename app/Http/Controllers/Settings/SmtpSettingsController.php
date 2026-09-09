@@ -70,6 +70,7 @@ class SmtpSettingsController extends Controller
         }
 
         $smtp->save();
+        MailConfig::forget();
 
         return redirect()->route('settings.smtp.edit')->with('success', 'SMTP settings saved.');
     }
@@ -110,6 +111,7 @@ class SmtpSettingsController extends Controller
 
             $smtp->last_tested_at = Carbon::now();
             $smtp->save();
+            MailConfig::forget();
 
             return redirect()->route('settings.smtp.edit')->with('success', 'Test email sent successfully.');
         } catch (\Throwable $e) {

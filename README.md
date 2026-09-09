@@ -1,312 +1,232 @@
 # assets.i-portal.me
 
-A **Laravel 12 + Bootstrap 5** property/real-estate portfolio manager with a modern,
-mobile-friendly portal shell (dark/light):
-track owned assets, tenants, rental agreements & payments, expenses, documents,
-and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
+A **Laravel 13 + Bootstrap 5** portal for a private property portfolio: properties,
+tenants, agreements, a monthly rent-check loop, expenses, profit & loss, documents —
+with AI reading of title deeds, contracts and manager statements. Dark/light,
+mobile-friendly, deployed with Docker.
 
 ---
 
-## Features
+## What it does
+
+**Portfolio**
+- **Properties** — purchase, financing, title deed, location and size, documents with
+  expiry dates. Create one by hand or **import a title deed scan** (Cyprus Land Registry
+  sheets and Dubai DIFC/DLD deeds): the registry references, areas, owners and
+  valuations are read for you, the scan is filed as the deed document.
+- **Tenants** — created automatically from agreements; email, phone and ID are read
+  from the contract. **Fill from contracts** catches up older agreements.
+
+**Rent**
+- **Agreements** — one per tenancy or management contract. Monthly rent (in advance or
+  *paid the month after*), with its own due day, or **fixed instalments that repeat every
+  contract year** (e.g. an annual guarantee split 15 % on 15 Apr, 15 % on 31 May …).
+  **Import a contract PDF** (English or Greek) and the parties, period, currency and
+  schedule are proposed; the PDF is filed with the property.
+- **Rent check** — the expected payment for every agreement is generated automatically,
+  including everything already due this year when an agreement is added. One daily email
+  lists what is waiting for your answer with **Yes / No** links per row (repeating every
+  few days until answered). Variable payouts: correct the amount, or **upload the
+  manager's statement** and the net payable is read from it.
+- **Payments** — every expected and one-off payment, overdue and not-received tracking.
+
+**Finance**
+- **Expenses** — categorised costs per property, any currency.
+- **Reports** — yearly P&L per property and per month, rent collection rate, CSV export,
+  all converted to your base currency through the FX rates you enter.
+- **Dashboard** — properties, portfolio value, contracted rent, rent received this year
+  and the collection rate, outstanding, net; panels for rent to confirm, overdue rent,
+  expiring documents and recent activity.
 
 **Platform**
-- Username + password authentication, 2FA (Google Authenticator) with recovery codes
-- Role & permission management (Spatie) + per-route permission gates
-- User & profile management (name, email with OTP confirmation)
-- Password strength meter (zxcvbn), SMTP configuration & test email
-- **Simple by default**: users, permission sets, owner entities, tags, currencies & FX and the audit log
-  are hidden until "Advanced features" is switched on under Settings → Portal
-- Audit logging across all mutations
-- Dark / Light mode, security headers, encrypted sessions
-
-**Asset & rentals modules**
-- **Assets** — properties with purchase, financing, title-deed, location & physical details, tags, documents
-- **Title deed import** — upload a scanned Cyprus Land Registry sheet or a Dubai (DIFC/DLD) title deed (PDF/photo); Claude reads the
-  registration number, location, plot reference, owners & share, areas and valuations; you review a
-  prefilled form and the property is created with the scan attached as its title-deed document
-  (needs an Anthropic API key under Settings → Portal, or `ANTHROPIC_API_KEY`)
-- **Tenants** — first-class tenant records linked to rental agreements
-- **Agreements** — per tenancy or management contract: monthly rent (in advance or in arrears) or a
-  set of dated instalments that repeats every contract year (e.g. an annual guarantee paid 15 % on
-  15 Apr, 15 % on 31 May …). **Import a contract PDF** and the parties, period and schedule are read
-  for you; the contract is filed with the property's documents
-- **Rental payments** — record/schedule payments, track **arrears & overdue**
-- **Rent check** — expected payments are generated monthly from active agreements; one daily email
-  lists every payment waiting for an answer with Yes/No links per row, repeating until answered. For variable
-  rent (short-let operators) correct the amount, or upload the manager's monthly statement and the
-  net payout is read from it and filed with the property's documents
-- **Expenses** — categorised property costs (maintenance, tax, insurance, …)
-- **Reports** — per-asset & portfolio **P&L** with **CSV export**, consolidated to a base currency via **FX rates**
-- **Document lifecycle** — type classification + **expiry reminders** (dashboard, bell, and a
-  Monday email digest of expired / soon-expiring documents)
-- **Dashboard** — totals, monthly income, occupancy, outstanding payments, document-expiry reminders
+- Username + password, 2FA (Google Authenticator) with recovery codes, email-change OTP,
+  password strength meter, security headers, encrypted sessions, audit log.
+- **Simple by default**: users, permission sets, owner entities, tags, currencies & FX and
+  the audit log are hidden until *Advanced features* is switched on (Settings → Portal).
+  Currencies & FX appears on its own as soon as a second currency is in use.
+- Registration is closed: accounts are created by an admin (Settings → Users or
+  `php artisan make:admin`).
 
 ---
 
 ## Requirements
 
-### Docker install (recommended)
-- Docker Engine **24+**
-- Docker Compose **v2**
+Production runs in Docker; nothing else is installed on the host.
 
-> MySQL, PHP, Nginx and Node are all provided by the containers — nothing else to install.
+- Docker Engine 24+ with the Compose v2 plugin.
+- A reverse proxy for HTTPS (the container serves plain HTTP on `WEB_PORT`).
+- An **Anthropic API key** if you want deed / contract / statement reading
+  (Settings → Portal, or `ANTHROPIC_API_KEY`). Everything else works without it.
 
-### Local development (optional, no Docker)
-- PHP **8.4+**, Composer, Node.js **18+** / npm (SQLite is used by default)
+For local development without Docker: PHP 8.3+ (the image uses 8.5), Composer,
+Node 22 / npm. SQLite is used by default.
 
 ---
 
-## Installation
-
-Production runs in Docker. The installer asks a few questions, writes `.env`,
-builds the image and starts the stack:
+## Install (Docker)
 
 ```bash
 git clone git@github.com:chrysanthosk/assets.i-portal.me.git
 cd assets.i-portal.me
-sudo ./scripts/install.sh
+./scripts/install.sh
+```
+
+The installer asks for the app name, host port, public URL, database passwords, the
+first admin account and optionally the Anthropic key; writes `.env`; runs the preflight
+(persistent `APP_KEY`, timezone, free port); then builds the image and starts the stack.
+
+Run it as the user who will run deploys later, so `.env` stays readable to them.
+
+| Service | Runs |
+|---------|------|
+| `app`   | Nginx + PHP-FPM + queue worker + scheduler, one image managed by Supervisor |
+| `db`    | MySQL (`mysql:latest`) on the `db_data` volume, **not published on the host** |
+
+On first boot the app container creates its own `.env`, applies the host `APP_KEY`,
+waits for MySQL, runs `migrate --force` (additive, never drops data), seeds
+roles/permissions, creates the admin from `ADMIN_*`, links storage and runs `optimize`.
+
+### Log in
+
+Log in with the **username** (default `admin`), not the email. Change the password
+straight away. Then:
+
+1. **Settings → Email (SMTP)** — enable, fill in, send the test email. All reminders use it.
+2. **Settings → Portal** — reminder recipient, due day, Anthropic key.
+3. **Settings → Currencies & FX** — needed only when you hold a second currency.
+
+### Reverse proxy
+
+Put your proxy in front of `http://<host>:<WEB_PORT>` and set `APP_URL` to the public
+`https://` address. On a shared Docker host, attach the app to the proxy's network with a
+gitignored `docker-compose.override.yml`:
+
+```yaml
+services:
+  app:
+    networks: [portal, proxy]
+networks:
+  proxy:
+    external: true
 ```
 
 ---
 
-## Option A — Docker (recommended)
-
-A multi-container stack is provided:
-
-| Service | Description |
-|---------|-------------|
-| `app`   | Laravel application — **Nginx + PHP-FPM + queue worker** in one image (managed by Supervisor) |
-| `db`    | **MySQL (latest)** with a persistent named volume |
-
-### Quick start
+## Update
 
 ```bash
-git clone git@github.com:chrysanthosk/assets.i-portal.me.git
-cd assets.i-portal.me
-
-cp .env.docker.example .env       # edit DB_PASSWORD / DB_ROOT_PASSWORD / WEB_PORT
-docker compose up -d --build
+git pull --ff-only
+./scripts/new_deploy.sh          # add --pull to also fetch the latest MySQL image
 ```
 
-The application is served at **http://localhost:8080**.
+The script runs the preflight, rebuilds the image, recreates the containers, waits for
+the app to answer and shows the status. Volumes (`db_data`, `app_storage`) are kept.
+Its only prompt is the timezone (default `Europe/Athens`), skipped when there is no
+terminal.
 
-> **Port control:** the published port is set by **`WEB_PORT`** in `.env`
-> (default `8080`). `APP_URL` is derived from it automatically — change only
-> `WEB_PORT` and re-run `docker compose up -d`.
-
-### Default login
-
-With the values from `.env.docker.example`, an admin is created on first boot:
-
-| | |
-|---|---|
-| **Username** | `admin`  ← log in with this, **not** the email |
-| Password | `ChangeMe123!` |
-
-> Authentication is by **username**, not email. Change the password immediately
-> after first login. Configure these via `ADMIN_USERNAME` / `ADMIN_PASSWORD` /
-> `ADMIN_EMAIL` in `.env`.
-
-On first boot the `app` container automatically:
-1. creates its own `.env` (if missing) and uses the `APP_KEY` from the host
-   `.env` (generating a throwaway one only if none is provided),
-2. waits for MySQL to become healthy,
-3. runs `php artisan migrate --force` (**additive — never drops data**),
-4. seeds roles & permissions (idempotent `PortalPermissionsSeeder`),
-5. optionally creates an admin user if `ADMIN_EMAIL` / `ADMIN_PASSWORD` are set,
-6. runs `php artisan optimize`.
-
-### Database persistence
-
-The MySQL data lives in the **`db_data`** named volume and is **preserved across
-rebuilds and redeploys** (`docker compose up -d --build`). Migrations are always
-additive (`migrate --force`, never `migrate:fresh`), so **your database is never
-dropped on deployment.** It is only removed if you explicitly run
-`docker compose down -v`.
-
-### Create / manage the admin user
-
-If you did not set `ADMIN_EMAIL` / `ADMIN_PASSWORD`, create an admin manually:
-
-```bash
-docker compose exec app php artisan make:admin
-```
-
-### Common Docker commands
-
-```bash
-docker compose ps                       # status
-docker compose logs -f app              # follow app logs
-docker compose exec app php artisan ... # run any artisan command
-docker compose pull db                  # pull the latest MySQL image
-docker compose up -d --build            # redeploy after code changes (data kept)
-docker compose down                     # stop (data kept)
-docker compose down -v                  # stop AND delete the database volume
-```
-
-To redeploy after pulling new code run `./scripts/new_deploy.sh` (add `--pull`
-to also fetch the latest MySQL image). It is non-interactive. Before rebuilding
-it runs `scripts/docker-preflight.sh`, which:
-
-- creates `.env` from `.env.docker.example` if it is missing (with random DB
-  passwords),
-- generates `APP_KEY` once and stores it in the host `.env` so it survives
-  rebuilds (2FA secrets are encrypted with it — never rotate it on a live
-  install),
-- moves `WEB_PORT` to the next free host port when another process or stack
-  already listens there. A `localhost` `APP_URL` follows the new port; a custom
-  `APP_URL` is left untouched with a warning so you can update your reverse
-  proxy target. MySQL is never published on the host.
-
-The preflight is idempotent and can be run on its own:
-`./scripts/docker-preflight.sh`.
+`scripts/docker-preflight.sh` (run by both scripts, or on its own) makes sure that:
+- `.env` exists (created from `.env.docker.example` with random DB passwords),
+- `APP_KEY` is set once and kept — **never rotate it**, 2FA secrets are encrypted with it,
+- `APP_TIMEZONE` is set,
+- `WEB_PORT` is free, moving to the next free port if another stack uses it.
 
 ---
 
-## Option B — Local development (no Docker)
+## Day to day
 
-For hacking on the code with SQLite:
+| Task | Command |
+|------|---------|
+| Artisan | `docker compose exec app php artisan <cmd>` |
+| Create an admin | `docker compose exec app php artisan make:admin` |
+| Logs | `docker compose logs -f app` |
+| Generate due payments now | `docker compose exec app php artisan rent:generate-due` |
+| Send the rent-check digest now | `docker compose exec app php artisan rent:send-reminders --force` |
+| Document expiry digest now | `docker compose exec app php artisan documents:send-expiry-reminders --force` |
+| Stop / start | `docker compose down` / `docker compose up -d` |
+
+Scheduled inside the container (`APP_TIMEZONE`): `rent:generate-due` daily 06:00,
+`rent:send-reminders` daily 08:00, `documents:send-expiry-reminders` Mondays 08:15.
+
+> Never run `migrate:fresh`, `db:wipe` or `docker compose down -v` in production —
+> they delete the database.
+
+### Backups
+
+`./scripts/backup.sh` dumps MySQL to `backups/<db>-<stamp>.sql.gz` and archives the
+uploaded files (`storage/app`: deeds, contracts, statements) to
+`backups/storage-<stamp>.tar.gz`, keeping `RETENTION_DAYS` (default 14).
+
+```bash
+sudo ./scripts/backup.sh --install-cron 02:30   # nightly, /etc/cron.d/assets-backup
+```
+
+Set `BACKUP_REMOTE=user@host:/path` in `.env` to rsync each new archive off the server.
+
+Restore:
+
+```bash
+gunzip -c backups/assets-<stamp>.sql.gz | docker compose exec -T db mysql -uroot -p"$DB_ROOT_PASSWORD" assets
+docker compose exec -T app tar -xzf - -C /var/www/html/storage < backups/storage-<stamp>.tar.gz
+```
+
+### Security options
+
+| Setting | Where | Effect |
+|---------|-------|--------|
+| `REQUIRE_2FA_FOR_ADMINS=true` | `.env` | Admins must enrol in 2FA before using the portal |
+| `SENTRY_LARAVEL_DSN` | `.env` | Error tracking; blank = off |
+| Advanced features | Settings → Portal | Shows users, permission sets, owner entities, tags, FX, audit log |
+
+The app trusts the private-network reverse proxy for the scheme, so HSTS and secure
+cookies work behind HTTPS termination. `GET /health` reports database connectivity.
+
+---
+
+## Local development
 
 ```bash
 composer install && npm install
-cp .env.example .env && php artisan key:generate
+cp .env.example .env && php artisan key:generate      # SQLite
 php artisan migrate && php artisan db:seed --class=PortalBootstrapSeeder
-npm run dev            # or: npm run build
-php artisan serve      # http://127.0.0.1:8000 — login admin / (see seeder output)
+npm run dev                                           # or npm run build
+php artisan serve
 ```
 
-There is no supported bare-metal production install; deploy with Docker.
+- `php artisan test` — PHPUnit on SQLite in memory (100 tests). AI reading is faked in
+  tests; nothing calls the API.
+- `./vendor/bin/pint` — code style (CI runs `pint --test`, the Vite build and PHPUnit).
+- `scripts/e2e/` — optional HTTP smoke tests against a running Docker stack.
 
----
-
-## SMTP Configuration
-
-Supported encryption modes:
-- **TLS (STARTTLS)** — Port **587**
-- **SSL (SMTPS)** — Port **465**
-
-Invalid combinations (e.g. SSL + 587) are blocked.
-
-### SendGrid example
-```
-Host: smtp.sendgrid.net
-Port: 587
-Encryption: tls
-Username: apikey
-Password: <SENDGRID_API_KEY>
-```
-
-Use the **Test Email** button to verify connectivity.
-
----
-
-## Two-Factor Authentication (2FA)
-
-- Google Authenticator compatible
-- QR code + manual secret
-- Enforced via middleware
-- Challenge page on login if enabled
-
----
-
-## Password Strength
-
-- Powered by `zxcvbn`
-- Visual strength meter
-- Used on:
-    - Profile password change
-    - User create
-    - User edit
-
----
-
-## Useful Commands
-
-```bash
-php artisan optimize:clear
-php artisan route:list
-php artisan migrate:fresh --seed
-npm run build
-```
-
-With Docker, prefix artisan/npm commands with `docker compose exec app`:
-
-```bash
-docker compose exec app php artisan optimize:clear
-docker compose exec app php artisan route:list
-docker compose exec app php artisan make:admin
-```
-
-> ⚠️ Avoid `migrate:fresh` / `migrate:fresh --seed` in production / Docker — it
-> **drops all tables**. Normal deploys use additive `migrate --force`.
+The test suite is not shipped in the production image, so `php artisan test` does not
+run inside the container.
 
 ---
 
 ## Permissions
 
-Access is gated per route by Spatie permissions (synced from
-`config/portal_permissions.php` via `PortalPermissionsSeeder`). Notable ones:
+Routes are guarded by Spatie permissions synced from `config/portal_permissions.php`
+(`PortalPermissionsSeeder`, run on every container start). Admins hold all of them.
 
 | Permission | Grants |
 |------------|--------|
-| `manage_assets`, `manage_asset_tags`, `manage_asset_types`, `manage_owner_entities` | Assets & their configuration |
+| `view_dashboard` | Dashboard |
+| `manage_assets`, `manage_asset_types`, `manage_owner_entities`, `manage_asset_tags` | Properties, documents, deed import and their configuration |
 | `manage_tenants` | Tenants |
-| `manage_asset_rentals` | Rental agreements |
-| `manage_rental_payments` | Rental payments & arrears |
+| `manage_asset_rentals` | Agreements and contract import |
+| `manage_rental_payments` | Payments, rent check, statements |
 | `manage_asset_expenses` | Expenses |
-| `view_reports` | P&L reports + CSV export |
-| `manage_fx_rates` | Base currency & FX rates |
+| `view_reports` | Reports and CSV export |
+| `manage_fx_rates` | Base currency and FX rates |
 | `manage_users`, `manage_permission_sets`, `manage_smtp_settings`, `manage_portal_settings`, `manage_audit_logs` | Administration |
 
-Admins get all permissions. After changing the registry, run
-`php artisan db:seed --class=PortalPermissionsSeeder` (the Docker entrypoint does this automatically).
+---
+
+## Ideas not built
+
+- Tenant-facing receipts or statements.
+- Import of historical payments and expenses from CSV.
+- Valuation history and equity tracking.
 
 ---
 
-## Operations & observability
-
-- **Health check:** `GET /health` (unauthenticated) returns `200` + DB status, `503` if the database is unreachable. Laravel's `/up` is also available.
-- **Backups:** `./scripts/backup.sh` dumps MySQL to `backups/<db>-<stamp>.sql.gz` **and**
-  archives uploaded files (`storage/app`, i.e. title deeds and documents) to
-  `backups/storage-<stamp>.tar.gz`, keeping `RETENTION_DAYS` (default 14). Set
-  `BACKUP_REMOTE=user@host:/path` in `.env` to rsync each new archive off the server.
-  Install the nightly job with `sudo ./scripts/backup.sh --install-cron 02:30`
-  (writes `/etc/cron.d/assets-backup`, log in `backups/backup.log`).
-  Restore: `gunzip -c backups/assets-*.sql.gz | docker compose exec -T db mysql -uroot -p<root> assets`
-  and `docker compose exec -T app tar -xzf - -C /var/www/html/storage < backups/storage-*.tar.gz`.
-- **Logging:** in Docker, the app logs to **stderr** (`docker compose logs -f app`).
-- **Error tracking (optional):** set `SENTRY_LARAVEL_DSN` in `.env` to enable Sentry; blank = disabled.
-- **Enforce 2FA for admins (optional):** set `REQUIRE_2FA_FOR_ADMINS=true` to require admins / user-managers to enroll in 2FA before using the app.
-- **CI:** `.github/workflows/ci.yml` runs Pint (lint), the Vite build, and PHPUnit on every push/PR.
-
----
-
-## Security Notes
-
-- Change the default admin password immediately
-- Do not commit `.env`
-- Use HTTPS in production (security headers + HSTS are applied automatically)
-- Enable 2FA for admin accounts (optionally enforce via `REQUIRE_2FA_FOR_ADMINS`)
-- Use strong SMTP credentials (SMTP passwords are stored encrypted)
-- Sessions are encrypted (`SESSION_ENCRYPT=true`)
-
----
-
-## Roadmap
-
-- API authentication / public API
-- Webhooks & notifications (e.g. overdue-payment / document-expiry alerts)
-- Asset valuation history & equity tracking
-- Multi-unit (building → units) hierarchy
-
----
-
-## License
-
-Private / Internal Use
-
----
-
-## Author
-
-**Chrysanthos Kattimeris**
+Private / internal use. Author: Chrysanthos Kattimeris.

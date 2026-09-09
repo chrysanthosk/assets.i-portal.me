@@ -40,9 +40,9 @@
 
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
-                            <th scope="col">Asset</th>
+                            <th scope="col">Property</th>
                             <th scope="col">Tenant</th>
                             <th scope="col">Period</th>
                             <th scope="col">Due</th>
@@ -89,8 +89,8 @@
                 <p class="text-muted small mb-3">You answered "No" for these. Chase the tenant, then mark them paid once the money lands.</p>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead><tr>
-                            <th scope="col">Asset</th><th scope="col">Tenant</th><th scope="col">Period</th><th scope="col">Due</th>
+                        <th scope="col"ead><tr>
+                            <th scope="col">Property</th><th scope="col">Tenant</th><th scope="col">Period</th><th scope="col">Due</th>
                             <th scope="col" class="text-end">Amount</th><th scope="col" class="text-end">Actions</th>
                         </tr></thead>
                         <tbody>

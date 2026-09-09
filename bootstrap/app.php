@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Behind the reverse proxy (Docker network / Nginx Proxy Manager) so
+        // HTTPS detection, HSTS and secure cookies see the real scheme.
+        $middleware->trustProxies(at: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.1']);
+
         // Apply security headers to all web responses.
         $middleware->web(append: [
             SecurityHeaders::class,

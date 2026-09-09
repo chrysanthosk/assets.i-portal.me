@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\SmtpSetting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 
 /**
@@ -12,10 +13,19 @@ use Illuminate\Support\Facades\Config;
  */
 class MailConfig
 {
+    public const CACHE_KEY = 'smtp_settings.active';
+
+    public static function forget(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
     public static function apply(): void
     {
         try {
-            $smtp = SmtpSetting::query()->where('enabled', true)->first();
+            // Cached: this runs on every request. SmtpSettingsController clears it on save.
+            $smtp = Cache::remember(self::CACHE_KEY, 300,
+                fn () => SmtpSetting::query()->where('enabled', true)->first() ?? false);
         } catch (\Throwable $e) {
             return; // no DB yet (fresh install, migrations pending)
         }

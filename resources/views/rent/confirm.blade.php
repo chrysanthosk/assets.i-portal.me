@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Rent confirmation — {{ config('app.name') }}</title>
+    <title>Rent confirmation — {{ \App\Models\PortalSetting::name() }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-body-tertiary">
@@ -51,7 +51,7 @@
             @endif
         </div>
     </div>
-    <p class="text-center text-muted small mt-3">{{ config('app.name') }}</p>
+    <p class="text-center text-muted small mt-3">{{ \App\Models\PortalSetting::name() }}</p>
 </div>
 </body>
 </html>

@@ -6,8 +6,8 @@
 
         <div class="card">
             <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                <h5 class="mb-0">Owner Entities</h5>
-                <span class="text-muted small">Configure the list used in Assets → Owner Entity</span>
+                <h5 class="mb-0">Owner entities</h5>
+                <span class="text-muted small">Configure the list used as the property Owner entity</span>
             </div>
 
             <div class="card-body">
@@ -64,52 +64,37 @@
                 </form>
 
                 {{-- Existing list --}}
-                <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                     <h6 class="mb-0">Existing Entities</h6>
                     <span class="text-muted small">{{ $entities->count() }} total</span>
                 </div>
 
                 <div class="table-responsive">
                     <table class="table table-striped align-middle">
-                        <thead>
+                        <th scope="col"ead>
                         <tr>
-                            <th style="width: 45%">Name</th>
-                            <th style="width: 15%">Sort</th>
-                            <th style="width: 15%">Active</th>
-                            <th style="width: 25%" class="text-end">Actions</th>
+                            <th scope="col" style="width: 45%">Name</th>
+                            <th scope="col" style="width: 15%">Sort</th>
+                            <th scope="col" style="width: 15%">Active</th>
+                            <th scope="col" style="width: 25%" class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         @forelse($entities as $e)
                         <tr>
+                            @php $fid = 'row-'.$e->id; @endphp
                             <td>
-                                <form method="POST" action="{{ route('settings.ownerEntities.update', $e) }}" class="d-flex gap-2 align-items-start">
-                                    @csrf
-                                    @method('PUT')
-
-                                    <div class="flex-grow-1">
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            value="{{ old('name', $e->name) }}"
-                                            class="form-control form-control-sm"
-                                            required>
-                                    </div>
+                                <input type="text" name="name" form="{{ $fid }}" value="{{ old('name', $e->name) }}" class="form-control form-control-sm" aria-label="Name" required>
                             </td>
 
                             <td>
-                                <input
-                                    type="number"
-                                    name="sort_order"
-                                    value="{{ old('sort_order', $e->sort_order) }}"
-                                    class="form-control form-control-sm"
-                                    min="0" max="100000">
+                                <input type="number" name="sort_order" form="{{ $fid }}" value="{{ old('sort_order', $e->sort_order) }}" class="form-control form-control-sm" aria-label="Sort order" min="0" max="100000">
                             </td>
 
                             <td>
-                                <input type="hidden" name="is_active" value="0">
+                                <input type="hidden" name="is_active" form="{{ $fid }}" value="0">
                                 <div class="form-check mt-1">
-                                    <input class="form-check-input" type="checkbox"
+                                    <input class="form-check-input" type="checkbox" form="{{ $fid }}"
                                            id="active_{{ $e->id }}"
                                            name="is_active" value="1"
                                            @checked(old('is_active', $e->is_active ? 1 : 0) == 1)>
@@ -117,10 +102,11 @@
                                 </div>
                             </td>
 
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-save me-1"></i> Save
-                                </button>
+                            <td class="text-end text-nowrap">
+                                <form method="POST" action="{{ route('settings.ownerEntities.update', $e) }}" id="{{ $fid }}" class="d-inline">
+                                    @csrf
+                                    @method('PUT')
+                                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-save me-1"></i> Save</button>
                                 </form>
 
                                 <form method="POST" action="{{ route('settings.ownerEntities.destroy', $e) }}"

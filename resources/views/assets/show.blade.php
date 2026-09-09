@@ -9,7 +9,11 @@
     $statusTone = str_contains(strtolower($status), 'rent') || str_contains(strtolower($status), 'airbnb') ? 'success'
         : (str_contains(strtolower($status), 'vacant') ? 'secondary' : 'info');
     $documents = $asset->documents ?? collect();
-    $tab = request('tab', 'overview');
+    $allowedTabs = array_filter(['overview', 'documents',
+        auth()->user()->can('manage_asset_rentals') ? 'agreements' : null,
+        auth()->user()->can('manage_rental_payments') ? 'payments' : null,
+        auth()->user()->can('manage_asset_expenses') ? 'expenses' : null]);
+    $tab = in_array(request('tab'), $allowedTabs, true) ? request('tab') : 'overview';
     $tenantName = $currentRental?->tenant?->name ?? $currentRental?->tenant_name;
     $deed = $asset->title_deed_data;
     $expiringDocs = $documents->filter(fn ($d) => $d->expires_at && $d->expires_at->lte(now()->addDays(30)))->count();
@@ -38,17 +42,17 @@
     <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-cash-coin" :label="$currentRental?->isInstallments() ? 'Rent per month (avg)' : 'Monthly rent'"
                 :value="$currentRental ? $fmt($currentRental->monthlyEquivalent(), $currentRental->currency) : '—'"
-                :sub="$currentRental ? e($tenantName ?? 'No tenant').($currentRental->isInstallments() ? ' · '.$fmt($currentRental->amount, $currentRental->currency).' / year in '.count($currentRental->installmentList()).' instalments' : '').($currentRental->agreement_end_date ? ' · until '.$currentRental->agreement_end_date->format('d M Y') : ' · open-ended') : 'No active agreement'"
+                :sub="$currentRental ? ($tenantName ?? 'No tenant').($currentRental->isInstallments() ? ' · '.$fmt($currentRental->amount, $currentRental->currency).' / year in '.count($currentRental->installmentList()).' instalments' : '').($currentRental->agreement_end_date ? ' · until '.$currentRental->agreement_end_date->format('d M Y') : ' · open-ended') : 'No active agreement'"
                 :tone="$currentRental ? 'success' : ''" />
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
-        <x-stat icon="bi-wallet2" label="Outstanding" :value="$ytd['outstanding'] > 0 ? $fmt($ytd['outstanding']) : '—'"
+        <x-stat icon="bi-wallet2" label="Outstanding" :value="$ytd['outstanding'] > 0 ? $fmt($ytd['outstanding'], $ytd['currency']) : '—'"
                 :sub="$ytd['outstanding'] > 0 ? 'Unpaid or unconfirmed rent' : 'All rent received'"
                 :tone="$ytd['outstanding'] > 0 ? 'danger' : ''" />
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
-        <x-stat icon="bi-graph-up-arrow" label="This year" :value="$fmt($ytd['income'] - $ytd['expenses'])"
-                :sub="'in '.$fmt($ytd['income']).' · out '.$fmt($ytd['expenses'])" tone="info" />
+        <x-stat icon="bi-graph-up-arrow" label="This year" :value="$fmt($ytd['income'] - $ytd['expenses'], $ytd['currency'])"
+                :sub="'in '.$fmt($ytd['income'], $ytd['currency']).' · out '.$fmt($ytd['expenses'], $ytd['currency'])" tone="info" />
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <x-stat icon="bi-tag" label="Purchase" :value="$asset->purchase_price !== null ? $fmt($asset->purchase_price) : '—'"
@@ -60,17 +64,17 @@
 <div class="card">
     <div class="card-header p-0 border-bottom-0">
         <ul class="nav nav-tabs px-2 pt-2" role="tablist">
-            <li class="nav-item"><button class="nav-link {{ $tab === 'overview' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">Overview</button></li>
-            <li class="nav-item"><button class="nav-link {{ $tab === 'documents' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-documents" type="button" role="tab">
+            <li class="nav-item"><button class="nav-link {{ $tab === 'overview' ? 'active' : '' }}" id="tabbtn-overview" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab" aria-controls="tab-overview" aria-selected="{{ $tab === 'overview' ? 'true' : 'false' }}">Overview</button></li>
+            <li class="nav-item"><button class="nav-link {{ $tab === 'documents' ? 'active' : '' }}" id="tabbtn-documents" data-bs-toggle="tab" data-bs-target="#tab-documents" type="button" role="tab" aria-controls="tab-documents" aria-selected="{{ $tab === 'documents' ? 'true' : 'false' }}">
                 Documents <span class="badge {{ $expiringDocs ? 'text-bg-warning' : 'text-bg-light' }} ms-1">{{ $documents->count() }}</span></button></li>
             @can('manage_asset_rentals')
-                <li class="nav-item"><button class="nav-link {{ $tab === 'agreements' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-agreements" type="button" role="tab">Agreements</button></li>
+                <li class="nav-item"><button class="nav-link {{ $tab === 'agreements' ? 'active' : '' }}" id="tabbtn-agreements" data-bs-toggle="tab" data-bs-target="#tab-agreements" type="button" role="tab" aria-controls="tab-agreements" aria-selected="{{ $tab === 'agreements' ? 'true' : 'false' }}">Agreements</button></li>
             @endcan
             @can('manage_rental_payments')
-                <li class="nav-item"><button class="nav-link {{ $tab === 'payments' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button" role="tab">Payments</button></li>
+                <li class="nav-item"><button class="nav-link {{ $tab === 'payments' ? 'active' : '' }}" id="tabbtn-payments" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button" role="tab" aria-controls="tab-payments" aria-selected="{{ $tab === 'payments' ? 'true' : 'false' }}">Payments</button></li>
             @endcan
             @can('manage_asset_expenses')
-                <li class="nav-item"><button class="nav-link {{ $tab === 'expenses' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-expenses" type="button" role="tab">Expenses</button></li>
+                <li class="nav-item"><button class="nav-link {{ $tab === 'expenses' ? 'active' : '' }}" id="tabbtn-expenses" data-bs-toggle="tab" data-bs-target="#tab-expenses" type="button" role="tab" aria-controls="tab-expenses" aria-selected="{{ $tab === 'expenses' ? 'true' : 'false' }}">Expenses</button></li>
             @endcan
         </ul>
     </div>
@@ -78,7 +82,7 @@
     <div class="tab-content">
 
         {{-- ---------- Overview ---------- --}}
-        <div class="tab-pane fade {{ $tab === 'overview' ? 'show active' : '' }}" id="tab-overview" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'overview' ? 'show active' : '' }}" id="tab-overview" role="tabpanel" aria-labelledby="tabbtn-overview">
             <div class="card-body">
                 <div class="row g-4">
                     <div class="col-lg-7">
@@ -174,7 +178,7 @@
         </div>
 
         {{-- ---------- Documents ---------- --}}
-        <div class="tab-pane fade {{ $tab === 'documents' ? 'show active' : '' }}" id="tab-documents" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'documents' ? 'show active' : '' }}" id="tab-documents" role="tabpanel" aria-labelledby="tabbtn-documents">
             <div class="card-body">
                 @can('manage_assets')
                     <form method="POST" action="{{ route('assets.documents.store', $asset) }}" enctype="multipart/form-data" class="row g-2 align-items-end mb-3 border rounded p-3">
@@ -209,7 +213,7 @@
                 @if($documents->count())
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
-                            <thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Expires</th><th scope="col" class="text-end">Actions</th></tr></thead>
+                            <th scope="col"ead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Expires</th><th scope="col" class="text-end">Actions</th></tr></thead>
                             <tbody>
                             @foreach($documents as $doc)
                                 <tr>
@@ -247,7 +251,7 @@
 
         {{-- ---------- Agreements ---------- --}}
         @can('manage_asset_rentals')
-        <div class="tab-pane fade {{ $tab === 'agreements' ? 'show active' : '' }}" id="tab-agreements" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'agreements' ? 'show active' : '' }}" id="tab-agreements" role="tabpanel" aria-labelledby="tabbtn-agreements">
             <div class="card-body">
                 <div class="d-flex justify-content-end gap-2 mb-2">
                     <a href="{{ route('assets.rentals.import.create') }}" class="btn btn-sm btn-primary"><i class="bi bi-file-earmark-arrow-up"></i> Import contract</a>
@@ -255,7 +259,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th scope="col">Tenant</th><th scope="col">From</th><th scope="col">To</th><th scope="col">Type</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end"></th></tr></thead>
+                        <th scope="col"ead><tr><th scope="col">Tenant</th><th scope="col">From</th><th scope="col">To</th><th scope="col">Type</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end"></th></tr></thead>
                         <tbody>
                         @forelse($asset->rentals as $r)
                             <tr>
@@ -278,7 +282,7 @@
 
         {{-- ---------- Payments ---------- --}}
         @can('manage_rental_payments')
-        <div class="tab-pane fade {{ $tab === 'payments' ? 'show active' : '' }}" id="tab-payments" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'payments' ? 'show active' : '' }}" id="tab-payments" role="tabpanel" aria-labelledby="tabbtn-payments">
             <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div class="text-muted small">
@@ -294,7 +298,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th scope="col">Period</th><th scope="col">Due</th><th scope="col">Tenant</th><th scope="col" class="text-end">Amount</th><th scope="col">Status</th><th scope="col" class="text-end"></th></tr></thead>
+                        <th scope="col"ead><tr><th scope="col">Period</th><th scope="col">Due</th><th scope="col">Tenant</th><th scope="col" class="text-end">Amount</th><th scope="col">Status</th><th scope="col" class="text-end"></th></tr></thead>
                         <tbody>
                         @forelse($payments as $p)
                             <tr class="{{ $p->isOverdue() ? 'table-danger' : '' }}">
@@ -323,14 +327,14 @@
 
         {{-- ---------- Expenses ---------- --}}
         @can('manage_asset_expenses')
-        <div class="tab-pane fade {{ $tab === 'expenses' ? 'show active' : '' }}" id="tab-expenses" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'expenses' ? 'show active' : '' }}" id="tab-expenses" role="tabpanel" aria-labelledby="tabbtn-expenses">
             <div class="card-body">
                 <div class="d-flex justify-content-end mb-2">
                     <a href="{{ route('expenses.index', ['asset_id' => $asset->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Add expense</a>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th scope="col">Date</th><th scope="col">Category</th><th scope="col">Vendor / description</th><th scope="col" class="text-end">Amount</th></tr></thead>
+                        <th scope="col"ead><tr><th scope="col">Date</th><th scope="col">Category</th><th scope="col">Vendor / description</th><th scope="col" class="text-end">Amount</th></tr></thead>
                         <tbody>
                         @forelse($expenses as $x)
                             <tr>

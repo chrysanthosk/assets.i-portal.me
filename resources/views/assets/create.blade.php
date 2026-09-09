@@ -4,7 +4,7 @@
 <div class="row justify-content-center">
     <div class="col-12 col-xxl-10">
 
-        <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <h4 class="mb-0">Add property</h4>
             <a href="{{ route('assets.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
         </div>

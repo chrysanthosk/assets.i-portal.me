@@ -54,8 +54,9 @@ class PermissionSetsController extends Controller
 
     public function updateRolePermissions(Request $request, Role $role)
     {
+        $data = $request->validate(['permissions' => ['nullable', 'array'], 'permissions.*' => ['string', 'max:100']]);
         $allPermissionNames = Permission::pluck('name')->all();
-        $selected = $request->input('permissions', []);
+        $selected = $data['permissions'] ?? [];
 
         $selected = array_values(array_intersect($selected, $allPermissionNames));
         $role->syncPermissions($selected);

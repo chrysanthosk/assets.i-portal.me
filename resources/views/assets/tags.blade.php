@@ -7,7 +7,7 @@
     <div class="card">
       <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <div>
-          <h5 class="mb-0">Asset Tags</h5>
+          <h5 class="mb-0">Tags</h5>
           <small class="text-muted">Create tags like “Paphos”, “Airbnb”, “Commercial”</small>
         </div>
       </div>
@@ -28,11 +28,11 @@
 
         <div class="table-responsive">
           <table class="table table-sm table-striped align-middle">
-            <thead>
+            <th scope="col"ead>
               <tr>
-                <th style="width: 70px;">#</th>
-                <th>Name</th>
-                <th class="text-end" style="width: 180px;">Actions</th>
+                <th scope="col" style="width: 70px;">#</th>
+                <th scope="col">Name</th>
+                <th scope="col" class="text-end" style="width: 180px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -43,7 +43,7 @@
                   <td class="text-end">
 
                     <button
-                      class="btn btn-sm btn-outline-primary me-1"
+                      class="btn btn-sm btn-outline-primary me-1" aria-label="Edit tag"
                       type="button"
                       data-bs-toggle="modal"
                       data-bs-target="#editTagModal"
@@ -53,12 +53,12 @@
                     </button>
 
                     <button
-                      class="btn btn-sm btn-outline-danger"
+                      class="btn btn-sm btn-outline-danger" aria-label="Delete tag"
                       type="button"
                       data-bs-toggle="modal"
                       data-bs-target="#deleteTagModal"
                       data-url="{{ route('assets.tags.destroy', $tag) }}"
-                      data-body="Delete tag <b>{{ e($tag->name) }}</b>? This will remove it from all assets.">
+                      data-body="Delete tag <b>{{ e($tag->name) }}</b>? This will remove it from all properties.">
                       <i class="bi bi-trash"></i>
                     </button>
 
@@ -89,7 +89,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Tag</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
       <form method="POST" id="editTagForm">
@@ -117,7 +117,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Delete Tag</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
       <div class="modal-body" id="deleteTagBody">Are you sure?</div>
