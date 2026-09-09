@@ -56,3 +56,70 @@ jobs:
           DB_CONNECTION: sqlite
           DB_DATABASE: ":memory:"
         run: php artisan test
+
+  mysql:
+    name: Migrations & tests on MySQL
+    runs-on: ubuntu-latest
+    needs: test
+
+    services:
+      mysql:
+        image: mysql:latest
+        env:
+          MYSQL_DATABASE: assets_test
+          MYSQL_USER: assets
+          MYSQL_PASSWORD: secret
+          MYSQL_ROOT_PASSWORD: rootsecret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -prootsecret"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: assets_test
+      DB_USERNAME: assets
+      DB_PASSWORD: secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: mbstring, bcmath, intl, gd, zip, pdo_mysql, exif, pcntl
+          coverage: none
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-files-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-files-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # The real thing the Docker entrypoint does: additive migrations, then the
+      # permission seeder, on the same engine as production (SQLite hides
+      # driver-specific DDL mistakes).
+      - name: Migrate and seed on MySQL
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --class=PortalPermissionsSeeder --force
+          php artisan migrate:rollback --step=3 --force
+          php artisan migrate --force
+
+      - name: Run tests on MySQL
+        run: php artisan test
