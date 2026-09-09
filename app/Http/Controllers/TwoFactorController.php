@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PortalSetting;
 use App\Models\User;
 use App\Support\Audit;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
@@ -122,12 +127,19 @@ class TwoFactorController extends Controller
         $request->session()->put('2fa:setup:recovery', $recovery);
 
         $label = $user->email ?? $user->username ?? 'user';
-        $qrUrl = $google2fa->getQRCodeUrl(config('app.name'), $label, $secret);
+        $qrUrl = $google2fa->getQRCodeUrl(PortalSetting::name(), $label, $secret);
+
+        // Rendered locally as SVG: the secret never leaves the server
+        $qrSvg = (new Writer(new ImageRenderer(
+            new RendererStyle(200, 1),
+            new SvgImageBackEnd
+        )))->writeString($qrUrl);
 
         return view('auth.two_factor_setup', [
             'secret' => $secret,
             'recoveryCodes' => $recovery,
             'qrUrl' => $qrUrl,
+            'qrSvg' => $qrSvg,
         ]);
     }
 

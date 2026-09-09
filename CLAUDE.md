@@ -17,7 +17,8 @@ Guidance for Claude Code (and other AI assistants) when working in this reposito
    (`migrate:fresh`, `db:wipe`, `docker compose down -v`). Deploys are additive only.
 4. Don't commit `.env` or any secrets. Never rotate `APP_KEY` on a live install:
    2FA secrets, recovery codes and the SMTP password are encrypted with it.
-5. Before pushing: `./vendor/bin/pint --test`, `php artisan test`, `npm run build`.
+5. Before pushing: `./vendor/bin/pint --test`, `php artisan test`, `npm run build`, and add
+   a line to the **Unreleased** section of `CHANGELOG.md`.
 
 ---
 
@@ -169,4 +170,5 @@ attaches the app to the reverse proxy network).
   before dropping indexed columns (SQLite).
 - **Trusted proxies**: private ranges are trusted in `bootstrap/app.php` so HTTPS is detected
   behind the reverse proxy; `APP_FORCE_ROOT_URL` keeps generated URLs on `APP_URL`.
-- Keep code Pint-clean; CI runs `pint --test`, the Vite build and PHPUnit on PHP 8.5 / Node 22.
+- Keep code Pint-clean; CI runs `pint --test`, the Vite build and PHPUnit on SQLite, then a
+  second job runs the migrations (with a rollback/re-run) and the suite on MySQL.

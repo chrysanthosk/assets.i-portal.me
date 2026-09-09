@@ -16,10 +16,13 @@ class TwoFactorTest extends TestCase
     {
         $user = User::factory()->create(['two_factor_enabled' => false]);
 
-        $this->actingAs($user)->post(route('profile.2fa.enable'))->assertOk();
+        $page = $this->actingAs($user)->post(route('profile.2fa.enable'))->assertOk();
 
         $secret = session('2fa:setup:secret');
         $this->assertNotEmpty($secret);
+
+        // QR is rendered locally as inline SVG; the secret is never sent to a third party
+        $page->assertSee('<svg', false)->assertDontSee('qrserver.com');
 
         $otp = (new Google2FA)->getCurrentOtp($secret);
 

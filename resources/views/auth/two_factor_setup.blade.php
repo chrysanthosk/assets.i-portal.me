@@ -28,11 +28,7 @@
                     <div class="row g-4">
                         <div class="col-md-5 text-center">
                             <div class="p-3 border rounded d-inline-block bg-body text-body">
-                                <img
-                                    src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ urlencode($qrUrl) }}"
-                                    alt="2FA QR Code"
-                                    style="max-width: 200px; height: auto;"
-                                >
+                                <div class="qr-code" role="img" aria-label="Scan this QR code with your authenticator app" style="width:200px;height:200px;">{!! $qrSvg !!}</div>
                             </div>
 
                             <div class="mt-3 text-start">

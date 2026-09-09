@@ -267,3 +267,7 @@ body { overflow-x: hidden; }
 .nav-tabs { --bs-nav-tabs-border-color: var(--line); --bs-nav-tabs-link-active-bg: var(--surface); --bs-nav-tabs-link-active-color: var(--ink); --bs-nav-tabs-link-active-border-color: var(--line) var(--line) var(--surface); --bs-nav-link-color: var(--ink-2); --bs-nav-link-hover-color: var(--ink); }
 .nav-tabs .nav-link { font-size: .85rem; font-weight: 500; }
 @media (max-width: 575.98px) { .nav-tabs { flex-wrap: nowrap; overflow-x: auto; } .nav-tabs .nav-link { white-space: nowrap; } }
+
+/* 2FA QR code (inline SVG, always on white so scanners read it in dark mode) */
+.qr-code { background: #fff; padding: 8px; border-radius: .5rem; display: inline-block; }
+.qr-code svg { width: 100%; height: 100%; display: block; }

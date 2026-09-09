@@ -12,6 +12,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Views must not depend on a Vite build (CI runs the suite without one)
+        $this->withoutVite();
+
         // Static / array caches must not leak between tests
         Portal::flush();
         Cache::flush();
