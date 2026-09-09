@@ -56,6 +56,9 @@ class AppServiceProvider extends ServiceProvider
         // @advanced ... @endadvanced — markup only shown when advanced mode is on
         Blade::if('advanced', fn () => Portal::advanced());
 
+        // Pagination markup for Bootstrap 5 (the default view assumes Tailwind)
+        \Illuminate\Pagination\Paginator::useBootstrapFive();
+
         /**
          * IMPORTANT:
          * Never clear Spatie permission cache on every request in production.
