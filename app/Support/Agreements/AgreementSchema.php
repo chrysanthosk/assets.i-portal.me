@@ -18,7 +18,7 @@ class AgreementSchema
             'type' => 'object',
             'additionalProperties' => false,
             'required' => ['counterparty', 'counterparty_type', 'counterparty_email', 'counterparty_phone', 'counterparty_id_number', 'property_reference', 'property_address', 'contract_start', 'contract_end',
-                'signed_on', 'auto_renews', 'currency', 'schedule_type', 'monthly_amount', 'annual_amount', 'amounts_exclude_vat',
+                'signed_on', 'auto_renews', 'currency', 'schedule_type', 'monthly_amount', 'payment_due_day', 'deposit_amount', 'annual_amount', 'amounts_exclude_vat',
                 'installments', 'commission_terms', 'obligations', 'notes', 'warnings'],
             'properties' => [
                 'counterparty' => $str('The other party: tenant name, or the management / holiday-lettings company.'),
@@ -35,7 +35,9 @@ class AgreementSchema
                 'currency' => $str('ISO code, e.g. EUR.'),
                 'schedule_type' => ['type' => 'string', 'enum' => ['monthly', 'installments', 'unknown'],
                     'description' => 'monthly = a fixed rent every month; installments = a set of dated payments per contract year'],
-                'monthly_amount' => $num('Monthly rent when schedule_type is monthly.'),
+                'monthly_amount' => $num('Monthly rent when schedule_type is monthly (rent plus any fixed communal charge included in the monthly figure).'),
+                'payment_due_day' => $num('Day of the month by which monthly rent must be paid, e.g. "19" for "by the 19th of each month", "1" for "first day"; empty if not stated.'),
+                'deposit_amount' => $num('Security deposit amount.'),
                 'annual_amount' => $num('Total guaranteed amount per contract year (sum of the instalments), when schedule_type is installments.'),
                 'amounts_exclude_vat' => ['type' => 'string', 'enum' => ['yes', 'no', 'unknown']],
                 'installments' => [

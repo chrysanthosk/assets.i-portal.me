@@ -253,6 +253,35 @@ class InstallmentAgreementTest extends TestCase
         $this->actingAs($user)->post(route('tenants.sync'))->assertSessionHas('success', '0 agreement(s) linked to tenants, 0 tenant(s) filled from contracts.');
     }
 
+    public function test_greek_lease_terms_map_to_a_monthly_agreement_with_its_own_due_day(): void
+    {
+        Carbon::setTestNow('2026-09-09');
+        $asset = $this->asset('Athens - Drakontos');
+        $terms = AgreementSchema::normalize([
+            'counterparty' => 'Andreas Giakoumakis (Ανδρέας Γιακουμάκης)', 'counterparty_type' => 'tenant',
+            'counterparty_email' => '', 'counterparty_phone' => '', 'counterparty_id_number' => 'A 02585673',
+            'property_reference' => 'Apartment D-2, 4th floor, Drakontos 18, Kaisariani (Δράκοντος 18)', 'property_address' => 'Drakontos 18 & Thironos, Kaisariani, Athens',
+            'contract_start' => '2026-07-20', 'contract_end' => '2029-07-20', 'signed_on' => '2026-07-20', 'auto_renews' => 'no',
+            'currency' => 'EUR', 'schedule_type' => 'monthly', 'monthly_amount' => '1000', 'payment_due_day' => '19', 'deposit_amount' => '1000',
+            'annual_amount' => '', 'amounts_exclude_vat' => 'no', 'installments' => [], 'commission_terms' => '', 'obligations' => '', 'notes' => '', 'warnings' => [],
+        ]);
+        $attrs = AgreementMapper::toRentalAttributes($terms);
+        $this->assertSame($asset->id, $attrs['asset_id']);         // matched on "Drakontos"
+        $this->assertSame('monthly', $attrs['payment_schedule']);
+        $this->assertSame(1000.0, $attrs['amount']);
+        $this->assertSame(19, $attrs['due_day']);
+        $this->assertSame('2029-07-20', $attrs['agreement_end_date']);
+        $this->assertStringContainsString('Deposit: EUR 1,000.00', $attrs['notes']);
+
+        $user = $this->user();
+        $this->actingAs($user)->post(route('assets.rentals.storeOrUpdate'), $attrs)->assertRedirect()->assertSessionHasNoErrors();
+        $rental = AssetRental::sole();
+        $this->assertSame(19, $rental->due_day);
+        // July's rent is due on the start date (20 Jul, not the 19th), then the 19th of each month
+        $this->assertSame(['2026-07-20', '2026-08-19', '2026-09-19'], RentalPayment::orderBy('due_date')->pluck('due_date')->map->toDateString()->all());
+        Carbon::setTestNow();
+    }
+
     public function test_agreement_schema_normalizes(): void
     {
         $n = AgreementSchema::normalize(['annual_amount' => '18,000', 'schedule_type' => 'unknown', 'currency' => ' EUR ',
