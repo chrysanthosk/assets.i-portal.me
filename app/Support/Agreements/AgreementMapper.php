@@ -33,6 +33,7 @@ class AgreementMapper
         $schedule = ($c['schedule_type'] ?? null) === 'installments' || ($installments && empty($c['monthly_amount'])) ? 'installments' : 'monthly';
 
         $notes = array_filter([
+            ! empty($c['deposit_amount']) ? 'Deposit: '.($c['currency'] ?? '').' '.number_format((float) $c['deposit_amount'], 2) : null,
             ! empty($c['commission_terms']) ? 'Commission: '.$c['commission_terms'] : null,
             ($c['amounts_exclude_vat'] ?? null) === 'yes' ? 'Amounts exclude VAT.' : null,
             ! empty($c['obligations']) ? 'Obligations: '.$c['obligations'] : null,
@@ -52,6 +53,7 @@ class AgreementMapper
             'is_active' => 1,
             'payment_schedule' => $schedule,
             'paid_in_arrears' => 0,
+            'due_day' => ! empty($c['payment_due_day']) ? max(1, min(28, (int) $c['payment_due_day'])) : null,
             'amount' => $schedule === 'monthly' ? ($c['monthly_amount'] ?? 0) : ($c['annual_amount'] ?? array_sum(array_column($installments, 'amount'))),
             'installments' => $installments,
             'currency' => strtoupper((string) ($c['currency'] ?? 'EUR')) ?: 'EUR',

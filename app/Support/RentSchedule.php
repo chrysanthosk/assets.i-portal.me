@@ -185,7 +185,11 @@ class RentSchedule
             return 0;
         }
         $dueMonth = $rental->paid_in_arrears ? $monthStart->copy()->addMonth() : $monthStart->copy();
-        $due = $dueMonth->day(min(self::dueDay(), $dueMonth->copy()->endOfMonth()->day));
+        $due = $dueMonth->day(min($rental->dueDay(), $dueMonth->copy()->endOfMonth()->day));
+        // First month of a tenancy: never due before the agreement starts
+        if ($rental->agreement_start_date && $due->lt($rental->agreement_start_date)) {
+            $due = $rental->agreement_start_date->copy();
+        }
 
         return self::createPayment($rental, $due, $period, (float) $rental->amount, null);
     }

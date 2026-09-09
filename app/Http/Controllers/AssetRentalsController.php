@@ -85,6 +85,7 @@ class AssetRentalsController extends Controller
             'is_active' => ['required', 'in:0,1'],
             'payment_schedule' => ['nullable', 'in:monthly,installments'],
             'paid_in_arrears' => ['nullable', 'in:0,1'],
+            'due_day' => ['nullable', 'integer', 'min:1', 'max:28'],
             'amount' => ['nullable', 'numeric', 'min:0', 'required_if:payment_schedule,monthly'],
             'installments' => ['nullable', 'array', 'required_if:payment_schedule,installments'],
             'installments.*.day' => ['required', 'integer', 'min:1', 'max:31'],
@@ -101,6 +102,7 @@ class AssetRentalsController extends Controller
 
         $data['payment_schedule'] = $data['payment_schedule'] ?? 'monthly';
         $data['paid_in_arrears'] = $data['payment_schedule'] === 'monthly' && ($data['paid_in_arrears'] ?? '0') === '1';
+        $data['due_day'] = $data['payment_schedule'] === 'monthly' && ! empty($data['due_day']) ? (int) $data['due_day'] : null;
         if ($data['payment_schedule'] === 'installments') {
             $data['installments'] = array_values(array_map(fn ($i) => [
                 'day' => (int) $i['day'], 'month' => (int) $i['month'], 'amount' => (float) $i['amount'], 'label' => $i['label'] ?? null,

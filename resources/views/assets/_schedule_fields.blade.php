@@ -18,14 +18,21 @@
     </select>
 </div>
 
-<div class="col-md-4" data-schedule-monthly="{{ $uid }}">
+<div class="col-md-3" data-schedule-monthly="{{ $uid }}">
     <label class="form-label" for="{{ $uid }}_amount">Monthly amount</label>
     <input id="{{ $uid }}_amount" type="number" step="0.01" min="0" name="amount" class="form-control @error('amount') is-invalid @enderror"
            value="{{ old('amount', $rental?->amount ?? 0) }}">
     @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
 </div>
 
-<div class="col-md-4 d-flex align-items-end" data-schedule-monthly="{{ $uid }}">
+<div class="col-md-2" data-schedule-monthly="{{ $uid }}">
+    <label class="form-label" for="{{ $uid }}_due_day">Due on day</label>
+    <input id="{{ $uid }}_due_day" type="number" min="1" max="28" name="due_day" class="form-control @error('due_day') is-invalid @enderror"
+           value="{{ old('due_day', $rental?->due_day) }}" placeholder="{{ \App\Support\RentSchedule::dueDay() }}">
+    <div class="form-text">Blank = portal default ({{ \App\Support\RentSchedule::dueDay() }}).</div>
+</div>
+
+<div class="col-md-6 d-flex align-items-end" data-schedule-monthly="{{ $uid }}">
     <div class="form-check form-switch mb-2">
         <input type="hidden" name="paid_in_arrears" value="0">
         <input class="form-check-input" type="checkbox" role="switch" id="{{ $uid }}_arrears" name="paid_in_arrears" value="1" @checked($arrears)>

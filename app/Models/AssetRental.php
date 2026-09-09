@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\RentSchedule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +21,7 @@ class AssetRental extends Model
         'rent_type',
         'payment_schedule',
         'paid_in_arrears',
+        'due_day',
         'installments',
         'is_active',
 
@@ -66,6 +68,12 @@ class AssetRental extends Model
         usort($rows, fn ($a, $b) => [$a['month'], $a['day']] <=> [$b['month'], $b['day']]);
 
         return $rows;
+    }
+
+    /** Day of month rent is due: the agreement's own, else the portal default. */
+    public function dueDay(): int
+    {
+        return $this->due_day ? max(1, min(28, (int) $this->due_day)) : RentSchedule::dueDay();
     }
 
     /** What this agreement brings in per month, for dashboards (annual ÷ 12 for instalments). */
