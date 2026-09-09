@@ -14,6 +14,7 @@ use App\Support\Statements\StatementExtractor;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
@@ -57,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
         Blade::if('advanced', fn () => Portal::advanced());
 
         // Pagination markup for Bootstrap 5 (the default view assumes Tailwind)
-        \Illuminate\Pagination\Paginator::useBootstrapFive();
+        Paginator::useBootstrapFive();
 
         /**
          * IMPORTANT:
