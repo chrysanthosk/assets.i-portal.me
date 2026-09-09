@@ -15,7 +15,7 @@ class SendRentReminders extends Command
     {
         $sent = RentSchedule::sendReminders(null, (bool) $this->option('force'));
 
-        $this->info(sprintf('%d reminder(s) sent to: %s', $sent, implode(', ', RentSchedule::recipients()) ?: '(no recipients)'));
+        $this->info($sent ? sprintf('Digest with %d payment(s) sent to: %s', $sent, implode(', ', RentSchedule::recipients())) : 'Nothing to send.');
 
         return self::SUCCESS;
     }

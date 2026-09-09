@@ -31,8 +31,8 @@ and profit/loss reporting — with roles & permissions, 2FA, and audit logging.
   15 Apr, 15 % on 31 May …). **Import a contract PDF** and the parties, period and schedule are read
   for you; the contract is filed with the property's documents
 - **Rental payments** — record/schedule payments, track **arrears & overdue**
-- **Rent check** — expected payments are generated monthly from active agreements; a reminder email
-  asks "did the rent arrive?" with one-click Yes/No links and repeats until answered. For variable
+- **Rent check** — expected payments are generated monthly from active agreements; one daily email
+  lists every payment waiting for an answer with Yes/No links per row, repeating until answered. For variable
   rent (short-let operators) correct the amount, or upload the manager's monthly statement and the
   net payout is read from it and filed with the property's documents
 - **Expenses** — categorised property costs (maintenance, tax, insurance, …)
