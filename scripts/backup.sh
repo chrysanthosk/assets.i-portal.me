@@ -17,7 +17,8 @@ set -euo pipefail
 #   BACKUP_REMOTE=              optional rsync/scp destination, e.g. user@nas:/backups/assets
 #   BACKUP_SKIP_STORAGE=0       set 1 to dump only the database
 #
-# Install the nightly cron with:  sudo ./scripts/backup.sh --install-cron [HH:MM]
+# Install the nightly job with:  sudo ./scripts/backup.sh --install-cron [HH:MM]
+#   (a systemd timer when the host has no cron daemon, else /etc/cron.d)
 #############################################
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,11 +33,48 @@ BACKUP_SKIP_STORAGE="${BACKUP_SKIP_STORAGE:-$(env_val BACKUP_SKIP_STORAGE)}"; BA
 
 log() { echo "[$(date '+%F %T')] $*"; }
 
-# --- cron installer ----------------------------------------------------------
-if [[ "${1:-}" == "--install-cron" ]]; then
+# --- scheduler installer (systemd timer, or cron.d when that is what the host runs) ----
+if [[ "${1:-}" == "--install-cron" || "${1:-}" == "--install-timer" ]]; then
   [[ "${EUID:-$(id -u)}" -eq 0 ]] || { echo "Run as root: sudo $0 --install-cron [HH:MM]" >&2; exit 1; }
   at="${2:-02:30}"; hh="${at%%:*}"; mm="${at##*:}"
   [[ "$hh" =~ ^[0-9]{1,2}$ && "$mm" =~ ^[0-9]{2}$ && "${hh#0}" -le 23 && "${mm#0}" -le 59 ]] || { echo "Time must be HH:MM (00:00–23:59)" >&2; exit 1; }
+  mkdir -p "${BACKUP_DIR}"
+
+  if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files >/dev/null 2>&1 \
+     && ! { systemctl is-active --quiet cron || systemctl is-active --quiet crond; }; then
+    # No cron daemon (Ubuntu minimal images ship without one): use a systemd timer
+    cat > /etc/systemd/system/assets-backup.service <<UNIT
+[Unit]
+Description=assets.i-portal.me backup (DB dump + uploads)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=${REPO_ROOT}
+ExecStart=/bin/bash ${REPO_ROOT}/scripts/backup.sh
+StandardOutput=append:${REPO_ROOT}/${BACKUP_DIR}/backup.log
+StandardError=append:${REPO_ROOT}/${BACKUP_DIR}/backup.log
+UNIT
+    cat > /etc/systemd/system/assets-backup.timer <<UNIT
+[Unit]
+Description=Nightly assets.i-portal.me backup
+
+[Timer]
+OnCalendar=*-*-* $(printf '%02d:%02d' "${hh#0}" "${mm#0}"):00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+    rm -f /etc/cron.d/assets-backup
+    systemctl daemon-reload
+    systemctl enable --now assets-backup.timer >/dev/null
+    log "Installed systemd timer assets-backup.timer — runs daily at ${at} (no cron daemon on this host)."
+    systemctl list-timers assets-backup.timer --no-pager | tail -n +1
+    exit 0
+  fi
+
   cat > /etc/cron.d/assets-backup <<CRON
 # Nightly backup of assets.i-portal.me (DB + uploads). Log: ${REPO_ROOT}/${BACKUP_DIR}/backup.log
 SHELL=/bin/bash
@@ -44,7 +82,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ${mm#0} ${hh#0} * * * root cd ${REPO_ROOT} && ./scripts/backup.sh >> ${REPO_ROOT}/${BACKUP_DIR}/backup.log 2>&1
 CRON
   chmod 644 /etc/cron.d/assets-backup
-  mkdir -p "${BACKUP_DIR}"
   log "Installed /etc/cron.d/assets-backup — runs daily at ${at} as root."
   exit 0
 fi

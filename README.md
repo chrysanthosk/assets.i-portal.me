@@ -157,7 +157,7 @@ uploaded files (`storage/app`: deeds, contracts, statements) to
 `backups/storage-<stamp>.tar.gz`, keeping `RETENTION_DAYS` (default 14).
 
 ```bash
-sudo ./scripts/backup.sh --install-cron 02:30   # nightly, /etc/cron.d/assets-backup
+sudo ./scripts/backup.sh --install-cron 02:30   # nightly: systemd timer, or /etc/cron.d if cron runs
 ```
 
 Set `BACKUP_REMOTE=user@host:/path` in `.env` to rsync each new archive off the server.

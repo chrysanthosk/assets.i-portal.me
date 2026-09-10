@@ -5,6 +5,9 @@ GitHub pull requests. Add an entry to **Unreleased** with every PR.
 
 ## Unreleased
 
+- Backup installer creates a systemd timer when the host has no cron daemon (the
+  production host had none, so the nightly backup never ran).
+
 - CI: second job runs the migrations (including a rollback and re-run) and the whole
   test suite on MySQL, the production engine; the first job stays on SQLite.
 - 2FA setup: the QR code is rendered on the server as inline SVG. The secret no longer
